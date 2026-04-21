@@ -1,0 +1,41 @@
+# 依賴
+node_modules
+.pnp
+.pnp.js
+
+# 建置輸出
+.next
+out
+
+# 測試
+coverage
+
+# 環境變數（不要打包進 image）
+.env
+.env.local
+.env.*.local
+
+# IDE / 編輯器
+.vscode
+.cursor
+.idea
+*.swp
+*.swo
+
+# 版本控制
+.git
+.gitignore
+
+# Docker 自身
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 文件
+README.md
+PLAN.md
+*.md
+
+# OS
+.DS_Store
+Thumbs.db

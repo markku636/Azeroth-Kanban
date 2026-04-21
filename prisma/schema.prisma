@@ -1,0 +1,106 @@
+// Prisma schema — Kanban 面試作業版（基本登入 + RBAC）
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── 會員 ───
+model Member {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  password     String
+  name         String
+  isActive     Boolean  @default(true) @map("is_active")
+  role         String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([isActive])
+  @@map("members")
+}
+
+// ─── 角色 ───
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  displayName String   @map("display_name")
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+// ─── 功能權限 ───
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  groupCode   String   @map("group_code")
+  groupName   String   @map("group_name")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+// ─── 角色-權限對應 ───
+model RolePermission {
+  id           String   @id @default(cuid())
+  roleId       String   @map("role_id")
+  permissionId String   @map("permission_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ─── 稽核日誌 ───
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @map("actor_id")
+  actorEmail String?  @map("actor_email")
+  actorName  String?  @map("actor_name")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  oldValue   String?  @db.Text @map("old_value")
+  newValue   String?  @db.Text @map("new_value")
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorEmail])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── 登入記錄 ───
+model LoginRecord {
+  id            String   @id @default(cuid())
+  email         String
+  memberId      String?  @map("member_id")
+  provider      String
+  status        String
+  failureReason String?  @map("failure_reason")
+  ipAddress     String?  @map("ip_address")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("login_records")
+}
