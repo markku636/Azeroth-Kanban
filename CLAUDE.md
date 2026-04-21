@@ -153,3 +153,23 @@ npm run build
 - `/admin/kanban` 頁面
 - `/api/v1/kanban/cards` CRUD + 狀態更新 API
 - @dnd-kit 拖拉整合
+
+---
+
+## 工作流程（Write-doc-before-Code）
+
+所有超過 3 行的程式碼改動，必須先產生對應文件並取得確認：
+
+| 規模 | 判斷條件 | 需要的文件 |
+| --- | --- | --- |
+| 大型 | 新功能 / 跨多子專案 / 架構變更 | Plan → Spec(s) → Log |
+| 中型 | 改動 3+ 檔案但範圍明確 | Spec → Log |
+| 小型 | ≤3 行 / typo / 設定值 / 格式化 | 豁免 |
+
+- 完整規則：[`.claude/rules/spec-before-code.md`](./.claude/rules/spec-before-code.md)
+- 程式碼慣例：[`.claude/rules/coding-standards.md`](./.claude/rules/coding-standards.md)
+- 常用指令：[`.claude/commands/create-spec.md`](./.claude/commands/create-spec.md)（`/create-spec`）
+- 文件位置：[`docs/`](./docs/)（`plans/`、`specs/`、`bugs/`、`logs/`、`knowledge/`、`decisions/`）
+- 開發順序（本專案）：`prisma` → `common` → `admin`
+
+PreToolUse Hook 會在 Edit/Write 程式碼檔前檢查是否有 🔵 狀態的 Spec 且其「受影響檔案」包含該路徑，否則會被硬性攔截。SessionEnd 時 Hook 自動將標記 ✅ 的 Plan/Spec/Bug 歸檔至 `completed/`，並依 manifest 提煉知識至 `docs/knowledge/`。

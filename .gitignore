@@ -36,6 +36,9 @@ job/npm-debug.log*
 # ─── common (@iqt/common) ───
 common/dist/
 
+# ─── docs (Write-doc-before-Code archive manifest) ───
+docs/.archive-manifest.json
+
 # ─── Root level ───
 node_modules/
 .DS_Store
