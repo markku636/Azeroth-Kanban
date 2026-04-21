@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/MigrateBlog/ncmaz-nextjs/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/MigrateBlog/ncmaz-nextjs/src/app/api/v1/admin/jobs/[id]/commissions/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/agent/src/app/api/v1/admin/agents/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/agent/src/app/\\(dashboard\\)/agents/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/agent/src/lib/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/agent/prisma/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/agent/src/app/api/v1/admin/permissions/**)",
+      "Read(//e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/agent/src/**)",
+      "Bash(docker compose *)",
+      "mcp__chrome-devtools__evaluate_script",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__fill_form",
+      "Bash(*)",
+      "mcp__*"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "playwright"
+  ]
+}

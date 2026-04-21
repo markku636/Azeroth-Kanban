@@ -13,15 +13,6 @@
         "docker/mcp-server"
       ]
     },
-    "supabase": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@supabase/mcp-server-supabase@latest",
-        "--access-token",
-        "YOUR_SUPABASE_ACCESS_TOKEN"
-      ]
-    },
     "chrome-devtools": {
       "command": "npx",
       "args": [
@@ -34,6 +25,14 @@
       "args": [
         "-y",
         "@upstash/context7-mcp@latest"
+      ]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "${DATABASE_URL}"
       ]
     }
   }
