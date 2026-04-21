@@ -173,3 +173,40 @@ npm run build
 - 開發順序（本專案）：`prisma` → `common` → `admin`
 
 PreToolUse Hook 會在 Edit/Write 程式碼檔前檢查是否有 🔵 狀態的 Spec 且其「受影響檔案」包含該路徑，否則會被硬性攔截。SessionEnd 時 Hook 自動將標記 ✅ 的 Plan/Spec/Bug 歸檔至 `completed/`，並依 manifest 提煉知識至 `docs/knowledge/`。
+
+---
+
+## Claude Code 設定
+
+### 自訂指令（`.claude/commands/`）
+
+| 指令 | 用途 |
+| --- | --- |
+| `/create-spec` | 建立 Spec 文件（需求收集 → 查知識庫 → 分析影響 → 建 Spec → 等確認） |
+| `/sync-docs` | 掃描專案與 `.claude/` 設定，同步更新 `README.md` 與 `CLAUDE.md`（僅補缺漏、不覆蓋自訂內容） |
+| `/sync-skill` | 掃描程式碼與 commands/rules，同步更新 `.claude/skills/` 技能文件 |
+
+> `_spec-convention.md` 為 convention 文件（非 slash 指令），由 `/create-spec` 引用。
+
+### 常駐規則（`.claude/rules/`）
+
+| 規則 | 用途 |
+| --- | --- |
+| `spec-before-code.md` | ⛔ 強制攔截 Edit/Write — 必須先有 🔵 Spec 才能寫程式碼；涵蓋 Plan/Spec/Bug/Log/Knowledge 全生命週期 |
+| `coding-standards.md` | 命名、型別、async、React、安全性、錯誤處理（`ApiResult` pattern）等程式碼慣例 |
+
+### 技能模組（`.claude/skills/`）
+
+| 技能 | 用途 |
+| --- | --- |
+| `multi-project-workflow.md` | 三個子專案（`prisma` → `common` → `admin`）的協作工作流：新增功能／新增資料表／修 Bug／重構／更新文件 |
+
+### Hooks（`.claude/hooks/`）
+
+| Hook | 事件 | 行為 |
+| --- | --- | --- |
+| `spec-before-code.mjs` | PreToolUse（Edit/Write） | 程式碼檔案必須對應 `docs/specs/doing/` 某個 🔵 Spec 的「受影響檔案」清單，否則攔截 |
+| `post-tool-use-spec-tracker.mjs` | PostToolUse | 追蹤被改動的檔案，維護 Spec 進度 |
+| `session-start-brief.mjs` | SessionStart | 展示當前 `doing/` 文件摘要 |
+| `session-end-archive.mjs` | SessionEnd | 將標記 ✅ 的 Plan/Spec/Bug 從 `doing/` 移至 `completed/` |
+| `session-end-knowledge.mjs` | SessionEnd | 依 manifest 提煉知識至 `docs/knowledge/`，維護 `knowledge/INDEX.md` |
