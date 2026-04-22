@@ -18,9 +18,32 @@
 
 | 規模 | 判斷條件 | 需要的文件 |
 | --- | --- | --- |
-| **大型** | 新功能 / 跨多子專案 / 涉及架構變更 / 需要多份 Spec | Plan + Spec(s) |
+| **大型** | 新功能 / 跨多子專案 / 涉及架構變更 / 需要多份 Spec | Plan + Spec(s)（需求模糊時先建 PRD） |
 | **中型** | 改動 3+ 檔案但範圍明確 / 單一子專案內的增改 | 僅 Spec |
 | **小型** | ≤ 3 行改動 / typo / 設定值 / 格式化 | 豁免，直接改 |
+
+### Step 0.1: PRD 前置檢查（僅大型需求；預設可跳過）
+
+**先檢查豁免條件（任一成立則跳過 PRD，直接進入 Step 0.5）**：
+- 規模非大型（中型 / 小型）
+- 使用者明確表示「不用 PRD」「直接 Plan」「直接做」等意圖
+- 需求已明確（口述完整 / 已有書面規格 / 已有對應 PRD）
+- 已存在同功能的 ✅ 已確認 PRD（掃描 `docs/requirements/doing/` 與 `docs/requirements/completed/`）
+
+**PRD 啟動條件（必須全部成立才建立 PRD）**：
+1. 規模判斷為**大型**
+2. 使用者需求**口述且不完整**（有明顯待釐清點、多項開放問題）
+3. 使用者未表達要跳過 PRD
+4. 沒有既有 PRD
+
+**執行動作**：
+- **需建立 PRD** → 用 `_prd-template.md` 產生 `docs/requirements/doing/{YYYYMMDD}-{NNN}-{topic}.md`，狀態 🟡 討論中，列出開放問題，**停下等待使用者逐題討論**
+- **PRD 🟡 討論中** → 每次對話更新 PRD、追加「變更紀錄」；使用者未說 ✅ 前**不得進入 Plan**
+- **PRD ✅ 已確認** → 才進入 Step 0.5，Plan 首段必須引用對應 `docs/requirements/completed/xxx.md`（SessionEnd Hook 會於該次 Session 結束時歸檔）
+- **豁免 PRD** → 跳過此步，直接進入 Step 0.5；AI 在建 Plan 時口頭告知「本次跳過 PRD，原因：{需求明確 / 使用者指定 / 規模非大型}」
+
+> **使用者主動豁免的識別關鍵字**：偵測到以下任一短語時，AI 應視為使用者要跳過 PRD，不得自行建立 PRD：
+> 「不用 PRD」「跳過 PRD」「直接 Plan」「直接做」「不需要文件」「先做個簡單的」「快速做一下」
 
 ### Step 0.5: 查閱知識庫（每次規劃前必做）
 
@@ -35,12 +58,35 @@
 2. 若有 DB 相關知識（schema 設計、migration 踩坑）→ 在資料表異動區塊中標注已知風險
 3. 若無相關知識 → 繼續下一步（不需額外操作）
 
-### Step 1: 檢查 Plan（僅大型需求 / 有參考資料時）
-- 該功能是否已有 Plan？（單檔 `{YYYYMMDD}-{NNN}-{feature}.md` 或資料夾 `{YYYYMMDD}-{NNN}-{feature}/plan.md`）
-- **有參考資料**（`references/` 目錄存在）→ AI 必須先讀取 `references/` 內所有檔案（`.pdf`、`.md`、`.sql`、`.txt`），再產生或更新 `plan.md`，並在「參考資料」區塊列出每個檔案的摘要
+### Step 1: 檢查 Plan（僅大型需求）
+- 該功能是否已有 Plan？（恆為單檔 `docs/plans/doing/{YYYYMMDD}-{NNN}-{feature}.md`）
+- **若存在對應 PRD**（`docs/requirements/completed/{YYYYMMDD}-{NNN}-{topic}.md`）→ Plan 首段必須引用，且「目標」「背景」章節需與 PRD 對齊
 - **沒有 Plan** → 查閱 Knowledge 後，自動建立 Plan 至 `doing/`（用 `_plan-template.md`），展示摘要，等使用者確認
 - **有且已確認** → 進入 Step 2
-- **中型需求**（且無參考資料）→ 跳過此步驟，直接進入 Step 2
+- **中型需求** → 跳過此步驟，直接進入 Step 2
+
+#### Step 1.1: 大型 Plan 必填章節檢查
+
+建立大型 Plan 時，AI 必須評估並填寫下列章節（對應 `_plan-template.md` 區塊；小 / 中型刪除）：
+
+| 章節 | 何時填寫 |
+| --- | --- |
+| 系統分析（系統目標、利害關係人） | 跨專案 / 新功能 |
+| 系統架構（技術選型、架構圖、流程圖） | 有架構設計或新增技術元件 |
+| 角色與權限 | 涉及使用者角色差異或存取控制 |
+| WBS | 工作量大 / 需排程 / 多人協作 |
+| 資料表異動 | **有任何 DB schema 變更時必填**（見 Step 1.2） |
+
+#### Step 1.2: 資料庫異動偵測與告知（硬性）
+
+AI 在建立 / 更新 Plan 時，必須自主偵測本次任務是否涉及資料庫 schema 變更：
+
+- **判斷訊號**：Plan 中出現 `CREATE TABLE` / `ALTER TABLE` / migration 檔名 / Prisma schema 變更（`prisma/schema.prisma`）/ 新增欄位或索引 / 修改外鍵
+- **偵測到 DB 變更** → 必須：
+  1. 填寫 Plan 的「資料表異動」區塊（含欄位明細、Migration 注意事項）
+  2. 在展示 Plan 摘要給使用者確認時，**主動以明顯文字告知「本次有資料庫異動」**（例如以 ⚠️ 開頭或粗體提示），並條列受影響的資料表
+- **無 DB 變更** → Plan 中「資料表異動」整段刪除
+- 此規則為**硬性規範**，不得因使用者未詢問而省略告知
 
 ### Step 2: 檢查 Spec
 - 該任務是否已有 `docs/specs/doing/{YYYYMMDD}-{NNN}-{task}.spec.md`？
@@ -128,18 +174,32 @@ AI 檢視完成的 Spec（含 Bug Log）與相關 Bug，評估以下面向：
 
 ## 五、豁免條件
 
-以下不需建 Plan/Spec，可直接 Edit/Write：
+### 5.1 豁免 PRD（只會跳過 PRD，不跳過 Plan / Spec）
+
+任一成立即跳過 PRD，直接進入 Step 0.5：
+
+- 規模為中型 / 小型
+- 需求已明確：使用者已提供書面規格，或口述已完整、沒有明顯待釐清點
+- 已有對應的 ✅ 已確認 PRD（掃描 `docs/requirements/completed/`）
+- 使用者明確說「不用 PRD」「跳過 PRD」「直接 Plan」「直接做」「快速做一下」「先做個簡單的」「不需要文件」
+
+### 5.2 豁免 Plan / Spec（可直接 Edit/Write，最寬鬆）
+
+以下情境可直接動手改，不需建 Plan/Spec：
+
 - 修正 typo、更新版本號、修改設定值、純格式化調整
-- 僅修改一行的小幅調整
+- ≤ 3 行的小幅調整
 - 修改設定檔（`.json`, `.yaml`, `.toml` 等）或文件檔（`.md`）
-- 使用者明確說「直接改」「不用寫 plan」「hotfix」
+- 使用者明確說「直接改」「不用寫 spec」「hotfix」
 
 ## 六、判斷程式碼檔案的副檔名
 
 以下副檔名視為程式碼檔案，受此規則攔截：
-`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, `.py`, `.cs`, `.go`, `.java`, `.rb`, `.rs`, `.cpp`, `.c`, `.h`, `.swift`, `.kt`, `.vue`, `.svelte`, `.php`
+`.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.cs`, `.go`, `.java`, `.rb`, `.rs`, `.cpp`, `.c`, `.h`, `.swift`, `.kt`, `.vue`, `.svelte`, `.php`
 
-Prisma schema（`*.prisma`）與 SQL migration 檔同樣視為程式碼檔案，受攔截。
+Prisma schema（`*.prisma`）與 SQL migration 檔（`*.sql`）同樣視為程式碼檔案，受攔截。
+
+> Hook（`.claude/hooks/spec-before-code.mjs`）實際攔截清單額外包含 `.mjs`、`.cjs`（保護 Hook 腳本自身），與本文件清單略有差異屬有意設計。
 
 ---
 

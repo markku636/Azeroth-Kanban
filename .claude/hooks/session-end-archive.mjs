@@ -1,15 +1,16 @@
 /**
- * SessionEnd 自動歸檔 Hook（Node.js ESM 跨平台版）v2
+ * SessionEnd 自動歸檔 Hook（Node.js ESM 跨平台版）v3
  *
  * Session 結束時，掃描 doing/ 資料夾，將標記為 ✅ 的文件
  * 自動移至對應的 completed/ 資料夾。
  * 歸檔完成後，寫入 docs/.archive-manifest.json，
  * 供 session-end-knowledge.mjs 讀取（取代不可靠的日期篩選）。
  *
- * 歸檔對象：
- *   - docs/plans/doing/    → docs/plans/completed/
- *   - docs/specs/doing/    → docs/specs/completed/
- *   - docs/bugs/doing/     → docs/bugs/completed/
+ * 歸檔對象（按依賴順序，PRD 先於 Plan）：
+ *   - docs/requirements/doing/ → docs/requirements/completed/   (✅ = 已確認)
+ *   - docs/plans/doing/        → docs/plans/completed/          (✅ = 已完成)
+ *   - docs/specs/doing/        → docs/specs/completed/          (✅ = 已完成)
+ *   - docs/bugs/doing/         → docs/bugs/completed/           (✅ = 已修復)
  *
  * 使用方式：由 Claude Code SessionEnd Hook 自動呼叫（第一個執行）
  */
@@ -18,16 +19,28 @@ import { readFileSync, readdirSync, renameSync, writeFileSync, existsSync, mkdir
 import { join } from "node:path";
 
 const ARCHIVE_DIRS = [
-  { doing: "docs/plans/doing",  completed: "docs/plans/completed" },
-  { doing: "docs/specs/doing",  completed: "docs/specs/completed" },
-  { doing: "docs/bugs/doing",   completed: "docs/bugs/completed" },
+  { doing: "docs/requirements/doing", completed: "docs/requirements/completed", type: "requirement" },
+  { doing: "docs/plans/doing",        completed: "docs/plans/completed",        type: "plan" },
+  { doing: "docs/specs/doing",        completed: "docs/specs/completed",        type: "spec" },
+  { doing: "docs/bugs/doing",         completed: "docs/bugs/completed",         type: "bug" },
 ];
+
+// 只讀取「狀態列」判斷是否完成，避免被內文敘述性 ✅ 誤觸發。
+// 匹配 `> 狀態: ...` 或 `> **狀態**: ...`，取第一筆（通常在檔案開頭）。
+function isArchivable(content) {
+  const match = content.match(/^\s*>\s*(?:\*\*)?\s*狀態\s*(?:\*\*)?\s*:\s*(.+)$/m);
+  if (!match) return false;
+  const status = match[1].replace(/\*/g, "").trim();
+  // 模板佔位符同時含 🔵 / 🟡 / ❓，視為未填寫或進行中，不歸檔
+  if (/[🔵🟡❓]/.test(status)) return false;
+  return status.includes("✅");
+}
 
 function main() {
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-  const archived = [];   // { from, to, type: "spec"|"bug"|"plan" }
+  const archived = [];   // { from, to, type: "requirement"|"plan"|"spec"|"bug" }
 
-  for (const { doing, completed } of ARCHIVE_DIRS) {
+  for (const { doing, completed, type } of ARCHIVE_DIRS) {
     const doingDir = join(projectDir, doing);
     const completedDir = join(projectDir, completed);
     if (!existsSync(doingDir)) continue;
@@ -37,27 +50,18 @@ function main() {
       if (entry.startsWith("_") || entry.startsWith(".")) continue;
       const srcPath = join(doingDir, entry);
       const stat = statSync(srcPath);
-      let content = "";
+      if (!stat.isFile() || !entry.endsWith(".md")) continue;
 
-      if (stat.isFile() && entry.endsWith(".md")) {
-        content = readFileSync(srcPath, "utf-8");
-      } else if (stat.isDirectory()) {
-        const planFile = join(srcPath, "plan.md");
-        if (existsSync(planFile)) content = readFileSync(planFile, "utf-8");
-        else continue;
-      } else {
-        continue;
-      }
+      const content = readFileSync(srcPath, "utf-8");
+      if (!isArchivable(content)) continue;
 
-      if (content.includes("✅")) {
-        const destPath = join(completedDir, entry);
-        renameSync(srcPath, destPath);
-        archived.push({
-          from: `${doing}/${entry}`,
-          to: `${completed}/${entry}`,
-          type: doing.includes("spec") ? "spec" : doing.includes("bug") ? "bug" : "plan",
-        });
-      }
+      const destPath = join(completedDir, entry);
+      renameSync(srcPath, destPath);
+      archived.push({
+        from: `${doing}/${entry}`,
+        to: `${completed}/${entry}`,
+        type,
+      });
     }
   }
 
@@ -72,7 +76,7 @@ function main() {
   if (archived.length > 0) {
     process.stderr.write(
       `📦 SessionEnd 歸檔完成（${archived.length} 個文件）:\n` +
-        archived.map((a) => `  - ${a.from} → ${a.to}`).join("\n") + "\n"
+        archived.map((a) => `  - [${a.type}] ${a.from} → ${a.to}`).join("\n") + "\n"
     );
   }
 

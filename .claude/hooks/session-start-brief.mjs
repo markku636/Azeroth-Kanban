@@ -1,8 +1,8 @@
 /**
- * SessionStart 上下文摘要 Hook（Node.js ESM 跨平台版）
+ * SessionStart 上下文摘要 Hook（Node.js ESM 跨平台版）v2
  *
- * Session 開啟時，掃描 docs/plans/doing/ 與 docs/specs/doing/，
- * 以 additionalContext 注入進行中的 Plan/Spec 摘要給 Claude，
+ * Session 開啟時，掃描 docs/requirements/doing/、docs/plans/doing/、docs/specs/doing/、docs/bugs/doing/，
+ * 以 additionalContext 注入進行中的 PRD/Plan/Spec/Bug 摘要給 Claude，
  * 讓對話一開始就知道專案有哪些未完成的工作流文件。
  *
  * 使用方式：由 Claude Code SessionStart Hook 自動呼叫
@@ -12,6 +12,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const SCAN_DIRS = [
+  { label: "PRD",  dir: "docs/requirements/doing" },
   { label: "Plan", dir: "docs/plans/doing" },
   { label: "Spec", dir: "docs/specs/doing" },
   { label: "Bug",  dir: "docs/bugs/doing"  },
@@ -22,9 +23,16 @@ function extractTitle(content) {
   return match ? match[1].trim() : "（無標題）";
 }
 
+// 只讀取「狀態列」判斷狀態，避免被內文敘述性 emoji 誤觸發。
+// 匹配 `> 狀態: ...` 或 `> **狀態**: ...`。
 function extractStatus(content) {
-  if (content.includes("✅")) return "✅ 已完成";
-  if (content.includes("🔵")) return "🔵 進行中";
+  const match = content.match(/^\s*>\s*(?:\*\*)?\s*狀態\s*(?:\*\*)?\s*:\s*(.+)$/m);
+  if (!match) return "❓ 狀態未標記";
+  const status = match[1].replace(/\*/g, "").trim();
+  // 優先順位：進行中 > 討論中 > 完成（模板佔位符同時含三者時取正在進行的狀態）
+  if (status.includes("🔵")) return "🔵 進行中";
+  if (status.includes("🟡")) return "🟡 討論中";
+  if (status.includes("✅")) return "✅ 已完成 / 已確認";
   return "❓ 狀態未標記";
 }
 
@@ -41,20 +49,9 @@ function main() {
     for (const entry of entries) {
       const entryPath = join(absDir, entry);
       const stat = statSync(entryPath);
-      let contentPath;
+      if (!stat.isFile() || !entry.endsWith(".md")) continue;
 
-      if (stat.isFile() && (entry.endsWith(".md") || entry.endsWith(".spec.md"))) {
-        contentPath = entryPath;
-      } else if (stat.isDirectory()) {
-        // 資料夾格式 Plan：讀 plan.md
-        const planFile = join(entryPath, "plan.md");
-        if (existsSync(planFile)) contentPath = planFile;
-        else continue;
-      } else {
-        continue;
-      }
-
-      const content = readFileSync(contentPath, "utf-8");
+      const content = readFileSync(entryPath, "utf-8");
       const title = extractTitle(content);
       const status = extractStatus(content);
       lines.push(`  - [${label}] ${status} \`${dir}/${entry}\` — ${title}`);
@@ -65,7 +62,7 @@ function main() {
     const response = {
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: "📋 Write-doc-before-Code: 目前無進行中的 Plan/Spec/Bug。",
+        additionalContext: "📋 Write-doc-before-Code: 目前無進行中的 PRD/Plan/Spec/Bug。",
       },
     };
     process.stdout.write(JSON.stringify(response));

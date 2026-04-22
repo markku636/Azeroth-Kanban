@@ -6,7 +6,8 @@
 
 | 資料夾 | 用途 | 生命週期 |
 | --- | --- | --- |
-| `plans/{doing,completed}/` | 功能開發計劃書（大型需求） | `doing/` → `completed/`（SessionEnd 自動歸檔） |
+| `requirements/{doing,completed}/` | PRD（產品需求文件，大型需求模糊時的可選前置） | 🟡 討論中 → ✅ 已確認（SessionEnd 自動歸檔） |
+| `plans/{doing,completed}/` | 功能開發計劃書（大型需求，恆為單檔 `.md`） | `doing/` → `completed/`（SessionEnd 自動歸檔） |
 | `specs/{doing,completed}/` | 技術規格（Spec-before-Code） | 同上 |
 | `bugs/{doing,completed}/` | Bug 知識庫（有通用價值的錯誤紀錄） | 同上 |
 | `logs/` | 開發日誌（append-only） | 不歸檔 |
@@ -28,6 +29,7 @@
 
 ## 模板
 
+- `requirements/_prd-template.md`
 - `specs/_spec-template.md`
 - `bugs/_bug-template.md`
 - `plans/_plan-template.md`

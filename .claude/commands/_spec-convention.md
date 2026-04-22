@@ -14,7 +14,9 @@
 
 ### 豁免清單
 
-不需建 Spec：修正 typo、更新版本號、修改設定值、純格式化調整
+不需建 Spec：修正 typo、更新版本號、修改設定值、純格式化調整、≤ 3 行小幅調整、設定檔（`.json`, `.yaml` 等）/ 文件檔（`.md`）、使用者明確說「直接改 / hotfix」
+
+> 完整豁免規則見 [`.claude/rules/spec-before-code.md`](../rules/spec-before-code.md) 第五節（含「豁免 PRD」與「豁免 Plan/Spec」兩層）。
 
 ---
 

@@ -45,17 +45,18 @@ admin/src/app/admin/**   (頁面)
 
 **觸發**: 使用者要求新增功能、API 或頁面
 **步驟**:
-1. **查閱知識庫** → 依序掃描 `docs/knowledge/architecture/`、`patterns/`、`domain/`、`integrations/`，找出相關知識納入規劃；有 DB 相關知識則帶入資料表異動區塊
-2. **自動建立 Plan** → 若使用者提供了參考資料（`references/`），先用 Read tool 讀取所有檔案（PDF/MD/SQL 等），再依據內容建立 `docs/plans/doing/{YYYYMMDD}-{NNN}-{feature}/plan.md`；無參考資料時建立單檔 `docs/plans/doing/{YYYYMMDD}-{NNN}-{feature}.md`。展示摘要等確認
-3. 使用者確認 Plan 後 → **自動拆解為 Spec(s)** → Write `docs/specs/doing/{YYYYMMDD}-{NNN}-{task}.spec.md`
-4. 使用者確認 Spec 後 → **自動寫入開發日誌** → 追加到 `docs/logs/{YYYYMMDD}-{NNN}-{topic}.md`
-5. 確認是否需要新資料表（→ 先處理 `prisma/`，執行 `npm run prisma:migrate`）
-6. 在 `common/` 新增共用型別（僅必要時）
-7. 在 `admin/` 新增 Service / API Route（`src/lib/*` + `src/app/api/v1/**`），套用 `withPermission` 裝飾器
-8. 在 `admin/` 新增 UI 元件與頁面（`src/components/**` + `src/app/admin/**`）
-9. 開發中遇 Bug → **自動記入 Spec Bug Log**；有通用價值 → **自動建立** `docs/bugs/doing/{YYYYMMDD}-{NNN}-{bug}.md`
-10. 完成後 → **自動歸檔** Spec 至 `completed/`（由 SessionEnd Hook 處理），更新 Plan 狀態，追加 Log 完成記錄
-11. **知識提煉** → AI 檢視開發過程，判斷是否有可複用知識 → 有則建立/更新 `docs/knowledge/{category}/`
+1. **PRD 前置判斷**（僅大型需求） → 若需求模糊且使用者未表達豁免（未出現「直接做 / 不用 PRD / 快速做一下」等關鍵字）→ 於 `docs/requirements/doing/{YYYYMMDD}-{NNN}-{topic}.md` 建立 PRD（🟡 討論中），列出開放問題與使用者逐題迭代，直到使用者確認 ✅ 已確認；否則跳過此步驟
+2. **查閱知識庫** → 依序掃描 `docs/knowledge/architecture/`、`patterns/`、`domain/`、`integrations/`，找出相關知識納入規劃；有 DB 相關知識則帶入資料表異動區塊
+3. **自動建立 Plan**（恆為單檔）→ Write `docs/plans/doing/{YYYYMMDD}-{NNN}-{feature}.md`。若有對應 ✅ PRD，Plan 首段必須引用 `docs/requirements/completed/xxx.md`。大型需求必填章節：系統分析、系統架構（Mermaid 圖）、角色與權限、WBS、資料表異動（有異動時）。**若本次有 DB schema 變更，必須在與使用者確認 Plan 時主動口頭告知「本次有資料庫異動」**。展示摘要等確認
+4. 使用者確認 Plan 後 → **自動拆解為 Spec(s)** → Write `docs/specs/doing/{YYYYMMDD}-{NNN}-{task}.spec.md`
+5. 使用者確認 Spec 後 → **自動寫入開發日誌** → 追加到 `docs/logs/{YYYYMMDD}-{NNN}-{topic}.md`
+6. 確認是否需要新資料表（→ 先處理 `prisma/`，執行 `npm run prisma:migrate`）
+7. 在 `common/` 新增共用型別（僅必要時）
+8. 在 `admin/` 新增 Service / API Route（`src/lib/*` + `src/app/api/v1/**`），套用 `withPermission` 裝飾器
+9. 在 `admin/` 新增 UI 元件與頁面（`src/components/**` + `src/app/admin/**`）
+10. 開發中遇 Bug → **自動記入 Spec Bug Log**；有通用價值 → **自動建立** `docs/bugs/doing/{YYYYMMDD}-{NNN}-{bug}.md`
+11. 完成後 → **自動歸檔** PRD / Plan / Spec 至 `completed/`（由 SessionEnd Hook 處理），更新 Plan 狀態，追加 Log 完成記錄
+12. **知識提煉** → AI 檢視開發過程，判斷是否有可複用知識 → 有則建立/更新 `docs/knowledge/{category}/`（PRD 不提煉，僅 Spec / Bug 進入知識提煉）
 
 ## Skill 2: 新增資料表（資料庫起手）
 

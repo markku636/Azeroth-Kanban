@@ -160,19 +160,42 @@ npm run build
 
 所有超過 3 行的程式碼改動，必須先產生對應文件並取得確認：
 
-| 規模 | 判斷條件 | 需要的文件 |
-| --- | --- | --- |
-| 大型 | 新功能 / 跨多子專案 / 架構變更 | Plan → Spec(s) → Log |
-| 中型 | 改動 3+ 檔案但範圍明確 | Spec → Log |
-| 小型 | ≤3 行 / typo / 設定值 / 格式化 | 豁免 |
+| 規模 | 判斷條件 | 需要的文件 | Plan 建議章節（大型必填） |
+| --- | --- | --- | --- |
+| 大型 | 新功能 / 跨多子專案 / 架構變更 | （需求模糊先走 PRD →）Plan → Spec(s) → Log | 系統分析、系統架構（含 Mermaid 圖）、角色與權限、WBS、資料表異動（有異動時） |
+| 中型 | 改動 3+ 檔案但範圍明確 | Spec → Log | — |
+| 小型 | ≤3 行 / typo / 設定值 / 格式化 | 豁免，直接改 | — |
+
+### PRD 前置判斷（大型需求的可選前哨）
+
+- **PRD 是可選的**：預設可跳過，只在「大型 + 需求模糊 + 使用者未表達豁免 + 無既有 PRD」**全部成立**時才建立
+- **PRD 流程**：AI 依口述內容產生初稿至 `docs/requirements/doing/{YYYYMMDD}-{NNN}-{topic}.md` → 🟡 討論中 → 使用者與 AI 逐題迭代 → ✅ 已確認 → SessionEnd Hook 歸檔至 `completed/` → 才建立對應 Plan
+- **硬性規則**：PRD **建立後**未標記 ✅ 前，AI 不得建立 Plan；Plan 首段必須引用 `docs/requirements/completed/xxx.md`
+- **一對一關係**：1 PRD ↔ 1 Plan。PRD 範圍內若需多階段交付，由 Plan 內的 WBS 與 Spec 清單拆解
+- **豁免關鍵字**（使用者任一表達即跳過 PRD）：「不用 PRD」「跳過 PRD」「直接 Plan」「直接做」「不需要文件」「先做個簡單的」「快速做一下」
+
+### 資料庫異動告知規則（硬性）
+
+- AI 在建立 / 更新 Plan 時，若偵測本次任務會**新增 / 修改 / 刪除**任何資料表、欄位、索引、外鍵、約束，**必須**：
+  1. 填寫 Plan 的「資料表異動」區塊（含欄位明細 + Migration 注意事項）
+  2. 在與使用者確認 Plan 的訊息中，**主動口頭告知「本次有資料庫異動」**，並條列受影響的資料表
+- 若無任何 DB schema 變更，Plan 中的「資料表異動」區塊需整段刪除
+- 此規則為**硬性規範**，不得因使用者未詢問而省略告知
+
+### 豁免條件（兩層）
+
+- **豁免 PRD（只跳過 PRD）**：中型 / 小型、需求已明確、已有 ✅ PRD、偵測到使用者豁免關鍵字
+- **豁免 Plan/Spec（可直接改）**：typo / 版本號 / 設定值 / 格式化 / ≤ 3 行 / 設定檔（`.json` 等）/ 文件檔（`.md`）/ 使用者說「直接改」「hotfix」
+
+### 相關連結
 
 - 完整規則：[`.claude/rules/spec-before-code.md`](./.claude/rules/spec-before-code.md)
 - 程式碼慣例：[`.claude/rules/coding-standards.md`](./.claude/rules/coding-standards.md)
 - 常用指令：[`.claude/commands/create-spec.md`](./.claude/commands/create-spec.md)（`/create-spec`）
-- 文件位置：[`docs/`](./docs/)（`plans/`、`specs/`、`bugs/`、`logs/`、`knowledge/`、`decisions/`）
+- 文件位置：[`docs/`](./docs/)（`requirements/`、`plans/`、`specs/`、`bugs/`、`logs/`、`knowledge/`、`decisions/`）
 - 開發順序（本專案）：`prisma` → `common` → `admin`
 
-PreToolUse Hook 會在 Edit/Write 程式碼檔前檢查是否有 🔵 狀態的 Spec 且其「受影響檔案」包含該路徑，否則會被硬性攔截。SessionEnd 時 Hook 自動將標記 ✅ 的 Plan/Spec/Bug 歸檔至 `completed/`，並依 manifest 提煉知識至 `docs/knowledge/`。
+PreToolUse Hook 會在 Edit/Write 程式碼檔前檢查是否有 🔵 狀態的 Spec 且其「受影響檔案」包含該路徑，否則會被硬性攔截。SessionEnd 時 Hook 自動將標記 ✅ 的 PRD/Plan/Spec/Bug 歸檔至 `completed/`，並依 manifest 提煉知識至 `docs/knowledge/`（PRD 不提煉）。
 
 ---
 
