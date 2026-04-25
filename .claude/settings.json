@@ -5,7 +5,9 @@
       "mcp__*",
       "Read(**/*.mjs)",
       "Edit(**/*.mjs)",
-      "Write(**/*.mjs)"
+      "Write(**/*.mjs)",
+      "mcp__chrome-devtools__take_snapshot",
+      "mcp__chrome-devtools__fill_form"
     ]
   },
   "hooks": {
@@ -13,7 +15,10 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/spec-before-code.mjs" } 
+          {
+            "type": "command",
+            "command": "node .claude/hooks/spec-before-code.mjs"
+          }
         ]
       }
     ],
@@ -21,22 +26,34 @@
       {
         "matcher": "Edit|Write",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/post-tool-use-spec-tracker.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post-tool-use-spec-tracker.mjs"
+          }
         ]
       }
     ],
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/session-start-brief.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-start-brief.mjs"
+          }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/session-end-archive.mjs" },
-          { "type": "command", "command": "node .claude/hooks/session-end-knowledge.mjs" }
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-end-archive.mjs"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-end-knowledge.mjs"
+          }
         ]
       }
     ]
