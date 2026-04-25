@@ -1,7 +1,7 @@
 # Spec E: Dark Mode Gray 色票修正（admin pages + components）
 
 > 建立日期: 2026-04-25
-> 狀態: 🔵 開發中
+> 狀態: ✅ 已完成
 > 關聯計劃書: 無（屬 Kanban 計劃內的 UI bugfix，不另開 Plan）
 
 ---
@@ -70,9 +70,9 @@
 | `admin/src/components/form-card.tsx` | 修改 | 同上 |
 | `admin/src/components/stats-card.tsx` | 修改 | 同上 |
 | `admin/src/components/status-badge.tsx` | 修改 | 同上 |
-| `admin/src/components/search/search-list.tsx` | 修改 | 同上 |
-| `admin/src/components/search/search.tsx` | 修改 | 同上 |
-| `admin/src/components/language-switcher.tsx` | 修改 | 同上 |
+| ~~`admin/src/components/search/search-list.tsx`~~ | 不動 | 實際檢視為 RizzUI template code，僅用 `dark:gray-{50,500,700}` LOW 編號正確寫法，無 bug |
+| ~~`admin/src/components/search/search.tsx`~~ | 不動 | 同上（`dark:bg-gray-{50,100}` 為 overlay/panel 正確寫法） |
+| ~~`admin/src/components/language-switcher.tsx`~~ | 不動 | 同上（`dark:bg-gray-{100,200}` LOW 編號為 hover/active 正確 token） |
 | `admin/src/app/admin/login/page.tsx` | 修改 | 同上 |
 | `admin/src/app/admin/(dashboard)/page.tsx` | 修改 | 同上 |
 | `admin/src/app/admin/(dashboard)/me/page.tsx` | 修改 | 同上 |
@@ -123,10 +123,10 @@
 
 ## 預期測試結果
 
-- [ ] `npm run type:check` 通過（純 class 改寫，不應影響型別）
-- [ ] dark mode 下 `/admin/login-records`、`/admin/audit-logs`、`/admin/me` 卡片背景為深色
-- [ ] light mode 下卡片仍為白底，文字仍為深色（無 regression）
-- [ ] dark mode 下 `/admin/kanban` 拖拉與 modal 配色正確
+- [x] `npm run type:check` 通過（純 class 改寫，不應影響型別）── 2026-04-25 跑 `npm run type:check` 通過
+- [ ] dark mode 下 `/admin/login-records`、`/admin/audit-logs`、`/admin/me` 卡片背景為深色（待使用者目視驗證）
+- [ ] light mode 下卡片仍為白底，文字仍為深色（無 regression）（待使用者目視驗證）
+- [ ] dark mode 下 `/admin/kanban` 拖拉與 modal 配色正確（待使用者目視驗證）
 
 ## 風險評估
 
@@ -174,7 +174,32 @@
 
 ### 產出摘要
 
-<!-- 完成後自動更新 -->
+**完成範圍（2026-04-25）**：
+
+- 共修改 **22 個 AI 生成檔案**（lib 1 + components 8 + admin pages 13）
+  - `admin/src/lib/select-classnames.ts`
+  - `admin/src/components/`：edit-modal、confirm-dialog、confirm-dialog-body、data-table、detail-card、api-result-panel、pagination、prompt-dialog-body、form-card、stats-card、status-badge
+  - `admin/src/app/admin/login/page.tsx`（含 README 帳密提示卡片 + i18n key 兩語系）
+  - `admin/src/app/admin/(dashboard)/`：root、me、roles、user-roles、audit-logs、login-records 6 頁
+  - `admin/src/app/admin/(dashboard)/kanban/`：page、`_lib/card-status`、`_components/`：edit-card-modal、inline-card-form、kanban-column、kanban-card 6 檔
+- **未動範圍**（template 既有檔，皆為 LOW-number `dark:gray-{50,100,200}` 正確寫法）：
+  - `admin/src/layouts/hydrogen/*`、`admin/src/layouts/{sticky-header,profile-menu,notification-dropdown,messages-dropdown,header-menu-right}.tsx`
+  - `admin/src/app/shared/{modal-views,drawer-views}/container.tsx`
+  - `admin/src/components/search/{search-list,search}.tsx`、`admin/src/components/language-switcher.tsx`
+  - `admin/src/app/globals.css`（color token 定義本身）
+- **驗證**：`npm run type:check` 通過
+- **附帶改動**（同樣屬本 Spec 範圍）：登入頁加入「預設帳密 — 請參考 README.md」提示卡片，搭配新 i18n key `login.credentialsHintTitle` / `login.credentialsHintBody`（zh-TW + en）
+
+**設計慣例提煉**：本專案 gray scale 在 dark mode 整組反轉（見 `globals.css` `[data-theme="dark"]` block）。在 hydrogen / RizzUI 設計慣例下：
+
+- ✅ 卡片底用 `bg-gray-0`（white→black auto-flip）
+- ✅ 文字用 `text-gray-{500,700,900}`（auto-flip 至明亮端）
+- ✅ 邊框用 `border-gray-{200,300}`（auto-flip 至深邊）
+- ✅ 表頭 / 區塊 bg 用 `bg-gray-{50,100}`（auto-flip 至深底）
+- ✅ 若需 dark-only override，用 LOW 編號 `dark:bg-gray-{50,100}`（dark 端為深色）
+- ❌ 切勿用 HIGH 編號 `dark:bg-gray-{700,800,900}`（dark 端會反轉成淺色，造成卡片變灰白 bug）
+
+<!-- 以下為 PostToolUse Hook 自動追加 -->
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/lib/select-classnames.ts` — Write @ 2026-04-25 05:40
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/components/edit-modal.tsx` — Edit @ 2026-04-25 05:40
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/components/confirm-dialog.tsx` — Edit @ 2026-04-25 05:41
@@ -191,3 +216,4 @@
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/admin/(dashboard)/me/page.tsx` — Edit @ 2026-04-25 08:59
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/admin/(dashboard)/user-roles/page.tsx` — Edit @ 2026-04-25 09:00
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/admin/(dashboard)/audit-logs/page.tsx` — Edit @ 2026-04-25 09:00
+- `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/admin/(dashboard)/login-records/page.tsx` — Edit @ 2026-04-25 09:00

@@ -30,11 +30,11 @@ export function KanbanColumn({ status, cards, onEdit, onDelete, readOnly }: Kanb
       <div className="flex items-center justify-between border-b border-inherit px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-base">{config.emoji}</span>
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+          <h2 className="text-sm font-semibold text-gray-800">
             {t(config.labelKey)}
           </h2>
         </div>
-        <span className="rounded-full bg-white/60 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-900/40 dark:text-gray-300">
+        <span className="rounded-full bg-gray-0/60 px-2 py-0.5 text-xs font-medium text-gray-600">
           {cards.length}
         </span>
       </div>

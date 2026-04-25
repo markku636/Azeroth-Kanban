@@ -47,14 +47,14 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
-      <div className="max-h-[90vh] w-full max-w-full overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl dark:bg-gray-800 sm:max-w-lg sm:rounded-lg">
-        <h2 className="mb-4 text-lg font-bold text-gray-900 dark:text-white">
+      <div className="max-h-[90vh] w-full max-w-full overflow-y-auto rounded-t-2xl bg-gray-0 p-6 shadow-xl sm:max-w-lg sm:rounded-lg">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">
           {t('admin.kanban.editCardTitle')}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="kanban-card-title" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="kanban-card-title" className="mb-1 block text-sm font-medium text-gray-700">
               {t('admin.kanban.cardTitle')} <span className="text-red-500">*</span>
             </label>
             <input
@@ -64,12 +64,12 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={120}
               required
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label htmlFor="kanban-card-description" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="kanban-card-description" className="mb-1 block text-sm font-medium text-gray-700">
               {t('admin.kanban.cardDescription')}
             </label>
             <textarea
@@ -78,19 +78,19 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               maxLength={2000}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label htmlFor="kanban-card-status" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label htmlFor="kanban-card-status" className="mb-1 block text-sm font-medium text-gray-700">
               {t('admin.kanban.cardStatus')}
             </label>
             <select
               id="kanban-card-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as CardStatus)}
-              className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               {CARD_STATUS_ORDER.map((s) => (
                 <option key={s} value={s}>
@@ -104,7 +104,7 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               {t('common.cancel')}
             </button>

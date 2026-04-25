@@ -85,10 +85,10 @@ export default function LoginRecordsPage() {
         <div className="mb-6 flex items-center gap-3">
           <PiShieldWarningDuotone className="w-8 h-8 text-orange-500" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900">
               {t('admin.loginRecords.title')}
             </h1>
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-0.5 text-sm text-gray-500">
               {t('admin.loginRecords.description')}
             </p>
           </div>
@@ -101,13 +101,13 @@ export default function LoginRecordsPage() {
             value={emailFilter}
             onChange={(e) => setEmailFilter(e.target.value)}
             placeholder={t('admin.loginRecords.emailPlaceholder')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-56"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary w-56"
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label={t('common.status')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">{t('common.all')}</option>
             <option value="success">{t('admin.loginRecords.statusSuccess')}</option>
@@ -118,7 +118,7 @@ export default function LoginRecordsPage() {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             aria-label={t('admin.loginRecords.startDate')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <span className="text-gray-400 text-sm">～</span>
           <input
@@ -126,26 +126,26 @@ export default function LoginRecordsPage() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             aria-label={t('admin.loginRecords.endDate')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
         {/* Table */}
         {loading ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
         ) : records.length === 0 ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <PiShieldWarningDuotone className="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600" />
-            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">{t('admin.loginRecords.empty')}</p>
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+            <PiShieldWarningDuotone className="mx-auto w-12 h-12 text-gray-300" />
+            <p className="mt-4 text-sm text-gray-500">{t('admin.loginRecords.empty')}</p>
           </div>
         ) : (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
                     {[
                       t('common.email'),
@@ -155,20 +155,20 @@ export default function LoginRecordsPage() {
                       t('admin.loginRecords.ipAddress'),
                       t('admin.loginRecords.loginTime'),
                     ].map((h) => (
-                      <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      <th key={h} className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-200">
                   {records.map((record) => (
-                    <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">
+                    <tr key={record.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 font-medium">
                         {record.email}
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap">
-                        <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                           {PROVIDER_LABELS[record.provider] ?? record.provider}
                         </span>
                       </td>
@@ -182,15 +182,15 @@ export default function LoginRecordsPage() {
                           {record.status === 'success' ? t('admin.loginRecords.statusSuccess') : t('admin.loginRecords.statusFailed')}
                         </span>
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
                         {record.failureReason
                           ? (FAILURE_REASON_LABELS[record.failureReason] ?? record.failureReason)
                           : '—'}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-gray-500">
                         {record.ipAddress ?? '—'}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
                         {formatDateTime(record.createdAt)}
                       </td>
                     </tr>
@@ -201,8 +201,8 @@ export default function LoginRecordsPage() {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="border-t border-gray-200 px-6 py-3 flex items-center justify-between">
+                <p className="text-sm text-gray-500">
                   共 {pagination.totalItems} 筆，第 {pagination.page} / {pagination.totalPages} 頁
                 </p>
                 <div className="flex items-center gap-2">
@@ -210,7 +210,7 @@ export default function LoginRecordsPage() {
                     type="button"
                     onClick={() => fetchRecords(pagination.page - 1)}
                     disabled={!pagination.hasPrevPage}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('common.prevPage')}
                   </button>
@@ -218,7 +218,7 @@ export default function LoginRecordsPage() {
                     type="button"
                     onClick={() => fetchRecords(pagination.page + 1)}
                     disabled={!pagination.hasNextPage}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('common.nextPage')}
                   </button>

@@ -1,7 +1,7 @@
 # Spec A: Keycloak SSO + DB Schema + 一鍵啟動部署
 
 > 建立日期: 2026-04-25
-> 狀態: 🔵 開發中（v0.5 修訂：Demo 改帳密為主登入、UI 品牌字串改 Azeroth Kanban / AscentisTech）
+> 狀態: ✅ 已完成（程式碼層級；Docker compose + Keycloak SSO 流程整合驗證待使用者執行）
 > 關聯計劃書: `docs/plans/doing/20260423-001-kanban-board.md`
 
 ---

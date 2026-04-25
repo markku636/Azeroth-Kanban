@@ -33,16 +33,16 @@ export function KanbanCard({ card, onEdit, onDelete, isOverlay, readOnly }: Kanb
       style={style}
       {...attributes}
       {...(readOnly ? {} : listeners)}
-      className={`group relative rounded-md border bg-white p-3 shadow-sm transition-shadow dark:border-gray-700 dark:bg-gray-800 ${
+      className={`group relative rounded-md border bg-gray-0 p-3 shadow-sm transition-shadow ${
         isOverlay ? 'border-blue-400 shadow-lg ring-2 ring-blue-200 dark:ring-blue-900' : 'border-gray-200 hover:shadow-md'
       } ${readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
     >
       <div className="pr-12">
-        <h3 className="break-words text-sm font-semibold text-gray-900 dark:text-white">
+        <h3 className="break-words text-sm font-semibold text-gray-900">
           {card.title}
         </h3>
         {card.description && (
-          <p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400 line-clamp-3">
+          <p className="mt-1 break-words text-xs text-gray-500 line-clamp-3">
             {card.description}
           </p>
         )}
