@@ -120,17 +120,144 @@ sequenceDiagram
 
 <!-- ⚠️ 若本次改動「有」任何 DB schema 變更（新增 / 修改 / 刪除資料表或欄位、索引、外鍵、約束），
      AI 必須填寫此區塊，並在與使用者確認 Plan 時「主動口頭告知有資料庫異動」。
-     若「無」任何變更，刪除此區塊。 -->
+     若「無」任何變更，刪除此區塊。
+
+     【新功能特別規定（硬性）】
+     若本 Plan 為「新功能」(新增資料表，或同時新增多張關聯資料表)，AI 必須完整填寫：
+       1. 異動總覽表（下方）
+       2. 「新增資料表完整結構」(Prisma schema 片段或欄位明細表)
+       3. 「ER 關係圖」(Mermaid erDiagram) — 觸發條件為以下任一：
+            (a) 新增 2 張以上資料表
+            (b) 新增資料表與既有資料表有外鍵關聯
+            (c) 修改既有外鍵關聯
+          只有在「單張獨立表 + 完全無外鍵關聯」時可刪除
+       4. 「索引與約束」(主鍵 / 唯一鍵 / 複合索引 / 外鍵)
+       5. 「Seed / 初始資料」(若該表有預設或必要資料)
+       6. Migration 注意事項
+     非新功能（僅修改既有欄位）可僅填「異動總覽」+「新增/修改欄位明細」+「Migration 注意事項」；
+     若本次改動「有調整既有外鍵關聯」，仍須補上 ER 關係圖（Before / After）。 -->
+
+### 異動總覽
 
 | 資料表名稱 | 異動類型 | 說明 |
 | --- | --- | --- |
 | `{table_name}` | 新增資料表 / 新增欄位 / 修改欄位 / 刪除欄位 / 刪除資料表 | {說明} |
 
-### 新增欄位明細
+### 新增資料表完整結構（新功能必填）
+
+<!-- 新增資料表時，AI 必須以 Prisma schema 片段呈現完整定義（含 @map、@id、@default、@relation、@@index 等），
+     讓使用者可直接審閱命名、型別、關聯、預設值是否合理。
+     僅修改既有欄位的情境可刪除此區塊，改用下方「新增 / 修改欄位明細」表格。 -->
+
+```prisma
+model {ModelName} {
+  id          String   @id @default(cuid())
+  {field}     String   @db.VarChar(255)
+  {field2}    Int      @default(0)
+  status      {Enum}   @default(PENDING)
+  createdAt   DateTime @default(now())          @map("created_at")
+  updatedAt   DateTime @updatedAt               @map("updated_at")
+
+  // 關聯
+  {relation}  {OtherModel} @relation(fields: [{fk}], references: [id])
+  {fk}        String   @map("{fk_column}")
+
+  @@index([{indexed_field}])
+  @@map("{table_name}")
+}
+
+enum {Enum} {
+  PENDING
+  ACTIVE
+  ARCHIVED
+}
+```
+
+### 新增 / 修改欄位明細
 
 | 資料表 | 欄位名稱 | 型別 | 可 NULL | 預設值 | 索引 | 說明 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `{table}` | `{column}` | VARCHAR(255) | 否 | — | 無 | {說明} |
+
+### ER 關係圖（涉及關聯時必填）
+
+<!-- 觸發條件（任一成立即必填）：
+       (a) 新增 2 張以上資料表
+       (b) 新增資料表與既有資料表有外鍵關聯
+       (c) 修改既有外鍵關聯（新增 / 變更 / 刪除）
+       (d) 新增資料表本身為純獨立表，但屬「新功能」且使用者未明示豁免
+     僅修改非關聯欄位（如：純改型別、改預設值）可刪除此區塊。
+
+     【繪製規範（硬性）】
+     1. 必須包含本次新增 / 異動的所有資料表
+     2. 必須包含與其相鄰的「既有資料表」(只畫出 1 hop 內有外鍵關聯者)，用於提供上下文，
+        既有表可只列出主鍵與用於關聯的欄位，不需列全部欄位
+     3. 關聯線必須使用 Mermaid 標準語法標示基數：
+          ||--||  一對一
+          ||--o{  一對多 (左為一)
+          }o--o{  多對多
+        並在線後方加上動詞描述關聯語意 (例: "has", "owns", "assigned_to")
+     4. 修改既有關聯時，請保留兩份圖：「Before」與「After」，方便 diff
+     5. 欄位需標註 PK / FK / UK (唯一鍵)，型別使用 Prisma 對應的精簡名 (string / int / datetime / boolean / enum) -->
+
+<!-- 若有「新增 / 新增關聯」 → 只需 After 圖；若有「修改 / 移除既有關聯」 → 同時提供 Before / After -->
+
+#### Before（僅在修改既有關聯時提供，否則刪除此小節）
+
+```mermaid
+erDiagram
+    {EXISTING_A} ||--o{ {EXISTING_B} : "old_relation"
+    {EXISTING_A} {
+        string id PK
+    }
+    {EXISTING_B} {
+        string id PK
+        string {existing_a}_id FK
+    }
+```
+
+#### After
+
+```mermaid
+erDiagram
+    {EXISTING_A} ||--o{ {NEW_TABLE_B} : "has"
+    {NEW_TABLE_B} ||--o{ {NEW_TABLE_C} : "owns"
+    {EXISTING_A} {
+        string id PK
+        string name "既有欄位 (僅列關聯需要的)"
+    }
+    {NEW_TABLE_B} {
+        string id PK
+        string {existing_a}_id FK
+        string title
+        enum   status
+        datetime created_at
+    }
+    {NEW_TABLE_C} {
+        string id PK
+        string {new_table_b}_id FK
+        int    sort_order
+    }
+```
+
+> **既有資料表標示提示**：可在欄位後加註解 `"既有"` 與本次新增區別；若使用者偏好視覺化區分，亦可拆成兩個 erDiagram（既有 / 新增）並列。
+
+### 索引與約束
+
+| 資料表 | 約束類型 | 欄位 | 說明 |
+| --- | --- | --- | --- |
+| `{table}` | PRIMARY KEY | `id` | — |
+| `{table}` | UNIQUE | `{column}` | {為何需要唯一} |
+| `{table}` | INDEX | `({col_a}, {col_b})` | {查詢場景} |
+| `{table}` | FOREIGN KEY | `{fk} → {ref_table}.id` | ON DELETE {CASCADE / SET NULL / RESTRICT} |
+
+### Seed / 初始資料
+
+<!-- 若新表需要預設資料（如：狀態枚舉對應表、預設角色），列出來；否則刪除此區塊 -->
+
+| 資料表 | 初始資料 | 來源 |
+| --- | --- | --- |
+| `{table}` | {說明 N 筆預設資料} | `prisma/seed.ts` |
 
 ### Migration 注意事項
 
@@ -139,6 +266,7 @@ sequenceDiagram
 - [ ] 影響 index（需重建）
 - [ ] 外鍵約束變更
 - [ ] 大資料表需評估鎖定策略（建議採用 non-blocking migration）
+- [ ] 新增 NOT NULL 欄位需提供預設值或分階段 migration（先 nullable → 回填 → 改 NOT NULL）
 
 ## WBS（Work Breakdown Structure）
 
