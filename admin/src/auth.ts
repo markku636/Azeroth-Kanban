@@ -59,13 +59,21 @@ function pickPrimaryRole(roles: readonly string[] | undefined): SystemRole | nul
   return null;
 }
 
-const providers: Provider[] = [
-  KeycloakProvider({
-    clientId: process.env.AUTH_KEYCLOAK_ID,
-    clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
-    issuer: process.env.AUTH_KEYCLOAK_ISSUER,
-  }),
-];
+const providers: Provider[] = [];
+
+if (
+  process.env.AUTH_KEYCLOAK_ID &&
+  process.env.AUTH_KEYCLOAK_SECRET &&
+  process.env.AUTH_KEYCLOAK_ISSUER
+) {
+  providers.push(
+    KeycloakProvider({
+      clientId: process.env.AUTH_KEYCLOAK_ID,
+      clientSecret: process.env.AUTH_KEYCLOAK_SECRET,
+      issuer: process.env.AUTH_KEYCLOAK_ISSUER,
+    })
+  );
+}
 
 if (ALLOW_CREDENTIALS) {
   providers.push(

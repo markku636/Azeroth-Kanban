@@ -84,7 +84,7 @@ Kanban 實作時預計引入：`@dnd-kit/core`（拖拉）、`@dnd-kit/sortable`
 - 型別／類別／React 元件：`PascalCase`
 - 常數：`UPPER_CASE`
 - DB 欄位：`snake_case`（透過 Prisma `@map()` 映射）
-- 路徑別名：`@/*` → `admin/src/*`、`@iqt/common` → monorepo 的 `common/`
+- 路徑別名：`@/*` → `admin/src/*`、`@azeroth/common` → monorepo 的 `common/`
 
 ---
 

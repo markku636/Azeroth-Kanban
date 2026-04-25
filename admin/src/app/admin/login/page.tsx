@@ -4,9 +4,32 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Title, Text } from "rizzui";
-import { PiInfoBold } from "react-icons/pi";
 import { useTranslation } from "@/hooks/use-translation";
 import LanguageSwitcher from "@/components/language-switcher";
+
+const QUICK_FILL_PRESETS = [
+  {
+    role: "Admin",
+    username: "admin@example.com",
+    password: "Admin@1234",
+    btnClass:
+      "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50",
+  },
+  {
+    role: "User",
+    username: "user@example.com",
+    password: "User@1234",
+    btnClass:
+      "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50",
+  },
+  {
+    role: "Viewer",
+    username: "viewer@example.com",
+    password: "Viewer@1234",
+    btnClass:
+      "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50",
+  },
+] as const;
 
 export default function AdminLoginPage() {
   const { t } = useTranslation();
@@ -16,6 +39,12 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [credLoading, setCredLoading] = useState(false);
+
+  const fillCredentials = (u: string, p: string) => {
+    setUsername(u);
+    setPassword(p);
+    setError("");
+  };
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,15 +89,22 @@ export default function AdminLoginPage() {
             </Title>
           </div>
 
-          <div className="mb-4 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
-            <PiInfoBold className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-            <div className="space-y-0.5">
-              <Text className="text-xs font-semibold text-blue-900 dark:text-blue-200">
-                {t("login.credentialsHintTitle")}
-              </Text>
-              <Text className="text-xs text-blue-700 dark:text-blue-300">
-                {t("login.credentialsHintBody")}
-              </Text>
+          <div className="mb-4">
+            <p className="mb-2 text-xs text-gray-500">
+              {t("login.quickFillTitle")}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {QUICK_FILL_PRESETS.map((preset) => (
+                <button
+                  key={preset.role}
+                  type="button"
+                  onClick={() => fillCredentials(preset.username, preset.password)}
+                  disabled={credLoading}
+                  className={`rounded-md border px-2 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${preset.btnClass}`}
+                >
+                  {preset.role}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -110,7 +146,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={credLoading}
-              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {credLoading ? (
                 <span className="inline-flex items-center justify-center gap-2">

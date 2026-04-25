@@ -2,7 +2,7 @@
 
 import { signOut } from 'next-auth/react';
 import toast from 'react-hot-toast';
-import { ApiReturnCode, type ApiResult } from '@iqt/common';
+import { ApiReturnCode, type ApiResult } from '@azeroth/common';
 import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, type Locale, SUPPORTED_LOCALES } from '@/config/i18n';
 import zhTW from '@/locales/zh-TW.json';
 import en from '@/locales/en.json';

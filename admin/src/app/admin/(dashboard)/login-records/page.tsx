@@ -101,13 +101,13 @@ export default function LoginRecordsPage() {
             value={emailFilter}
             onChange={(e) => setEmailFilter(e.target.value)}
             placeholder={t('admin.loginRecords.emailPlaceholder')}
-            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary w-56"
+            className="rounded-lg border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary w-56"
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             aria-label={t('common.status')}
-            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">{t('common.all')}</option>
             <option value="success">{t('admin.loginRecords.statusSuccess')}</option>
@@ -118,7 +118,7 @@ export default function LoginRecordsPage() {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             aria-label={t('admin.loginRecords.startDate')}
-            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <span className="text-gray-400 text-sm">～</span>
           <input
@@ -126,23 +126,23 @@ export default function LoginRecordsPage() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             aria-label={t('admin.loginRecords.endDate')}
-            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
         {/* Table */}
         {loading ? (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
         ) : records.length === 0 ? (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-8 text-center">
             <PiShieldWarningDuotone className="mx-auto w-12 h-12 text-gray-300" />
             <p className="mt-4 text-sm text-gray-500">{t('admin.loginRecords.empty')}</p>
           </div>
         ) : (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 overflow-hidden">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">

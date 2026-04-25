@@ -12,7 +12,7 @@
 
 1. **Prisma schema** — 新增 `KanbanCard` model + `CardStatus` enum；改造 `Member` 支援 Keycloak（`password` 改 optional、新增 `keycloak_sub` unique 欄位）
 2. **Seed 資料** — 建立 3 個系統角色（admin / user / viewer）、14 個 permissions、role-permission 矩陣，以及 3 個本地保險帳號（bcrypt 密碼，供 Credentials 後備或單機 Demo）
-3. **`@iqt/common` ApiErrorCode 常數** — 統一前後端錯誤碼字典（後續 Spec 用於 toast 翻譯）
+3. **`@azeroth/common` ApiErrorCode 常數** — 統一前後端錯誤碼字典（後續 Spec 用於 toast 翻譯）
 4. **Keycloak SSO 認證** — NextAuth v5 加入 Keycloak Provider；signIn / jwt callback 自動 upsert Member（以 `keycloak_sub` 為鍵），並依 `realm_access.roles` 同步單一 role
 5. **登入頁改造** — 移除帳密欄位，改為「以 Keycloak 登入」按鈕；保留既有 i18n 與佈局
 6. **一鍵啟動** — `docker-compose.yml` 新增 keycloak service；`admin/Dockerfile` entrypoint 自動跑 `prisma migrate deploy` + `prisma db seed`；`keycloak/realm-export.json` 含預設使用者

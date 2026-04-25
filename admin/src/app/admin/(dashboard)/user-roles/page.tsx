@@ -115,17 +115,17 @@ export default function UserRolesPage() {
         </div>
 
         {loading ? (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-8 text-center">
             <PiUserGearDuotone className="mx-auto w-12 h-12 text-gray-300" />
             <p className="mt-4 text-sm text-gray-500">尚無使用者</p>
           </div>
         ) : (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 overflow-hidden">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -190,7 +190,7 @@ export default function UserRolesPage() {
 
         {editUser && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-lg rounded-lg bg-gray-0 shadow-xl flex flex-col max-h-[85vh]">
+            <div className="w-full max-w-lg rounded-lg bg-gray-0 dark:bg-gray-100 shadow-xl flex flex-col max-h-[85vh]">
               <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 shrink-0">
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">指派角色</h2>

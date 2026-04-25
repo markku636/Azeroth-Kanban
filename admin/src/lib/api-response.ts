@@ -3,14 +3,14 @@ import {
   ApiResponse as BaseApiResponse,
   ApiReturnCode,
   ApiResult,
-} from '@iqt/common';
+} from '@azeroth/common';
 
 export { ApiReturnCode };
 export type { ApiResult };
 
 /**
  * API 回應工具類別（Next.js 擴充版）
- * 繼承 @iqt/common 的 ApiResponse，補充 NextResponse 相關方法
+ * 繼承 @azeroth/common 的 ApiResponse，補充 NextResponse 相關方法
  *
  * @example
  * // 成功回傳

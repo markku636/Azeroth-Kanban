@@ -18,15 +18,21 @@
 
 | 項目 | 選用 | 理由 |
 | --- | --- | --- |
+| 語言 | TypeScript 5.8（strict mode） | 全面型別安全 |
 | 前端 | Next.js 15 App Router + React 19 | SSR + RSC，單一專案前後端 |
-| 樣式 | Tailwind CSS 3 + RizzUI | 快速刻 UI、設計一致性 |
+| 樣式 | Tailwind CSS 3 + RizzUI 1.0 | 快速刻 UI、設計一致性 |
+| 深色模式 | next-themes | 系統偏好偵測 + 切換持久化 |
 | 後端 | Next.js Route Handlers | 單一 runtime 維護 |
 | 資料庫 | PostgreSQL 16 | Docker 啟動即可 |
 | ORM | Prisma 6 | 型別安全、migration / seed 內建 |
 | 認證 | NextAuth v5 + bcryptjs | Credentials provider 主流程；保留 Keycloak provider 供未來擴充 |
+| 表單 | react-hook-form + Zod | 受控表單 + schema 驗證 |
+| 狀態管理 | Jotai | 原子化 store、低樣板 |
+| 表格 | TanStack Table v8 + rc-table | 角色 / 稽核 / 登入紀錄列表 |
 | 拖拉 | @dnd-kit (core / sortable / utilities) | React 19 相容、Pointer / Touch / Keyboard 三 sensor |
 | Toast | react-hot-toast | 輕量、簡單 API |
 | i18n | 自製 useTranslation hook + JSON 字典 | 支援巢狀 key + `{{var}}` 插值，無 next-intl 重構成本 |
+| 部署 | Docker Compose（一鍵）+ Helm chart（K8s） | 本機與正式環境皆覆蓋 |
 
 ## 安裝與啟動
 
@@ -97,39 +103,55 @@ npm run dev
 ## 專案結構
 
 ```
-├── common/                          # 共用型別（@iqt/common）
+├── common/                          # 共用型別（@azeroth/common）
 │   └── src/
 │       ├── api-response.ts          # ApiResult / ApiResponse
-│       └── api-error-code.ts        # 結構化錯誤碼字典
+│       ├── api-error-code.ts        # 結構化錯誤碼字典
+│       └── index.ts                 # barrel export
 ├── admin/                           # Next.js 15 後台
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── admin/
 │   │   │   │   ├── login/
 │   │   │   │   └── (dashboard)/
-│   │   │   │       ├── kanban/      # ← Kanban 頁 + 元件
+│   │   │   │       ├── kanban/      # ← Kanban 頁（page.tsx + _components / _lib）
+│   │   │   │       ├── me/
 │   │   │   │       ├── roles/
 │   │   │   │       ├── user-roles/
 │   │   │   │       ├── audit-logs/
 │   │   │   │       └── login-records/
 │   │   │   └── api/v1/
 │   │   │       ├── kanban/cards/    # ← Kanban CRUD + move API
-│   │   │       └── admin/...
+│   │   │       └── admin/           # users / roles / permissions / me / audit-logs / login-records
 │   │   ├── auth.ts                  # NextAuth 設定
+│   │   ├── middleware.ts            # 路由守衛（NextAuth）
 │   │   ├── lib/
+│   │   │   ├── api-client.ts        # 前端 fetch 封裝
+│   │   │   ├── api-response.ts      # ApiResult helpers
 │   │   │   ├── kanban-service.ts    # sortOrder 演算法、ownerId 過濾
+│   │   │   ├── permission-service.ts
+│   │   │   ├── audit-log-service.ts
 │   │   │   ├── translate-api-error.ts
-│   │   │   └── with-permission.ts
-│   │   ├── locales/                 # zh-TW.json / en.json
-│   │   └── config/
+│   │   │   ├── validators.ts        # Zod schemas
+│   │   │   ├── with-permission.ts   # API 權限裝飾器
+│   │   │   └── prisma.ts
+│   │   ├── components/              # 共用 UI 元件 + icons
+│   │   ├── layouts/hydrogen/        # Admin Portal Layout
+│   │   ├── hooks/                   # use-media / use-window-scroll …
+│   │   ├── utils/                   # class-names / hex-to-rgb …
+│   │   ├── config/
+│   │   ├── types/
+│   │   └── locales/                 # zh-TW.json / en.json
 │   ├── Dockerfile
 │   └── entrypoint.sh                # 等 DB → migrate → seed → start Next.js
 ├── prisma/
 │   ├── schema.prisma                # Member / Role / Permission / RolePermission / KanbanCard / AuditLog / LoginRecord
 │   ├── migrations/                  # 已 checked in 的 migration SQL
 │   └── seed.ts                      # 3 roles + 14 permissions + matrix + 3 members
+├── helm/                            # Kubernetes Helm chart（Chart.yaml / values.yaml / templates）
 ├── keycloak/                        # （optional）Keycloak realm export，預設不啟用
-├── docs/                            # PRD / Plan / Spec / Knowledge
+├── docs/                            # PRD / Plan / Spec / Bug / Log / Knowledge
+├── .claude/                         # Claude Code commands / agents / hooks / rules / skills
 └── docker-compose.yml
 ```
 

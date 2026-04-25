@@ -66,7 +66,7 @@ export default function DashboardPage() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="block rounded-lg bg-gray-0 p-6 shadow border border-gray-200 hover:shadow-md transition-shadow"
+                className="block rounded-lg bg-gray-0 dark:bg-gray-100 p-6 shadow border border-gray-200 hover:shadow-md transition-shadow"
               >
                 <div className={`inline-flex p-3 rounded-lg ${link.bgColor} mb-4`}>
                   <span className={link.color}>{link.icon}</span>

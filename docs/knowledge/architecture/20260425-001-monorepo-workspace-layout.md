@@ -28,7 +28,7 @@ type: architecture
 │  ├─ lib/         service 層 (kanban, auth…)  │
 │  ├─ auth.ts      NextAuth v5 設定            │
 │  └─ middleware   路由守衛                     │
-│  依賴：@iqt/common + @prisma/client (root)   │
+│  依賴：@azeroth/common + @prisma/client (root)   │
 └────────────┬─────────────────────────────────┘
              │ import { ApiResult, ApiResponse, ApiErrorCode }
              ▼
@@ -52,7 +52,7 @@ type: architecture
 
 | 上層 | 可以匯入 | **不可以**匯入 |
 | --- | --- | --- |
-| `admin/` | `@iqt/common`、`@prisma/client`、Next.js 生態 | — |
+| `admin/` | `@azeroth/common`、`@prisma/client`、Next.js 生態 | — |
 | `common/` | （Node.js 標準庫） | `admin/*`、`@prisma/client`、`next/*` |
 | `prisma/` 檔案 | `@prisma/client`、Node 標準庫 | `admin/*`、`common/*` |
 
@@ -79,9 +79,9 @@ type: architecture
 | Alias | 對應 |
 | --- | --- |
 | `@/*` | `admin/src/*` |
-| `@iqt/common` | monorepo root 的 `common/dist`（build 產出，不是 src） |
+| `@azeroth/common` | monorepo root 的 `common/dist`（build 產出，不是 src） |
 
-⚠️ `@iqt/common` 解析的是 `dist/`，不是 `src/`。這代表**改了 common 後若沒 build，admin 端 import 到的還是舊版**。`npm run dev` 已在 root 把 `npm run build --workspace=common` 串在 `dev` script 之前；如果只跑 `npm run dev --workspace=admin` 會踩到這個坑。
+⚠️ `@azeroth/common` 解析的是 `dist/`，不是 `src/`。這代表**改了 common 後若沒 build，admin 端 import 到的還是舊版**。`npm run dev` 已在 root 把 `npm run build --workspace=common` 串在 `dev` script 之前；如果只跑 `npm run dev --workspace=admin` 會踩到這個坑。
 
 ### 各 workspace 獨立的 build / lint / type:check
 
@@ -105,7 +105,7 @@ type: architecture
 ## 注意事項
 
 - **不要在 `common/` 引入 `@prisma/client`**：即使是型別。Prisma client 是執行期套件，會把 common 變成 Node-only 模組。如果需要在 common 描述卡片型別，自行寫獨立的 `interface CardDto`（admin 端再從 `@prisma/client` 投影過來），而非 `import type { KanbanCard } from '@prisma/client'`。
-- **`@iqt/common` import 到 `dist/`**：改 common 後務必 `npm run build --workspace=common`；用 root `npm run dev` 才會自動串接。
+- **`@azeroth/common` import 到 `dist/`**：改 common 後務必 `npm run build --workspace=common`；用 root `npm run dev` 才會自動串接。
 - **Root 沒有 `src/`**：root 只放 monorepo 共用設定（`package.json`、`tsconfig` base、`docker-compose.yml`、`prisma/`、`docs/`、`.claude/`）。任何業務邏輯都該歸某個 workspace。
 - **新增 workspace 時必補 root scripts**：`build` / `lint` / `type:check` / `format` 都靠 `--workspaces --if-present` fan-out，沒有對應 script 會靜默跳過，CI 不會抱怨。
 

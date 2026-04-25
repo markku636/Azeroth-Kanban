@@ -28,7 +28,7 @@ export default function StatsCard({
   return (
     <div
       className={cn(
-        'rounded-lg bg-gray-0 p-4 shadow border border-gray-200',
+        'rounded-lg bg-gray-0 dark:bg-gray-100 p-4 shadow border border-gray-200',
         className
       )}
     >

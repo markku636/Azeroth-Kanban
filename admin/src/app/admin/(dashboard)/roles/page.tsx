@@ -266,7 +266,7 @@ export default function RolesPage() {
 
         {/* Role Cards */}
         {loading ? (
-          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
@@ -275,7 +275,7 @@ export default function RolesPage() {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="rounded-lg bg-gray-0 shadow border border-gray-200 p-5"
+                className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-5"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -338,7 +338,7 @@ export default function RolesPage() {
         {/* Create Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-lg bg-gray-0 p-6 shadow-xl">
+            <div className="w-full max-w-md rounded-lg bg-gray-0 dark:bg-gray-100 p-6 shadow-xl">
               <h2 className="text-lg font-bold text-gray-900 mb-4">{t('admin.roles.create')}</h2>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
@@ -350,7 +350,7 @@ export default function RolesPage() {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder={t('admin.roles.roleCodePlaceholder')}
-                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                 </div>
@@ -363,7 +363,7 @@ export default function RolesPage() {
                     value={formDisplayName}
                     onChange={(e) => setFormDisplayName(e.target.value)}
                     placeholder={t('admin.roles.displayNamePlaceholder')}
-                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                 </div>
@@ -373,7 +373,7 @@ export default function RolesPage() {
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     rows={2}
-                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
@@ -400,7 +400,7 @@ export default function RolesPage() {
         {/* Edit Modal */}
         {editingRole && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-lg bg-gray-0 p-6 shadow-xl">
+            <div className="w-full max-w-md rounded-lg bg-gray-0 dark:bg-gray-100 p-6 shadow-xl">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
                 {t('admin.roles.editRole')} — {editingRole.name}
               </h2>
@@ -413,7 +413,7 @@ export default function RolesPage() {
                     type="text"
                     value={formDisplayName}
                     onChange={(e) => setFormDisplayName(e.target.value)}
-                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                 </div>
@@ -423,7 +423,7 @@ export default function RolesPage() {
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     rows={2}
-                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
@@ -450,7 +450,7 @@ export default function RolesPage() {
         {/* Permissions Modal */}
         {permissionRole && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-2xl rounded-lg bg-gray-0 shadow-xl flex flex-col max-h-[85vh]">
+            <div className="w-full max-w-2xl rounded-lg bg-gray-0 dark:bg-gray-100 shadow-xl flex flex-col max-h-[85vh]">
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 shrink-0">
                 <div>

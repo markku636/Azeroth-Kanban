@@ -129,7 +129,7 @@ const [a, b] = await Promise.all([fetchA(), fetchB()]);
 ## 十、Import 管理
 
 - 移除所有未使用的 import
-- Import 順序：外部套件 → 內部模組（`@iqt/common`）→ 相對路徑（`@/*`）→ 型別
+- Import 順序：外部套件 → 內部模組（`@azeroth/common`）→ 相對路徑（`@/*`）→ 型別
 - 優先使用 named import，避免 default import 帶來的命名不一致；框架慣例（Next.js page component、`next/image`、`next/link`、`next/font` 等）為例外，遵循框架要求即可
 
 ---

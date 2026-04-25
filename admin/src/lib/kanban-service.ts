@@ -1,5 +1,5 @@
 import type { CardStatus, KanbanCard, Prisma } from '@prisma/client';
-import { ApiErrorCode } from '@iqt/common';
+import { ApiErrorCode } from '@azeroth/common';
 import { prisma } from '@/lib/prisma';
 import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import type { ApiResult } from '@/lib/api-response';

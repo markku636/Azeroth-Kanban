@@ -62,7 +62,7 @@ export default function Pagination({
   const endItem = Math.min(page * pageSize, totalItems);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-0 border-t border-gray-200">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-gray-0 dark:bg-gray-100 border-t border-gray-200">
       {/* 左側：顯示資訊和每頁筆數選擇 */}
       <div className="flex items-center gap-4 text-sm text-gray-600">
         <span>
@@ -74,7 +74,7 @@ export default function Pagination({
             id="pageSize"
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="min-w-[70px] rounded border border-gray-300 bg-gray-0 px-3 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="min-w-[70px] rounded border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
@@ -92,7 +92,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={!hasPrevPage}
-          className="flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-gray-0 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-gray-0 dark:bg-gray-100 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title={t('common.prevPage')}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@ export default function Pagination({
               className={`flex items-center justify-center w-8 h-8 rounded border text-sm font-medium transition-colors ${
                 page === pageNum
                   ? 'border-blue-500 bg-blue-500 text-white'
-                  : 'border-gray-300 bg-gray-0 text-gray-600 hover:bg-gray-100'
+                  : 'border-gray-300 bg-gray-0 dark:bg-gray-100 text-gray-600 hover:bg-gray-100'
               }`}
             >
               {pageNum}
@@ -128,7 +128,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={!hasNextPage}
-          className="flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-gray-0 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center justify-center w-8 h-8 rounded border border-gray-300 bg-gray-0 dark:bg-gray-100 text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title={t('common.nextPage')}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

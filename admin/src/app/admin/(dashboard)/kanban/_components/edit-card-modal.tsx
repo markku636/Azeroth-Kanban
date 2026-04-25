@@ -47,7 +47,7 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
-      <div className="max-h-[90vh] w-full max-w-full overflow-y-auto rounded-t-2xl bg-gray-0 p-6 shadow-xl sm:max-w-lg sm:rounded-lg">
+      <div className="max-h-[90vh] w-full max-w-full overflow-y-auto rounded-t-2xl bg-gray-0 dark:bg-gray-100 p-6 shadow-xl sm:max-w-lg sm:rounded-lg">
         <h2 className="mb-4 text-lg font-bold text-gray-900">
           {t('admin.kanban.editCardTitle')}
         </h2>
@@ -64,7 +64,7 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
               onChange={(e) => setTitle(e.target.value)}
               maxLength={120}
               required
-              className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
@@ -78,7 +78,7 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               maxLength={2000}
-              className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
@@ -90,7 +90,7 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
               id="kanban-card-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as CardStatus)}
-              className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               {CARD_STATUS_ORDER.map((s) => (
                 <option key={s} value={s}>

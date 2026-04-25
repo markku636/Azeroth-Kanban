@@ -33,7 +33,7 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-lg border border-gray-200 bg-gray-0 p-3 shadow-sm"
+      className="rounded-lg border border-gray-200 bg-gray-0 dark:bg-gray-100 p-3 shadow-sm"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
@@ -44,7 +44,7 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
           placeholder={t('admin.kanban.newCardPlaceholder')}
           maxLength={120}
           disabled={disabled || submitting}
-          className="flex-1 rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+          className="flex-1 rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         />
         <button
           type="submit"
@@ -69,7 +69,7 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
             rows={2}
             maxLength={2000}
             disabled={disabled || submitting}
-            className="w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           />
         </div>
       )}

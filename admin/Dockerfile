@@ -34,7 +34,7 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 ENV AUTH_SECRET="build-time-dummy-secret-not-used-at-runtime"
 ENV NEXTAUTH_URL="http://localhost:3000"
 
-# Build @iqt/common shared package
+# Build @azeroth/common shared package
 RUN npm run build --workspace=common
 
 RUN npm run build --workspace=admin
