@@ -14,6 +14,7 @@ metadata:
   name: {{ .Release.Name }}-admin
   labels: {{- include "azeroth-kanban.labels" . | nindent 4 }}
 spec:
+  type: {{ .Values.admin.service.type | default "ClusterIP" }}
   selector:
     app.kubernetes.io/component: admin
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -21,6 +22,9 @@ spec:
     - name: http
       port: 80
       targetPort: {{ .Values.admin.port }}
+      {{- if and (eq .Values.admin.service.type "NodePort") .Values.admin.service.nodePort }}
+      nodePort: {{ .Values.admin.service.nodePort }}
+      {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -61,7 +65,7 @@ spec:
             - name: POSTGRES_PORT
               value: "5432"
             - name: NEXTAUTH_URL
-              value: "http://{{ .Values.ingress.host }}"
+              value: {{ .Values.admin.publicUrl | default (printf "http://%s" .Values.ingress.host) | quote }}
             - name: AUTH_TRUST_HOST
               value: "true"
             - name: AUTH_ALLOW_CREDENTIALS

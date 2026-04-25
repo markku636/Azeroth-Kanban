@@ -15,12 +15,19 @@ postgres:
   user: kanban
   password: kanban_secret  # demo 用，正式請改 --set
   db: kanban
+  # 持久化：true=用 PVC（需 cluster 有 dynamic provisioner），false=emptyDir（重啟資料消失，適合 demo）
+  persistence: false
   storage: 1Gi
   storageClassName: ""  # 空 = 用 cluster default
 
 admin:
   port: 3000
   replicas: 1
+  service:
+    type: ClusterIP   # 對外請改 NodePort 並設 nodePort
+    nodePort: null    # 例：32088（搭配 frpc 反向代理對外用）
+  # 對外公開的 URL（NextAuth callback 用）；留空則 fallback 到 http://{ingress.host}
+  publicUrl: ""
   authSecret: "azeroth-kanban-demo-secret-please-change-in-production-32c"
   # 不啟用 Keycloak SSO（CredentialsProvider 由 seed 出的 admin 帳號登入）
   authAllowCredentials: "true"
