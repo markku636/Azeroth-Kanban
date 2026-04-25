@@ -99,7 +99,7 @@ export default function KanbanPage() {
 
   return (
     <div className="flex h-full flex-col p-4 sm:p-6">
-      <div className="mb-4">
+      <div className="mb-4 text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.kanban.title')}</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('admin.kanban.description')}</p>
       </div>

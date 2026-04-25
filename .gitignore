@@ -40,6 +40,7 @@ common/dist/
 docs/.archive-manifest.json
 
 # ─── Root level ───
+.tmp/
 node_modules/
 .DS_Store
 *.pem

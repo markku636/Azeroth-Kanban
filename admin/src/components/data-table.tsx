@@ -141,13 +141,13 @@ export default function DataTable<T>({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700',
+        'overflow-hidden rounded-lg bg-gray-0 shadow border border-gray-200',
         className
       )}
     >
       {/* Search Bar */}
       {onSearch && (
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-gray-200">
           <div className="flex gap-2">
             <div className="relative flex-1 max-w-md">
               <input
@@ -156,12 +156,12 @@ export default function DataTable<T>({
                 onChange={(e) => setLocalSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={resolvedSearchPlaceholder}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 pr-10 text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-gray-0 px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {localSearchValue && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -171,7 +171,7 @@ export default function DataTable<T>({
             </div>
             <button
               onClick={handleSearch}
-              className="rounded-lg bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 transition-colors"
             >
               {t('common.search')}
             </button>
@@ -181,8 +181,8 @@ export default function DataTable<T>({
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className={cn('bg-gray-100 dark:bg-gray-700', headerClassName)}>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className={cn('bg-gray-100', headerClassName)}>
             <tr>
               {selectable && (
                 <th className="w-10 px-3 py-3" aria-label={t('common.selectAll')}>
@@ -200,7 +200,7 @@ export default function DataTable<T>({
                 <th
                   key={column.key}
                   className={cn(
-                    'px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300',
+                    'px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-600',
                     getAlignClass(column.align)
                   )}
                   style={{ width: column.width }}
@@ -210,12 +210,12 @@ export default function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+          <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
-                  className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
+                  className="px-4 py-8 text-center text-gray-500"
                 >
                   <div className="flex items-center justify-center gap-2">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
@@ -227,7 +227,7 @@ export default function DataTable<T>({
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0)}
-                  className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
+                  className="px-4 py-8 text-center text-gray-500"
                 >
                   {resolvedEmptyMessage}
                 </td>
@@ -240,8 +240,8 @@ export default function DataTable<T>({
                     key={itemKey}
                     onClick={() => onRowClick?.(item)}
                     className={cn(
-                      'bg-white dark:bg-gray-800 transition-colors',
-                      onRowClick && 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700',
+                      'bg-gray-0 transition-colors',
+                      onRowClick && 'cursor-pointer hover:bg-gray-50',
                       selectable && selectedKeys?.has(itemKey) && 'bg-blue-50 dark:bg-blue-900/20',
                       getRowClassName(item, index)
                     )}
@@ -262,7 +262,7 @@ export default function DataTable<T>({
                       <td
                         key={column.key}
                         className={cn(
-                          'whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-white',
+                          'whitespace-nowrap px-4 py-3 text-sm text-gray-900',
                           getAlignClass(column.align)
                         )}
                       >

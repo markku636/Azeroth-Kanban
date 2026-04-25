@@ -89,15 +89,15 @@ export function ConfirmDialogBody({
           {config.icon}
         </div>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{message}</p>
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <p className="mt-2 text-sm text-gray-600 whitespace-pre-wrap">{message}</p>
         </div>
       </div>
       <div className="mt-6 flex justify-end gap-3">
         <button
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-0 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >
           {cancelLabel}
         </button>

@@ -52,7 +52,7 @@ export default function MePage() {
   if (!data) {
     return (
       <div className="p-6">
-        <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
           <p className="text-gray-500">載入失敗</p>
         </div>
       </div>
@@ -63,33 +63,33 @@ export default function MePage() {
     <div className="p-6">
       <div className="max-w-3xl space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">個人資料</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">目前登入者的基本資料</p>
+          <h1 className="text-2xl font-bold text-gray-900">個人資料</h1>
+          <p className="mt-1 text-sm text-gray-500">目前登入者的基本資料</p>
         </div>
 
-        <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-6">
+        <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-6">
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">姓名</dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-white">{data.name}</dd>
+              <dt className="text-gray-500">姓名</dt>
+              <dd className="mt-1 font-medium text-gray-900">{data.name}</dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">Email</dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-white">{data.email}</dd>
+              <dt className="text-gray-500">Email</dt>
+              <dd className="mt-1 font-medium text-gray-900">{data.email}</dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">角色</dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-white">{data.role ?? '-'}</dd>
+              <dt className="text-gray-500">角色</dt>
+              <dd className="mt-1 font-medium text-gray-900">{data.role ?? '-'}</dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">狀態</dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-white">
+              <dt className="text-gray-500">狀態</dt>
+              <dd className="mt-1 font-medium text-gray-900">
                 {data.isActive ? '啟用' : '停用'}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">建立時間</dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-white">
+              <dt className="text-gray-500">建立時間</dt>
+              <dd className="mt-1 font-medium text-gray-900">
                 {new Date(data.createdAt).toLocaleString('zh-TW')}
               </dd>
             </div>

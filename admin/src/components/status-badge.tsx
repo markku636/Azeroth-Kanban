@@ -31,8 +31,8 @@ const statusConfig: Record<StatusType, { bg: string; text: string }> = {
     text: 'text-green-800 dark:text-green-300',
   },
   inactive: {
-    bg: 'bg-gray-100 dark:bg-gray-700',
-    text: 'text-gray-800 dark:text-gray-300',
+    bg: 'bg-gray-100',
+    text: 'text-gray-800',
   },
   cancelled: {
     bg: 'bg-orange-100 dark:bg-orange-900/50',

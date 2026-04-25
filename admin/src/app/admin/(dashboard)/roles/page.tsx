@@ -248,8 +248,8 @@ export default function RolesPage() {
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('admin.roles.title')}</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <h1 className="text-2xl font-bold text-gray-900">{t('admin.roles.title')}</h1>
+            <p className="mt-1 text-sm text-gray-500">
               {t('admin.roles.description')}
             </p>
           </div>
@@ -266,7 +266,7 @@ export default function RolesPage() {
 
         {/* Role Cards */}
         {loading ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
@@ -275,7 +275,7 @@ export default function RolesPage() {
             {roles.map((role) => (
               <div
                 key={role.id}
-                className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-5"
+                className="rounded-lg bg-gray-0 shadow border border-gray-200 p-5"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -283,7 +283,7 @@ export default function RolesPage() {
                       <PiShieldCheckDuotone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                      <h3 className="font-semibold text-gray-900">
                         {role.displayName}
                       </h3>
                       <p className="text-xs text-gray-500 font-mono">{role.name}</p>
@@ -297,7 +297,7 @@ export default function RolesPage() {
                   )}
                 </div>
                 {role.description && (
-                  <p className="mt-3 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="mt-3 text-sm text-gray-500">
                     {role.description}
                   </p>
                 )}
@@ -305,10 +305,10 @@ export default function RolesPage() {
                   <span>{t('admin.roles.permissionCount', { count: role.permissionCount })}</span>
                   <span>{new Date(role.createdAt).toLocaleDateString('zh-TW')}</span>
                 </div>
-                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
+                <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3">
                   <button
                     onClick={() => openEdit(role)}
-                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
                   >
                     <PiPencilBold className="w-3.5 h-3.5" />
                     {t('common.edit')}
@@ -338,11 +338,11 @@ export default function RolesPage() {
         {/* Create Modal */}
         {showCreateModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">{t('admin.roles.create')}</h2>
+            <div className="w-full max-w-md rounded-lg bg-gray-0 p-6 shadow-xl">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">{t('admin.roles.create')}</h2>
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     {t('admin.roles.roleCode')}<span className="text-red-500">*</span>
                   </label>
                   <input
@@ -350,12 +350,12 @@ export default function RolesPage() {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder={t('admin.roles.roleCodePlaceholder')}
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     {t('admin.roles.displayName')} <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -363,24 +363,24 @@ export default function RolesPage() {
                     value={formDisplayName}
                     onChange={(e) => setFormDisplayName(e.target.value)}
                     placeholder={t('admin.roles.displayNamePlaceholder')}
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.roles.descriptionLabel')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.roles.descriptionLabel')}</label>
                   <textarea
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     rows={2}
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     {t('common.cancel')}
                   </button>
@@ -400,37 +400,37 @@ export default function RolesPage() {
         {/* Edit Modal */}
         {editingRole && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+            <div className="w-full max-w-md rounded-lg bg-gray-0 p-6 shadow-xl">
+              <h2 className="text-lg font-bold text-gray-900 mb-4">
                 {t('admin.roles.editRole')} — {editingRole.name}
               </h2>
               <form onSubmit={handleUpdate} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     {t('admin.roles.displayName')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formDisplayName}
                     onChange={(e) => setFormDisplayName(e.target.value)}
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('admin.roles.descriptionLabel')}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.roles.descriptionLabel')}</label>
                   <textarea
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
                     rows={2}
-                    className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
+                    className="block w-full rounded-md border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => { setEditingRole(null); resetForm(); }}
-                    className="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     {t('common.cancel')}
                   </button>
@@ -450,11 +450,11 @@ export default function RolesPage() {
         {/* Permissions Modal */}
         {permissionRole && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-2xl rounded-lg bg-white dark:bg-gray-800 shadow-xl flex flex-col max-h-[85vh]">
+            <div className="w-full max-w-2xl rounded-lg bg-gray-0 shadow-xl flex flex-col max-h-[85vh]">
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4 shrink-0">
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 shrink-0">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  <h2 className="text-lg font-bold text-gray-900">
                     {t('admin.roles.configPermissions')} — {permissionRole.displayName}
                   </h2>
                   <p className="mt-0.5 text-xs text-gray-500 font-mono">{permissionRole.name}</p>
@@ -482,13 +482,13 @@ export default function RolesPage() {
                       return (
                         <div
                           key={group.groupCode}
-                          className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                          className="rounded-lg border border-gray-200 overflow-hidden"
                         >
                           {/* Group Header */}
                           <button
                             type="button"
                             onClick={() => toggleGroupAll(group)}
-                            className="flex w-full items-center gap-3 bg-gray-50 dark:bg-gray-900/50 px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors"
+                            className="flex w-full items-center gap-3 bg-gray-50 px-4 py-2.5 text-left hover:bg-gray-100 transition-colors"
                           >
                             {allChecked ? (
                               <PiCheckSquareDuotone className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
@@ -503,7 +503,7 @@ export default function RolesPage() {
                               <PiSquareDuotone className="w-5 h-5 text-gray-400 shrink-0" />
                             )}
                             <PiShieldCheckDuotone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                            <span className="text-sm font-semibold text-gray-800">
                               {group.groupName}
                             </span>
                             <span className="ml-auto text-xs text-gray-500">
@@ -512,13 +512,13 @@ export default function RolesPage() {
                           </button>
 
                           {/* Permission Items */}
-                          <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                          <div className="divide-y divide-gray-100">
                             {group.permissions.map((perm) => {
                               const isChecked = selectedPermissions.has(perm.code);
                               return (
                                 <label
                                   key={perm.code}
-                                  className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                                  className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors"
                                 >
                                   <input
                                     type="checkbox"
@@ -527,14 +527,14 @@ export default function RolesPage() {
                                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
                                   />
                                   <div className="min-w-0 flex-1">
-                                    <span className="text-sm text-gray-900 dark:text-white">
+                                    <span className="text-sm text-gray-900">
                                       {perm.name}
                                     </span>
                                     <span className="ml-2 text-xs text-gray-400 font-mono">
                                       {perm.code}
                                     </span>
                                     {perm.description && (
-                                      <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400 truncate">
+                                      <p className="mt-0.5 text-xs text-gray-500 truncate">
                                         {perm.description}
                                       </p>
                                     )}
@@ -551,11 +551,11 @@ export default function RolesPage() {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 px-6 py-4 shrink-0">
+              <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4 shrink-0">
                 <button
                   type="button"
                   onClick={() => setPermissionRole(null)}
-                  className="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   取消
                 </button>

@@ -49,16 +49,16 @@ export default function DashboardPage() {
     <div className="p-6">
       <div className="max-w-7xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900">
             管理首頁
           </h1>
-          <p className="mt-2 text-gray-500 dark:text-gray-400">
+          <p className="mt-2 text-gray-500">
             Azeroth Kanban 管理後台
           </p>
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
             快速入口
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -66,15 +66,15 @@ export default function DashboardPage() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="block rounded-lg bg-white dark:bg-gray-800 p-6 shadow border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+                className="block rounded-lg bg-gray-0 p-6 shadow border border-gray-200 hover:shadow-md transition-shadow"
               >
                 <div className={`inline-flex p-3 rounded-lg ${link.bgColor} mb-4`}>
                   <span className={link.color}>{link.icon}</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">
                   {link.title}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-gray-500">
                   {link.description}
                 </p>
               </Link>

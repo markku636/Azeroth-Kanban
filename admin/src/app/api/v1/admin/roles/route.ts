@@ -54,8 +54,6 @@ export const POST = withPermission(PERMISSIONS.ROLES_CREATE, async (request: Nex
   }
 
   const session = await auth();
-  const actorEmail = session?.user?.email ?? undefined;
-  const actorName = session?.user?.name ?? undefined;
 
   const role = await prisma.role.create({
     data: {
@@ -67,8 +65,9 @@ export const POST = withPermission(PERMISSIONS.ROLES_CREATE, async (request: Nex
   });
 
   await createAuditLog({
-    actorEmail,
-    actorName,
+    actorId: session?.user?.memberId,
+    actorEmail: session?.user?.email ?? undefined,
+    actorName: session?.user?.name ?? undefined,
     entityType: 'Role',
     entityId: role.id,
     action: 'create',

@@ -62,7 +62,7 @@ function JsonExpander({ value }: { value: string | null }) {
         {expanded ? '收起' : '展開'}
       </button>
       {expanded && (
-        <pre className="mt-1 rounded bg-gray-100 dark:bg-gray-900 p-2 text-xs font-mono text-gray-700 dark:text-gray-300 overflow-auto max-w-xs max-h-40">
+        <pre className="mt-1 rounded bg-gray-100 p-2 text-xs font-mono text-gray-700 overflow-auto max-w-xs max-h-40">
           {JSON.stringify(parsed, null, 2)}
         </pre>
       )}
@@ -123,10 +123,10 @@ export default function AuditLogsPage() {
         <div className="mb-6 flex items-center gap-3">
           <PiClipboardTextDuotone className="w-8 h-8 text-blue-500" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-gray-900">
               {t('admin.auditLogs.title')}
             </h1>
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-0.5 text-sm text-gray-500">
               {t('admin.auditLogs.description')}
             </p>
           </div>
@@ -139,13 +139,13 @@ export default function AuditLogsPage() {
             value={actorEmailFilter}
             onChange={(e) => setActorEmailFilter(e.target.value)}
             placeholder={t('admin.auditLogs.actorEmailPlaceholder')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-56"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary w-56"
           />
           <select
             value={entityTypeFilter}
             onChange={(e) => setEntityTypeFilter(e.target.value)}
             aria-label={t('admin.auditLogs.entityType')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">{t('admin.auditLogs.allEntityTypes')}</option>
             {ENTITY_TYPE_OPTIONS.map((type) => (
@@ -156,7 +156,7 @@ export default function AuditLogsPage() {
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
             aria-label={t('admin.auditLogs.action')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">{t('common.all')}</option>
             <option value="create">{t('admin.auditLogs.actionCreate')}</option>
@@ -168,7 +168,7 @@ export default function AuditLogsPage() {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             aria-label={t('admin.loginRecords.startDate')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
           <span className="text-gray-400 text-sm">～</span>
           <input
@@ -176,23 +176,23 @@ export default function AuditLogsPage() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             aria-label={t('admin.loginRecords.endDate')}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
 
         {/* Table */}
         {loading ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
         ) : records.length === 0 ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <PiClipboardTextDuotone className="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600" />
-            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">{t('admin.auditLogs.empty')}</p>
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+            <PiClipboardTextDuotone className="mx-auto w-12 h-12 text-gray-300" />
+            <p className="mt-4 text-sm text-gray-500">{t('admin.auditLogs.empty')}</p>
           </div>
         ) : (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900/50">
@@ -207,7 +207,7 @@ export default function AuditLogsPage() {
                       t('admin.loginRecords.ipAddress'),
                       t('admin.auditLogs.operationTime'),
                     ].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider whitespace-nowrap">
                         {h}
                       </th>
                     ))}
@@ -219,20 +219,20 @@ export default function AuditLogsPage() {
                     return (
                       <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          <div className="text-sm font-medium text-gray-900">
                             {record.actorEmail ?? '—'}
                           </div>
                           {record.actorName && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{record.actorName}</div>
+                            <div className="text-xs text-gray-500">{record.actorName}</div>
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
                             {record.entityType}
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                          <span className="font-mono text-xs text-gray-500">
                             {record.entityId.slice(0, 12)}…
                           </span>
                         </td>
@@ -242,16 +242,16 @@ export default function AuditLogsPage() {
                             {actionMeta?.label ?? record.action}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-[180px]">
+                        <td className="px-4 py-3 text-sm text-gray-500 max-w-[180px]">
                           <JsonExpander value={record.oldValue} />
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 max-w-[180px]">
+                        <td className="px-4 py-3 text-sm text-gray-500 max-w-[180px]">
                           <JsonExpander value={record.newValue} />
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-500 dark:text-gray-400">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-500">
                           {record.ipAddress ?? '—'}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDateTime(record.createdAt)}
                         </td>
                       </tr>
@@ -263,8 +263,8 @@ export default function AuditLogsPage() {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="border-t border-gray-200 px-6 py-3 flex items-center justify-between">
+                <p className="text-sm text-gray-500">
                   共 {pagination.totalItems} 筆，第 {pagination.page} / {pagination.totalPages} 頁
                 </p>
                 <div className="flex items-center gap-2">
@@ -272,7 +272,7 @@ export default function AuditLogsPage() {
                     type="button"
                     onClick={() => fetchRecords(pagination.page - 1)}
                     disabled={!pagination.hasPrevPage}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('common.prevPage')}
                   </button>
@@ -280,7 +280,7 @@ export default function AuditLogsPage() {
                     type="button"
                     onClick={() => fetchRecords(pagination.page + 1)}
                     disabled={!pagination.hasNextPage}
-                    className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('common.nextPage')}
                   </button>

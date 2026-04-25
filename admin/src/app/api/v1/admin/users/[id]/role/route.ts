@@ -35,8 +35,6 @@ export const PUT = withPermission(PERMISSIONS.USER_ROLES_EDIT, async (
   }
 
   const session = await auth();
-  const actorEmail = session?.user?.email ?? undefined;
-  const actorName = session?.user?.name ?? undefined;
 
   const updated = await prisma.member.update({
     where: { id },
@@ -45,8 +43,9 @@ export const PUT = withPermission(PERMISSIONS.USER_ROLES_EDIT, async (
   });
 
   await createAuditLog({
-    actorEmail,
-    actorName,
+    actorId: session?.user?.memberId,
+    actorEmail: session?.user?.email ?? undefined,
+    actorName: session?.user?.name ?? undefined,
     entityType: 'Member',
     entityId: id,
     action: 'update',

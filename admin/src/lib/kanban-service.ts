@@ -3,6 +3,7 @@ import { ApiErrorCode } from '@iqt/common';
 import { prisma } from '@/lib/prisma';
 import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import type { ApiResult } from '@/lib/api-response';
+import { createAuditLog } from '@/lib/audit-log-service';
 
 const SORT_GAP = 1000;
 const NORMALIZE_THRESHOLD = 2;
@@ -14,7 +15,24 @@ export type CardDto = Pick<
 
 export type GroupedCards = Record<CardStatus, CardDto[]>;
 
+/** API route 從 session 收集後傳給 service 寫 audit log 用 */
+export interface KanbanActor {
+  id: string;
+  email: string | null;
+  name: string | null;
+  ipAddress?: string;
+}
+
 const ALL_STATUSES: CardStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'];
+
+function auditFromCard(card: Pick<KanbanCard, 'title' | 'description' | 'status' | 'sortOrder'>) {
+  return {
+    title: card.title,
+    description: card.description,
+    status: card.status,
+    sortOrder: card.sortOrder,
+  };
+}
 
 function toDto(card: KanbanCard): CardDto {
   return {
@@ -75,7 +93,8 @@ async function maxSortOrderInColumn(
 /** 建立卡片（落「待處理」末端） */
 export async function createCard(
   ownerId: string,
-  input: { title: string; description?: string }
+  input: { title: string; description?: string },
+  actor?: KanbanActor
 ): Promise<ApiResult<CardDto>> {
   if (!input.title?.trim()) {
     return ApiResponse.error(
@@ -111,6 +130,16 @@ export async function createCard(
         sortOrder: maxOrder + SORT_GAP,
         ownerId,
       },
+    });
+    await createAuditLog({
+      actorId: actor?.id,
+      actorEmail: actor?.email ?? undefined,
+      actorName: actor?.name ?? undefined,
+      entityType: 'KanbanCard',
+      entityId: card.id,
+      action: 'create',
+      newValue: auditFromCard(card),
+      ipAddress: actor?.ipAddress,
     });
     return ApiResponse.success(toDto(card), '卡片已建立');
   } catch (e) {
@@ -149,7 +178,8 @@ export async function getCard(ownerId: string, id: string): Promise<ApiResult<Ca
 export async function updateCard(
   ownerId: string,
   id: string,
-  patch: { title?: string; description?: string | null; status?: CardStatus }
+  patch: { title?: string; description?: string | null; status?: CardStatus },
+  actor?: KanbanActor
 ): Promise<ApiResult<CardDto>> {
   if (patch.title !== undefined) {
     if (!patch.title.trim()) {
@@ -185,7 +215,6 @@ export async function updateCard(
   try {
     const existing = await prisma.kanbanCard.findFirst({
       where: { id, ownerId },
-      select: { id: true, status: true },
     });
     if (!existing) {
       return ApiResponse.error(
@@ -211,6 +240,17 @@ export async function updateCard(
       where: { id },
       data,
     });
+    await createAuditLog({
+      actorId: actor?.id,
+      actorEmail: actor?.email ?? undefined,
+      actorName: actor?.name ?? undefined,
+      entityType: 'KanbanCard',
+      entityId: card.id,
+      action: 'update',
+      oldValue: auditFromCard(existing),
+      newValue: auditFromCard(card),
+      ipAddress: actor?.ipAddress,
+    });
     return ApiResponse.success(toDto(card), '卡片已更新');
   } catch (e) {
     console.error('[KanbanService.updateCard]', { ownerId, id }, e);
@@ -223,16 +263,31 @@ export async function updateCard(
 }
 
 /** 刪除卡片 */
-export async function deleteCard(ownerId: string, id: string): Promise<ApiResult<{ id: string }>> {
+export async function deleteCard(
+  ownerId: string,
+  id: string,
+  actor?: KanbanActor
+): Promise<ApiResult<{ id: string }>> {
   try {
-    const result = await prisma.kanbanCard.deleteMany({ where: { id, ownerId } });
-    if (result.count === 0) {
+    const existing = await prisma.kanbanCard.findFirst({ where: { id, ownerId } });
+    if (!existing) {
       return ApiResponse.error(
         ApiReturnCode.NOT_FOUND,
         '找不到此卡片',
         ApiErrorCode.KANBAN.CARD_NOT_FOUND
       );
     }
+    await prisma.kanbanCard.delete({ where: { id } });
+    await createAuditLog({
+      actorId: actor?.id,
+      actorEmail: actor?.email ?? undefined,
+      actorName: actor?.name ?? undefined,
+      entityType: 'KanbanCard',
+      entityId: id,
+      action: 'delete',
+      oldValue: auditFromCard(existing),
+      ipAddress: actor?.ipAddress,
+    });
     return ApiResponse.success({ id }, '卡片已刪除');
   } catch (e) {
     console.error('[KanbanService.deleteCard]', { ownerId, id }, e);
@@ -256,7 +311,8 @@ export async function deleteCard(ownerId: string, id: string): Promise<ApiResult
 export async function moveCard(
   ownerId: string,
   id: string,
-  input: { status: CardStatus; beforeId?: string | null; afterId?: string | null }
+  input: { status: CardStatus; beforeId?: string | null; afterId?: string | null },
+  actor?: KanbanActor
 ): Promise<ApiResult<{ id: string; status: CardStatus; sortOrder: number }>> {
   if (!ALL_STATUSES.includes(input.status)) {
     return ApiResponse.error(
@@ -268,30 +324,31 @@ export async function moveCard(
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const card = await tx.kanbanCard.findFirst({
+      const before = await tx.kanbanCard.findFirst({
         where: { id, ownerId },
-        select: { id: true },
+        select: { id: true, title: true, status: true, sortOrder: true },
       });
-      if (!card) return null;
+      if (!before) return null;
 
       const newSortOrder = await computeSortOrder(tx, ownerId, input);
 
       const updated = await tx.kanbanCard.update({
         where: { id },
         data: { status: input.status, sortOrder: newSortOrder },
-        select: { id: true, status: true, sortOrder: true },
+        select: { id: true, title: true, status: true, sortOrder: true },
       });
 
       // 觸發 normalize：撈出該欄全部卡片，重排
+      let afterMove = updated;
       if (await needsNormalize(tx, ownerId, input.status)) {
         await normalizeColumn(tx, ownerId, input.status);
-        const afterNormalize = await tx.kanbanCard.findUnique({
+        const normalized = await tx.kanbanCard.findUnique({
           where: { id },
-          select: { id: true, status: true, sortOrder: true },
+          select: { id: true, title: true, status: true, sortOrder: true },
         });
-        return afterNormalize;
+        if (normalized) afterMove = normalized;
       }
-      return updated;
+      return { before, after: afterMove };
     });
 
     if (!result) {
@@ -301,7 +358,23 @@ export async function moveCard(
         ApiErrorCode.KANBAN.CARD_NOT_FOUND
       );
     }
-    return ApiResponse.success(result, '卡片已移動');
+
+    await createAuditLog({
+      actorId: actor?.id,
+      actorEmail: actor?.email ?? undefined,
+      actorName: actor?.name ?? undefined,
+      entityType: 'KanbanCard',
+      entityId: id,
+      action: 'move',
+      oldValue: { title: result.before.title, status: result.before.status, sortOrder: result.before.sortOrder },
+      newValue: { title: result.after.title, status: result.after.status, sortOrder: result.after.sortOrder },
+      ipAddress: actor?.ipAddress,
+    });
+
+    return ApiResponse.success(
+      { id: result.after.id, status: result.after.status, sortOrder: result.after.sortOrder },
+      '卡片已移動'
+    );
   } catch (e) {
     console.error('[KanbanService.moveCard]', { ownerId, id, input }, e);
     return ApiResponse.error(

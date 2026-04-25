@@ -145,6 +145,8 @@
     "errorGeneral": "An error occurred during sign in, please try again later",
     "adminEntrance": "Admin Portal",
     "adminEntranceHint": "For company administrators, please use",
+    "credentialsHintTitle": "Default Credentials",
+    "credentialsHintBody": "See the \"預設帳號\" section in README.md at the project root (admin / user / viewer)",
     "copyright": "AscentisTech"
   },
   "admin": {
@@ -589,8 +591,8 @@
       "system": "System Role"
     },
     "kanban": {
-      "title": "Kanban Board",
-      "description": "Manage your personal cards. Drag across columns to update status.",
+      "title": "Kanban Board Management System",
+      "description": "Drag cards to easily manage task progress",
       "addCard": "Add Card",
       "newCardPlaceholder": "Enter card title and press Enter or click Add",
       "newCardDescriptionPlaceholder": "Add description (optional)",

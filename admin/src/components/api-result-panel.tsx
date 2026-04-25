@@ -68,12 +68,12 @@ export default function ApiResultPanel({
   return (
     <div
       className={cn(
-        'mt-4 rounded-lg border bg-gray-50 p-5 dark:border-gray-700 dark:bg-gray-800/50',
+        'mt-4 rounded-lg border border-gray-200 bg-gray-50 p-5',
         className
       )}
     >
       {/* 結果標題 */}
-      <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
         API 回應結果
       </div>
 
@@ -91,9 +91,8 @@ export default function ApiResultPanel({
       {formattedDetails && (
         <pre
           className={cn(
-            'mt-3 max-h-64 overflow-auto rounded-lg border p-3',
-            'bg-white text-xs text-gray-800',
-            'dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300',
+            'mt-3 max-h-64 overflow-auto rounded-lg border border-gray-300 p-3',
+            'bg-gray-0 text-xs text-gray-800',
             'font-mono leading-relaxed'
           )}
         >

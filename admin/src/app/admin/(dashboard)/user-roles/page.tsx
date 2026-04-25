@@ -108,56 +108,56 @@ export default function UserRolesPage() {
     <div className="p-6">
       <div className="max-w-7xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">使用者角色</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="text-2xl font-bold text-gray-900">使用者角色</h1>
+          <p className="mt-1 text-sm text-gray-500">
             指派使用者的系統角色
           </p>
         </div>
 
         {loading ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
             <p className="mt-4 text-sm text-gray-500">{t('common.loading')}</p>
           </div>
         ) : users.length === 0 ? (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <PiUserGearDuotone className="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600" />
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 p-8 text-center">
+            <PiUserGearDuotone className="mx-auto w-12 h-12 text-gray-300" />
             <p className="mt-4 text-sm text-gray-500">尚無使用者</p>
           </div>
         ) : (
-          <div className="rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="rounded-lg bg-gray-0 shadow border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       使用者
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       角色
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       動作
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-200">
                   {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-sm font-semibold text-blue-600 dark:text-blue-400">
                             {user.name.charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          <span className="text-sm font-medium text-gray-900">
                             {user.name}
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {user.email}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -190,11 +190,11 @@ export default function UserRolesPage() {
 
         {editUser && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-lg rounded-lg bg-white dark:bg-gray-800 shadow-xl flex flex-col max-h-[85vh]">
-              <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4 shrink-0">
+            <div className="w-full max-w-lg rounded-lg bg-gray-0 shadow-xl flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 shrink-0">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">指派角色</h2>
-                  <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                  <h2 className="text-lg font-bold text-gray-900">指派角色</h2>
+                  <p className="mt-0.5 text-sm text-gray-500">
                     {editUser.name}（{editUser.email}）
                   </p>
                 </div>
@@ -212,7 +212,7 @@ export default function UserRolesPage() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <label className="flex items-center gap-3 rounded-lg px-3 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <label className="flex items-center gap-3 rounded-lg px-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
                       <input
                         type="radio"
                         name="role-select"
@@ -227,7 +227,7 @@ export default function UserRolesPage() {
                           <PiCircleDuotone className="w-5 h-5 text-gray-400" />
                         )}
                       </span>
-                      <span className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1.5 text-sm text-gray-500">
                         <PiXCircleBold className="w-3.5 h-3.5" />
                         無角色
                       </span>
@@ -238,7 +238,7 @@ export default function UserRolesPage() {
                       return (
                         <label
                           key={role.id}
-                          className="flex items-center gap-3 rounded-lg px-3 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                          className="flex items-center gap-3 rounded-lg px-3 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
                         >
                           <input
                             type="radio"
@@ -255,11 +255,11 @@ export default function UserRolesPage() {
                             )}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            <span className="text-sm font-medium text-gray-900">
                               {role.displayName}（{role.name}）
                             </span>
                             {role.description && (
-                              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                              <p className="mt-0.5 text-xs text-gray-500">
                                 {role.description}
                               </p>
                             )}
@@ -271,11 +271,11 @@ export default function UserRolesPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-gray-700 px-6 py-4 shrink-0">
+              <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditUser(null)}
-                  className="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   取消
                 </button>

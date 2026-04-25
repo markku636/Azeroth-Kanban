@@ -28,23 +28,23 @@ export default function StatsCard({
   return (
     <div
       className={cn(
-        'rounded-lg bg-white dark:bg-gray-800 p-4 shadow border border-gray-200 dark:border-gray-700',
+        'rounded-lg bg-gray-0 p-4 shadow border border-gray-200',
         className
       )}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+          <p className="text-sm text-gray-500">{title}</p>
           <p
             className={cn(
-              'mt-1 text-2xl font-bold text-gray-900 dark:text-white',
+              'mt-1 text-2xl font-bold text-gray-900',
               valueClassName
             )}
           >
             {typeof value === 'number' ? value.toLocaleString() : value}
           </p>
           {description && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-1 text-xs text-gray-500">
               {description}
             </p>
           )}
@@ -91,7 +91,7 @@ export default function StatsCard({
           )}
         </div>
         {icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
             {icon}
           </div>
         )}

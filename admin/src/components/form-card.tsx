@@ -15,8 +15,8 @@ interface FormSectionProps {
 
 export function FormSection({ title, children, className }: FormSectionProps) {
   return (
-    <div className={cn('border-b border-gray-200 pb-6 last:border-b-0 dark:border-gray-700', className)}>
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+    <div className={cn('border-b border-gray-200 pb-6 last:border-b-0', className)}>
+      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
         {title}
       </h3>
       <div className="space-y-4">{children}</div>
@@ -40,13 +40,13 @@ interface FormFieldProps {
 export function FormField({ label, required, hint, error, children, className }: FormFieldProps) {
   return (
     <div className={cn('', className)}>
-      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <label className="mb-1.5 block text-sm font-medium text-gray-700">
         {label}
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>
       {children}
       {hint && (
-        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{hint}</p>
+        <p className="mt-1 text-xs text-gray-500">{hint}</p>
       )}
       {error && (
         <p className="mt-1 text-xs text-red-500">{error}</p>
@@ -93,12 +93,11 @@ export function FormInput({ error, className, ...props }: FormInputProps) {
       {...props}
       className={cn(
         'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-        'bg-white text-gray-900 placeholder-gray-500',
-        'dark:bg-gray-700 dark:text-white dark:placeholder-gray-400',
+        'bg-gray-0 text-gray-900 placeholder-gray-500',
         'focus:outline-none focus:ring-2 focus:ring-blue-500',
         error
-          ? 'border-red-500 dark:border-red-500'
-          : 'border-gray-300 dark:border-gray-600',
+          ? 'border-red-500'
+          : 'border-gray-300',
         props.disabled && 'cursor-not-allowed opacity-50',
         className
       )}
@@ -121,12 +120,11 @@ export function FormSelect({ options, error, className, ...props }: FormSelectPr
       {...props}
       className={cn(
         'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-        'bg-white text-gray-900',
-        'dark:bg-gray-700 dark:text-white',
+        'bg-gray-0 text-gray-900',
         'focus:outline-none focus:ring-2 focus:ring-blue-500',
         error
-          ? 'border-red-500 dark:border-red-500'
-          : 'border-gray-300 dark:border-gray-600',
+          ? 'border-red-500'
+          : 'border-gray-300',
         props.disabled && 'cursor-not-allowed opacity-50',
         className
       )}
@@ -161,7 +159,7 @@ export function FormCheckbox({ label, checked, onChange, disabled }: FormCheckbo
         disabled={disabled}
         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
       />
-      <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="text-sm text-gray-700">{label}</span>
     </label>
   );
 }
@@ -179,7 +177,7 @@ export function InputWithUnit({ unit, error, className, ...props }: InputWithUni
   return (
     <div className="flex items-center gap-2">
       <FormInput error={error} className={className} {...props} />
-      <span className="whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+      <span className="whitespace-nowrap text-sm text-gray-500">
         {unit}
       </span>
     </div>
@@ -217,15 +215,15 @@ export default function FormCard({
   return (
     <div
       className={cn(
-        'rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800',
+        'rounded-lg border border-gray-200 bg-gray-0 shadow-sm',
         className
       )}
     >
       {/* 標題區 */}
-      <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+      <div className="border-b border-gray-200 px-6 py-4">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
         {description && (
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
         )}
       </div>
 
@@ -235,7 +233,7 @@ export default function FormCard({
 
         {/* 送出按鈕（僅在有 onSubmit 且有 submitLabel 時顯示） */}
         {onSubmit && submitLabel && (
-          <div className="border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+          <div className="border-t border-gray-200 px-6 py-4">
             <button
               type="submit"
               disabled={loading}

@@ -19,12 +19,12 @@ export default function DetailCard({
   return (
     <div
       className={cn(
-        'rounded-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-700',
+        'rounded-lg bg-gray-0 shadow border border-gray-200',
         className
       )}
     >
-      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+        <h3 className="text-base font-semibold text-gray-900">
           {title}
         </h3>
         {action && <div>{action}</div>}
@@ -54,7 +54,7 @@ export function DetailItem({
     <div className={cn('flex flex-col gap-1', className)}>
       <dt
         className={cn(
-          'text-sm text-gray-500 dark:text-gray-400',
+          'text-sm text-gray-500',
           labelClassName
         )}
       >
@@ -62,7 +62,7 @@ export function DetailItem({
       </dt>
       <dd
         className={cn(
-          'text-sm font-medium text-gray-900 dark:text-white',
+          'text-sm font-medium text-gray-900',
           valueClassName
         )}
       >

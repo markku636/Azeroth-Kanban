@@ -46,9 +46,9 @@ export function PromptDialogBody({
 
   return (
     <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
       {message && (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>
+        <p className="mt-2 text-sm text-gray-600">{message}</p>
       )}
       <input
         type="text"
@@ -57,13 +57,13 @@ export function PromptDialogBody({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
-        className="mt-4 block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="mt-4 block w-full rounded-lg border border-gray-300 bg-gray-0 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <div className="mt-6 flex justify-end gap-3">
         <button
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-0 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >
           {cancelLabel}
         </button>

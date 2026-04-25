@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Title, Text } from "rizzui";
+import { PiInfoBold } from "react-icons/pi";
 import { useTranslation } from "@/hooks/use-translation";
 import LanguageSwitcher from "@/components/language-switcher";
 
@@ -45,7 +46,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 dark:from-gray-900 dark:to-gray-950">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
       <div className="w-full max-w-md">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-xl dark:border-gray-200 dark:bg-gray-100">
           <div className="relative mb-6 text-center">
@@ -54,9 +55,21 @@ export default function AdminLoginPage() {
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt={t("login.title")} className="mx-auto mb-3 h-28 w-auto" />
-            <Title as="h1" className="text-xl font-bold text-gray-900 dark:text-white">
+            <Title as="h1" className="text-xl font-bold text-gray-900">
               {t("login.title")}
             </Title>
+          </div>
+
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
+            <PiInfoBold className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+            <div className="space-y-0.5">
+              <Text className="text-xs font-semibold text-blue-900 dark:text-blue-200">
+                {t("login.credentialsHintTitle")}
+              </Text>
+              <Text className="text-xs text-blue-700 dark:text-blue-300">
+                {t("login.credentialsHintBody")}
+              </Text>
+            </div>
           </div>
 
           {error && (

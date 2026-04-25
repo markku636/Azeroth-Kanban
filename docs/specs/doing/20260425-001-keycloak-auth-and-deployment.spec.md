@@ -359,3 +359,4 @@ NextAuth callback 路由由 NextAuth v5 自動處理：
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/auth.ts` — Edit @ 2026-04-25 04:25
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/layout.tsx` — Edit @ 2026-04-25 05:15
 - `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/admin/login/page.tsx` — Edit @ 2026-04-25 05:18
+- `e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/admin/src/app/admin/(dashboard)/roles/page.tsx` — Edit @ 2026-04-25 08:59
