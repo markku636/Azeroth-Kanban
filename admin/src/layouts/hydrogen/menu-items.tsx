@@ -6,6 +6,7 @@ import {
   PiShieldWarningDuotone,
   PiUserGearDuotone,
   PiClipboardTextDuotone,
+  PiKanbanDuotone,
 } from "react-icons/pi";
 
 export interface MenuItem {
@@ -22,6 +23,14 @@ export const menuItems: MenuItem[] = [
     name: "admin.menu.myAccount",
     href: routes.me,
     icon: <PiUserCircleDuotone />,
+  },
+
+  // ── Kanban ──
+  {
+    name: "admin.menu.kanban",
+    href: routes.kanban,
+    icon: <PiKanbanDuotone />,
+    requiredPermission: PERMISSIONS.KANBAN_VIEW,
   },
 
   // ── RBAC ──

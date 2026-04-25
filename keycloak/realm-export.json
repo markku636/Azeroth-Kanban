@@ -1,0 +1,92 @@
+{
+  "realm": "kanban",
+  "displayName": "Azeroth Kanban",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "defaultSignatureAlgorithm": "RS256",
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      { "name": "admin",  "description": "系統管理員（全部 14 個 permissions）", "composite": false },
+      { "name": "user",   "description": "一般使用者（Kanban CRUD 自己的卡片）", "composite": false },
+      { "name": "viewer", "description": "檢視者（唯讀）",                       "composite": false }
+    ]
+  },
+  "groups": [],
+  "clients": [
+    {
+      "clientId": "kanban-admin",
+      "name": "Azeroth Kanban Admin",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "kanban-admin-secret",
+      "redirectUris": [
+        "http://localhost:3010/api/auth/callback/keycloak",
+        "http://localhost:3000/api/auth/callback/keycloak",
+        "http://host.docker.internal:3010/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:3010",
+        "http://localhost:3000",
+        "http://host.docker.internal:3010"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3010/admin/login##http://localhost:3000/admin/login##http://host.docker.internal:3010/admin/login"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@example.com",
+      "email": "admin@example.com",
+      "firstName": "Kanban",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "Admin@1234", "temporary": false }
+      ],
+      "realmRoles": ["admin"]
+    },
+    {
+      "username": "user@example.com",
+      "email": "user@example.com",
+      "firstName": "Kanban",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "User@1234", "temporary": false }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "viewer@example.com",
+      "email": "viewer@example.com",
+      "firstName": "Kanban",
+      "lastName": "Viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "Viewer@1234", "temporary": false }
+      ],
+      "realmRoles": ["viewer"]
+    }
+  ]
+}

@@ -41,12 +41,12 @@ export class ApiResponse {
     };
   }
 
-  static error(
+  static error<T = never>(
     code: ApiReturnCode,
     message: string,
     errorCode?: string,
     errorParams?: Record<string, unknown>
-  ): ApiResult {
+  ): ApiResult<T> {
     return {
       success: false,
       code,
@@ -57,27 +57,27 @@ export class ApiResponse {
     };
   }
 
-  static validationError(message: string = '輸入驗證失敗'): ApiResult {
-    return this.error(ApiReturnCode.VALIDATION_ERROR, message);
+  static validationError<T = never>(message: string = '輸入驗證失敗'): ApiResult<T> {
+    return this.error<T>(ApiReturnCode.VALIDATION_ERROR, message);
   }
 
-  static unauthorized(message: string = '未授權存取'): ApiResult {
-    return this.error(ApiReturnCode.UNAUTHORIZED, message);
+  static unauthorized<T = never>(message: string = '未授權存取'): ApiResult<T> {
+    return this.error<T>(ApiReturnCode.UNAUTHORIZED, message);
   }
 
-  static forbidden(message: string = '禁止存取'): ApiResult {
-    return this.error(ApiReturnCode.FORBIDDEN, message);
+  static forbidden<T = never>(message: string = '禁止存取'): ApiResult<T> {
+    return this.error<T>(ApiReturnCode.FORBIDDEN, message);
   }
 
-  static notFound(message: string = '找不到資源'): ApiResult {
-    return this.error(ApiReturnCode.NOT_FOUND, message);
+  static notFound<T = never>(message: string = '找不到資源'): ApiResult<T> {
+    return this.error<T>(ApiReturnCode.NOT_FOUND, message);
   }
 
-  static internalError(message: string = '伺服器內部錯誤'): ApiResult {
-    return this.error(ApiReturnCode.INTERNAL_ERROR, message);
+  static internalError<T = never>(message: string = '伺服器內部錯誤'): ApiResult<T> {
+    return this.error<T>(ApiReturnCode.INTERNAL_ERROR, message);
   }
 
-  static rateLimitExceeded(message: string = '請求頻率超過限制'): ApiResult {
-    return this.error(ApiReturnCode.RATE_LIMIT_EXCEEDED, message);
+  static rateLimitExceeded<T = never>(message: string = '請求頻率超過限制'): ApiResult<T> {
+    return this.error<T>(ApiReturnCode.RATE_LIMIT_EXCEEDED, message);
   }
 }

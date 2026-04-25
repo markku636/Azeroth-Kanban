@@ -6,7 +6,7 @@ import { PERMISSIONS } from '@/config/permissions';
 /**
  * GET /api/v1/admin/permissions - 權限列表（按群組分組）
  */
-export const GET = withPermission(PERMISSIONS.PERMISSIONS_VIEW, async () => {
+export const GET = withPermission(PERMISSIONS.ROLE_PERMISSIONS_VIEW, async () => {
   const permissions = await prisma.permission.findMany({
     orderBy: [{ groupCode: 'asc' }, { code: 'asc' }],
   });

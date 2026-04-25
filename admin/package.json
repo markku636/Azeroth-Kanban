@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "clean": "rm -rf .next node_modules",
-    "dev": "next dev --port 3010 --turbo",
+    "dev": "next dev --port 3011 --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

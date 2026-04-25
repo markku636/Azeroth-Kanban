@@ -113,8 +113,8 @@
     "clawedBack": "Clawed Back"
   },
   "login": {
-    "title": "Affiliate Platform",
-    "adminSubtitle": "Company Admin System",
+    "title": "Kanban Board",
+    "adminSubtitle": "",
     "adminFormTitle": "Admin Sign In",
     "agentTitle": "Agent Portal",
     "agentSubtitle": "VOAI MGM Agent System",
@@ -129,6 +129,11 @@
     "submit": "Sign In",
     "loggingIn": "Signing in...",
     "redirecting": "Redirecting...",
+    "keycloakButton": "Sign in with Keycloak",
+    "keycloakLoading": "Redirecting to Keycloak...",
+    "useLocalLogin": "Use local account (Demo)",
+    "hideLocalLogin": "Hide local login",
+    "orSso": "Or use SSO",
     "googleLogin": "Sign in with Google",
     "googleLoginAgent": "Sign in with Google (Individual Agent)",
     "orSocial": "or sign in with social account",
@@ -140,12 +145,14 @@
     "errorGeneral": "An error occurred during sign in, please try again later",
     "adminEntrance": "Admin Portal",
     "adminEntranceHint": "For company administrators, please use",
-    "copyright": "Affiliate Platform"
+    "copyright": "AscentisTech"
   },
   "admin": {
     "menu": {
       "dashboard": "Dashboard",
       "myAccount": "My Account",
+      "kanban": "Kanban Board",
+      "audit": "Audit",
       "agentFeatures": "Agent Features",
       "agentList": "Agent List",
       "commissionRecords": "Commission Records",
@@ -580,6 +587,33 @@
       "updatePermissionsFailed": "Failed to update permissions",
       "requiredFields": "Role code and name are required",
       "system": "System Role"
+    },
+    "kanban": {
+      "title": "Kanban Board",
+      "description": "Manage your personal cards. Drag across columns to update status.",
+      "addCard": "Add Card",
+      "newCardPlaceholder": "Enter card title and press Enter or click Add",
+      "newCardDescriptionPlaceholder": "Add description (optional)",
+      "emptyColumn": "(empty)",
+      "cardTitle": "Title",
+      "cardDescription": "Description",
+      "cardStatus": "Status",
+      "saveChanges": "Save Changes",
+      "editCardTitle": "Edit Card",
+      "deleteConfirm": "Delete card \"{{title}}\"?",
+      "loadFailed": "Failed to load board",
+      "createSuccess": "Card created",
+      "createFailed": "Failed to create card",
+      "updateSuccess": "Card updated",
+      "updateFailed": "Failed to update card",
+      "deleteSuccess": "Card deleted",
+      "deleteFailed": "Failed to delete card",
+      "moveSuccess": "Moved to \"{{status}}\"",
+      "moveFailed": "Failed to move card",
+      "statusTodo": "Todo",
+      "statusInProgress": "In Progress",
+      "statusInReview": "In Review",
+      "statusDone": "Done"
     },
     "userRoles": {
       "title": "User Roles",
@@ -1166,17 +1200,35 @@
     }
   },
   "errors": {
-    "API_KEY_MISSING": "Missing X-API-Key header",
-    "API_KEY_INVALID": "Invalid API key",
-    "PLATFORM_MISMATCH": "platform_id does not match the API key",
-    "VALIDATION_FAILED": "Validation failed: {{detail}}",
-    "MEMBER_NOT_FOUND": "Agent not found",
-    "PLATFORM_NOT_FOUND": "Platform not found",
-    "ITEM_NOT_FOUND": "Item does not exist or is unavailable",
-    "COMMISSION_INSUFFICIENT": "Commission balance is insufficient (current: NT${{balance}})",
-    "POINTS_INSUFFICIENT": "Insufficient points; {{required}} required",
-    "ITEM_OUT_OF_STOCK": "Item is out of stock",
-    "DUPLICATE_EVENT": "Duplicate event skipped",
-    "INTERNAL_ERROR": "Internal server error"
+    "auth": {
+      "unauthorized": "Please sign in first",
+      "forbidden": "Permission denied",
+      "invalid_session": "Session expired, please sign in again",
+      "login_failed": "Sign in failed, please try again later"
+    },
+    "validation": {
+      "required": "{{field}} is required",
+      "max_length": "{{field}} exceeds maximum length {{max}}",
+      "invalid": "{{field}} is invalid"
+    },
+    "kanban": {
+      "card_not_found": "Card not found",
+      "forbidden_not_owner": "You can only manage your own cards",
+      "invalid_status": "Invalid card status",
+      "title_required": "Card title is required",
+      "title_too_long": "Title cannot exceed 120 characters",
+      "description_too_long": "Description cannot exceed 2000 characters"
+    },
+    "role_permissions": {
+      "role_not_found": "Role not found",
+      "permission_not_found": "Permission not found"
+    },
+    "rate_limit": {
+      "exceeded": "Too many requests, please try again later"
+    },
+    "system": {
+      "internal_error": "System error, please try again later",
+      "db_error": "Database error, please try again later"
+    }
   }
 }

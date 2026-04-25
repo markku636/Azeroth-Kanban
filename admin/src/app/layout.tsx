@@ -8,8 +8,8 @@ import { ThemeProvider, JotaiProvider } from "@/app/shared/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "推廣平台",
-  description: "推廣平台管理後台",
+  title: "Azeroth Kanban",
+  description: "Azeroth Kanban 看板系統",
 };
 
 export default function RootLayout({

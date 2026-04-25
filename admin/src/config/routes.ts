@@ -3,6 +3,7 @@ export const adminRoutes = {
   login: '/admin/login',
   dashboard: '/admin',
   me: '/admin/me',
+  kanban: '/admin/kanban',
   roles: { list: '/admin/roles' },
   userRoles: { list: '/admin/user-roles' },
   auditLogs: '/admin/audit-logs',

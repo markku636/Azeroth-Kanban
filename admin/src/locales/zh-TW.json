@@ -115,8 +115,8 @@
     "clawedBack": "已扣回"
   },
   "login": {
-    "title": "推廣平台",
-    "adminSubtitle": "公司後台管理系統",
+    "title": "看版系統",
+    "adminSubtitle": "",
     "adminFormTitle": "管理員登入",
     "agentTitle": "推廣者入口",
     "agentSubtitle": "IQT MGM 推廣者系統",
@@ -131,6 +131,11 @@
     "submit": "登入",
     "loggingIn": "登入中...",
     "redirecting": "跳轉中...",
+    "keycloakButton": "以 Keycloak 登入",
+    "keycloakLoading": "跳轉至 Keycloak...",
+    "useLocalLogin": "使用本地帳號登入（Demo）",
+    "hideLocalLogin": "收起本地登入",
+    "orSso": "或使用 SSO",
     "googleLogin": "使用 Google 帳號登入",
     "googleLoginAgent": "使用 Google 帳號登入（個人推廣者）",
     "orSocial": "或使用社群帳號",
@@ -142,12 +147,14 @@
     "errorGeneral": "登入過程發生錯誤，請稍後再試",
     "adminEntrance": "管理員入口",
     "adminEntranceHint": "公司管理人員請使用",
-    "copyright": "推廣平台"
+    "copyright": "AscentisTech"
   },
   "admin": {
     "menu": {
       "dashboard": "儀表板",
       "myAccount": "我的帳戶",
+      "kanban": "Kanban 看板",
+      "audit": "稽核紀錄",
       "agentFeatures": "推廣者功能",
       "agentList": "推廣者列表",
       "commissionRecords": "佣金記錄",
@@ -593,6 +600,33 @@
       "updatePermissionsFailed": "更新權限失敗",
       "requiredFields": "角色代碼與名稱為必填",
       "system": "系統角色"
+    },
+    "kanban": {
+      "title": "Kanban 看板",
+      "description": "管理你的個人卡片，跨欄拖拉即時同步狀態",
+      "addCard": "新增卡片",
+      "newCardPlaceholder": "輸入卡片標題後按 Enter 或點選新增",
+      "newCardDescriptionPlaceholder": "新增說明（選填）",
+      "emptyColumn": "（空）",
+      "cardTitle": "卡片標題",
+      "cardDescription": "卡片描述",
+      "cardStatus": "狀態",
+      "saveChanges": "儲存變更",
+      "editCardTitle": "編輯卡片",
+      "deleteConfirm": "確定要刪除卡片「{{title}}」？",
+      "loadFailed": "載入看板失敗",
+      "createSuccess": "卡片已建立",
+      "createFailed": "建立卡片失敗",
+      "updateSuccess": "卡片已更新",
+      "updateFailed": "更新卡片失敗",
+      "deleteSuccess": "卡片已刪除",
+      "deleteFailed": "刪除卡片失敗",
+      "moveSuccess": "卡片已移動至「{{status}}」",
+      "moveFailed": "移動卡片失敗",
+      "statusTodo": "待處理",
+      "statusInProgress": "進行中",
+      "statusInReview": "待驗收",
+      "statusDone": "已完成"
     },
     "userRoles": {
       "title": "使用者角色",
@@ -1179,17 +1213,35 @@
     }
   },
   "errors": {
-    "API_KEY_MISSING": "缺少 X-API-Key Header",
-    "API_KEY_INVALID": "API Key 無效",
-    "PLATFORM_MISMATCH": "platform_id 與 API Key 不匹配",
-    "VALIDATION_FAILED": "輸入驗證失敗：{{detail}}",
-    "MEMBER_NOT_FOUND": "找不到推廣者",
-    "PLATFORM_NOT_FOUND": "找不到平台",
-    "ITEM_NOT_FOUND": "商品不存在或已下架",
-    "COMMISSION_INSUFFICIENT": "佣金餘額不足，目前餘額 NT${{balance}}",
-    "POINTS_INSUFFICIENT": "點數不足，需要 {{required}} 點",
-    "ITEM_OUT_OF_STOCK": "商品庫存不足",
-    "DUPLICATE_EVENT": "重複事件已略過",
-    "INTERNAL_ERROR": "伺服器內部錯誤"
+    "auth": {
+      "unauthorized": "請先登入",
+      "forbidden": "權限不足",
+      "invalid_session": "登入階段已過期，請重新登入",
+      "login_failed": "登入失敗，請稍後再試"
+    },
+    "validation": {
+      "required": "{{field}} 為必填",
+      "max_length": "{{field}} 長度超過上限 {{max}}",
+      "invalid": "{{field}} 格式不正確"
+    },
+    "kanban": {
+      "card_not_found": "找不到此卡片",
+      "forbidden_not_owner": "只能操作自己的卡片",
+      "invalid_status": "卡片狀態無效",
+      "title_required": "請輸入卡片標題",
+      "title_too_long": "標題長度不可超過 120 字",
+      "description_too_long": "描述長度不可超過 2000 字"
+    },
+    "role_permissions": {
+      "role_not_found": "找不到角色",
+      "permission_not_found": "找不到權限"
+    },
+    "rate_limit": {
+      "exceeded": "請求過於頻繁，請稍後再試"
+    },
+    "system": {
+      "internal_error": "系統錯誤，請稍後再試",
+      "db_error": "資料庫錯誤，請稍後再試"
+    }
   }
 }

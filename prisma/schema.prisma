@@ -13,15 +13,42 @@ datasource db {
 model Member {
   id           String   @id @default(cuid())
   email        String   @unique
-  password     String
+  password     String?
   name         String
   isActive     Boolean  @default(true) @map("is_active")
   role         String?
+  keycloakSub  String?  @unique @map("keycloak_sub")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  kanbanCards  KanbanCard[]
+
   @@index([isActive])
   @@map("members")
+}
+
+// ─── Kanban 卡片 ───
+enum CardStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+model KanbanCard {
+  id          String     @id @default(cuid())
+  title       String     @db.VarChar(120)
+  description String?    @db.VarChar(2000)
+  status      CardStatus @default(TODO)
+  sortOrder   Int        @map("sort_order")
+  ownerId     String     @map("owner_id")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  owner Member @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, status, sortOrder], name: "idx_owner_status_order")
+  @@map("kanban_card")
 }
 
 // ─── 角色 ───
