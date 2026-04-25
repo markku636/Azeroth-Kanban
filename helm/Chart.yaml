@@ -1,0 +1,6 @@
+apiVersion: v2
+name: azeroth-kanban
+description: Azeroth-Kanban admin (Next.js) + minimal in-cluster Postgres
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

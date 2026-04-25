@@ -1,0 +1,46 @@
+image:
+  repository: registry.226network.com/library/azeroth-kanban/master
+  tag: latest
+  pullPolicy: Always
+  pullSecretName: regcred  # Harbor pull secret（chart 會自動建立）
+
+# Harbor 認證（chart install 時用 --set 帶入，避免寫進 yaml）
+registry:
+  server: registry.226network.com
+  username: ""
+  password: ""
+
+postgres:
+  image: postgres:16-alpine
+  user: kanban
+  password: kanban_secret  # demo 用，正式請改 --set
+  db: kanban
+  storage: 1Gi
+  storageClassName: ""  # 空 = 用 cluster default
+
+admin:
+  port: 3000
+  replicas: 1
+  authSecret: "azeroth-kanban-demo-secret-please-change-in-production-32c"
+  # 不啟用 Keycloak SSO（CredentialsProvider 由 seed 出的 admin 帳號登入）
+  authAllowCredentials: "true"
+  authKeycloakEnabled: "false"
+  # Keycloak 預留欄位（若要啟用，填入 line-bot/keycloak 的 realm issuer）
+  authKeycloakIssuer: ""
+  authKeycloakClientId: ""
+  authKeycloakClientSecret: ""
+  seedOnStart: "true"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: azeroth-kanban.226network.com
+  annotations: {}
+  tls: false  # demo 先不接 TLS
