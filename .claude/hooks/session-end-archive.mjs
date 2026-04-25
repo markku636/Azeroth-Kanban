@@ -3,8 +3,10 @@
  *
  * Session 結束時，掃描 doing/ 資料夾，將標記為 ✅ 的文件
  * 自動移至對應的 completed/ 資料夾。
- * 歸檔完成後，寫入 docs/.archive-manifest.json，
+ * 歸檔完成後，寫入 docs/.last-session-archive.json，
  * 供 session-end-knowledge.mjs 讀取（取代不可靠的日期篩選）。
+ * 注意：此檔每次 SessionEnd 整檔覆寫，僅保留「本次 Session」歸檔清單，
+ * 並非累積歷史；歷史歸檔紀錄請看 completed/ 資料夾的 git log。
  *
  * 歸檔對象（按依賴順序，PRD 先於 Plan）：
  *   - docs/requirements/doing/ → docs/requirements/completed/   (✅ = 已確認)
@@ -66,7 +68,7 @@ function main() {
   }
 
   // ── 寫入 manifest（供 knowledge hook 讀取） ──────────────────
-  const manifestPath = join(projectDir, "docs", ".archive-manifest.json");
+  const manifestPath = join(projectDir, "docs", ".last-session-archive.json");
   writeFileSync(
     manifestPath,
     JSON.stringify({ archivedAt: new Date().toISOString(), files: archived }, null, 2),

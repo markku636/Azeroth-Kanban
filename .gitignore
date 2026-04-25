@@ -36,8 +36,8 @@ job/npm-debug.log*
 # ─── common (@iqt/common) ───
 common/dist/
 
-# ─── docs (Write-doc-before-Code archive manifest) ───
-docs/.archive-manifest.json
+# ─── docs (Write-doc-before-Code last-session archive marker) ───
+docs/.last-session-archive.json
 
 # ─── Root level ───
 .tmp/

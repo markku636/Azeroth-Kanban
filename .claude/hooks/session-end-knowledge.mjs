@@ -1,7 +1,7 @@
 /**
  * SessionEnd 知識庫提煉 Hook（Node.js ESM 跨平台版）v2
  *
- * 讀取 session-end-archive.mjs 寫入的 .archive-manifest.json，
+ * 讀取 session-end-archive.mjs 寫入的 .last-session-archive.json，
  * 取得本次 Session 實際歸檔的 Spec/Bug 清單，
  * 呼叫 Claude CLI 進行 AI 知識提煉，結果寫入 docs/knowledge/{category}/。
  * 同時維護 docs/knowledge/INDEX.md 索引。
@@ -25,7 +25,7 @@ const KNOWLEDGE_CATEGORIES = ["architecture", "patterns", "domain", "integration
 
 // ── 從 archive manifest 收集本次歸檔的 Spec/Bug 內容 ─────────
 function collectFromManifest(projectDir) {
-  const manifestPath = join(projectDir, "docs", ".archive-manifest.json");
+  const manifestPath = join(projectDir, "docs", ".last-session-archive.json");
   if (!existsSync(manifestPath)) return [];
 
   let manifest;
