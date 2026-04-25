@@ -1,3 +1,4 @@
+{{- if .Values.postgres.persistence }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -12,6 +13,7 @@ spec:
   storageClassName: {{ . }}
   {{- end }}
 ---
+{{- end }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -74,5 +76,9 @@ spec:
               mountPath: /var/lib/postgresql/data
       volumes:
         - name: data
+          {{- if .Values.postgres.persistence }}
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-postgres
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
