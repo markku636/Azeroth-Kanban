@@ -147,8 +147,7 @@
     "errorGeneral": "登入過程發生錯誤，請稍後再試",
     "adminEntrance": "管理員入口",
     "adminEntranceHint": "公司管理人員請使用",
-    "credentialsHintTitle": "預設帳密",
-    "credentialsHintBody": "請參考專案根目錄 README.md「預設帳號」章節（admin / user / viewer 三組）",
+    "quickFillTitle": "快速填入測試帳號",
     "copyright": "AscentisTech"
   },
   "admin": {

@@ -7,7 +7,7 @@
 | 子專案 | 角色 | 技術棧 |
 | --- | --- | --- |
 | `prisma/` | 資料庫 Schema 與 migration 來源 | Prisma 6 + PostgreSQL 16 |
-| `common/` | 共用型別套件（`@iqt/common`）— 目前僅 `ApiResponse` / `ApiResult` | TypeScript 5.8 |
+| `common/` | 共用型別套件（`@azeroth/common`）— 目前僅 `ApiResponse` / `ApiResult` | TypeScript 5.8 |
 | `admin/` | Next.js 15 後台（登入、RBAC、稽核、Kanban 功能將在此實作） | Next.js 15 + React 19 + NextAuth v5 + RizzUI |
 
 ## 跨專案依賴關係
@@ -16,7 +16,7 @@
 
 - **Schema 變更起手**：任何資料表/欄位調整都從 `prisma/schema.prisma` 開始，執行 `prisma:migrate` 後由 `@prisma/client` 自動產生型別
 - **型別共用**：`common/` 只放真正會跨專案共用的純型別（如 ApiResult），不放業務邏輯
-- **Admin 單一消費者**：目前唯一消費 Prisma Client 與 `@iqt/common` 的端點是 `admin/`（未來若新增 `job/`、`public-web/` 同樣適用此順序）
+- **Admin 單一消費者**：目前唯一消費 Prisma Client 與 `@azeroth/common` 的端點是 `admin/`（未來若新增 `job/`、`public-web/` 同樣適用此順序）
 
 ## 開發順序（固定）
 
@@ -94,7 +94,7 @@ admin/src/app/admin/**   (頁面)
 **步驟**:
 1. **查閱知識庫** → 掃描 `docs/knowledge/` 找出相關架構知識與模式慣例
 2. 分析問題點
-3. 評估影響範圍（grep 所有引用點，尤其 `admin/` → `@iqt/common` → `@prisma/client` 的調用鏈）
+3. 評估影響範圍（grep 所有引用點，尤其 `admin/` → `@azeroth/common` → `@prisma/client` 的調用鏈）
 4. **自動建立 Plan** → Write `docs/plans/doing/{YYYYMMDD}-{NNN}-refactor-{module}.md`
 5. 使用者確認 Plan 後 → **自動拆解為 Spec(s)**
 6. 使用者確認 Spec 後 → **自動寫入開發日誌**

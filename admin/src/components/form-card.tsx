@@ -93,7 +93,7 @@ export function FormInput({ error, className, ...props }: FormInputProps) {
       {...props}
       className={cn(
         'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-        'bg-gray-0 text-gray-900 placeholder-gray-500',
+        'bg-gray-0 dark:bg-gray-100 text-gray-900 placeholder-gray-500',
         'focus:outline-none focus:ring-2 focus:ring-blue-500',
         error
           ? 'border-red-500'
@@ -120,7 +120,7 @@ export function FormSelect({ options, error, className, ...props }: FormSelectPr
       {...props}
       className={cn(
         'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-        'bg-gray-0 text-gray-900',
+        'bg-gray-0 dark:bg-gray-100 text-gray-900',
         'focus:outline-none focus:ring-2 focus:ring-blue-500',
         error
           ? 'border-red-500'
@@ -215,7 +215,7 @@ export default function FormCard({
   return (
     <div
       className={cn(
-        'rounded-lg border border-gray-200 bg-gray-0 shadow-sm',
+        'rounded-lg border border-gray-200 bg-gray-0 dark:bg-gray-100 shadow-sm',
         className
       )}
     >

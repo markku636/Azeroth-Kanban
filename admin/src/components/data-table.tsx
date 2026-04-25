@@ -141,7 +141,7 @@ export default function DataTable<T>({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg bg-gray-0 shadow border border-gray-200',
+        'overflow-hidden rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200',
         className
       )}
     >
@@ -156,7 +156,7 @@ export default function DataTable<T>({
                 onChange={(e) => setLocalSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={resolvedSearchPlaceholder}
-                className="w-full rounded-lg border border-gray-300 bg-gray-0 px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-gray-0 dark:bg-gray-100 px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {localSearchValue && (
                 <button
@@ -240,7 +240,7 @@ export default function DataTable<T>({
                     key={itemKey}
                     onClick={() => onRowClick?.(item)}
                     className={cn(
-                      'bg-gray-0 transition-colors',
+                      'bg-gray-0 dark:bg-gray-100 transition-colors',
                       onRowClick && 'cursor-pointer hover:bg-gray-50',
                       selectable && selectedKeys?.has(itemKey) && 'bg-blue-50 dark:bg-blue-900/20',
                       getRowClassName(item, index)

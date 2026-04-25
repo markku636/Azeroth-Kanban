@@ -12,11 +12,11 @@ export const selectClassNames: ClassNamesConfig<any, any, GroupBase<any>> = {
       isDisabled
         ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
         : isFocused
-          ? 'border-blue-500 ring-2 ring-blue-500 bg-gray-0'
-          : 'border-gray-300 bg-gray-0',
+          ? 'border-blue-500 ring-2 ring-blue-500 bg-gray-0 dark:bg-gray-100'
+          : 'border-gray-300 bg-gray-0 dark:bg-gray-100',
     ].join(' '),
   menu: () =>
-    'rounded-lg border border-gray-200 bg-gray-0 shadow-lg overflow-hidden mt-1',
+    'rounded-lg border border-gray-200 bg-gray-0 dark:bg-gray-100 shadow-lg overflow-hidden mt-1',
   menuPortal: () => 'z-[10000]',
   option: ({ isSelected, isFocused }) =>
     [

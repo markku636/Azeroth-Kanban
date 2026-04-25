@@ -33,7 +33,7 @@ export function KanbanCard({ card, onEdit, onDelete, isOverlay, readOnly }: Kanb
       style={style}
       {...attributes}
       {...(readOnly ? {} : listeners)}
-      className={`group relative rounded-md border bg-gray-0 p-3 shadow-sm transition-shadow ${
+      className={`group relative rounded-md border bg-gray-0 dark:bg-gray-100 p-3 shadow-sm transition-shadow ${
         isOverlay ? 'border-blue-400 shadow-lg ring-2 ring-blue-200 dark:ring-blue-900' : 'border-gray-200 hover:shadow-md'
       } ${readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
     >

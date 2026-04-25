@@ -145,8 +145,7 @@
     "errorGeneral": "An error occurred during sign in, please try again later",
     "adminEntrance": "Admin Portal",
     "adminEntranceHint": "For company administrators, please use",
-    "credentialsHintTitle": "Default Credentials",
-    "credentialsHintBody": "See the \"預設帳號\" section in README.md at the project root (admin / user / viewer)",
+    "quickFillTitle": "Quick fill test credentials",
     "copyright": "AscentisTech"
   },
   "admin": {

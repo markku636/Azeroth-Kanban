@@ -92,7 +92,7 @@ export default function ApiResultPanel({
         <pre
           className={cn(
             'mt-3 max-h-64 overflow-auto rounded-lg border border-gray-300 p-3',
-            'bg-gray-0 text-xs text-gray-800',
+            'bg-gray-0 dark:bg-gray-100 text-xs text-gray-800',
             'font-mono leading-relaxed'
           )}
         >

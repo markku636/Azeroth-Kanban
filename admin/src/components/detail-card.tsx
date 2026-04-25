@@ -19,7 +19,7 @@ export default function DetailCard({
   return (
     <div
       className={cn(
-        'rounded-lg bg-gray-0 shadow border border-gray-200',
+        'rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200',
         className
       )}
     >

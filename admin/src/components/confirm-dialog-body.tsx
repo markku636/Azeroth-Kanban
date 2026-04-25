@@ -97,7 +97,7 @@ export function ConfirmDialogBody({
         <button
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-0 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-0 dark:bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
         >
           {cancelLabel}
         </button>

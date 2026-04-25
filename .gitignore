@@ -33,7 +33,7 @@ job/.env.local
 job/*.tsbuildinfo
 job/npm-debug.log*
 
-# ─── common (@iqt/common) ───
+# ─── common (@azeroth/common) ───
 common/dist/
 
 # ─── docs (Write-doc-before-Code last-session archive marker) ───
