@@ -155,6 +155,51 @@ npm run lint
 npm run build
 ```
 
+## QA 自動驗收（`/qa-kanban`）
+
+本專案內建一個 Claude Code subagent — `qa-kanban`，由 [.claude/agents/qa-kanban.md](.claude/agents/qa-kanban.md) 定義，會用 [chrome-devtools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) 開實際瀏覽器跑端對端 UI 驗收，依 PRD 的 AC 逐條驗、產出帶截圖的 Markdown 報告。
+
+### 觸發方式
+
+在 Claude Code 對話中輸入：
+
+```
+/qa-kanban smoke              # 1 分鐘 smoke（T1 登入 + 看板顯示）
+/qa-kanban all                # 完整跑 7 個 tier（約 10–15 分鐘）
+/qa-kanban tier=2,3           # 只驗 CRUD 與拖拉
+/qa-kanban AC 4.3             # 只驗單條 AC（除錯用）
+```
+
+### Tier 對照（共 7 組）
+
+| Tier | 主題 | 涵蓋 PRD AC |
+| --- | --- | --- |
+| T1 | Smoke：登入 + 看板顯示 | US-6 AC 6.1–6.2、US-2 AC 2.1–2.2 |
+| T2 | 卡片 CRUD | US-1、US-3、US-5 |
+| T3 | 拖拉（跨欄、同欄、optimistic UI、KeyboardSensor） | US-4 AC 4.1–4.7 |
+| T4 | RBAC + ownership 隔離（admin / user / viewer） | PRD § 3.2、AC 6.3 |
+| T5 | 輸入驗證 + `ApiErrorCode` 翻譯 | AC 1.2 / AC 3.x / AC 10.5 |
+| T6 | i18n 多語系（zh-TW ↔ en） | US-10 AC 10.1–10.5 |
+| T7 | RWD 響應式（1280 / 768 / 375 三斷點截圖） | US-7 AC 7.1–7.5 |
+
+### 前置條件
+
+- 應用必須**已在 `http://localhost:3010` 跑**（`docker compose up -d` 即可）
+- `.mcp.json` 已配置 chrome-devtools MCP（專案內建）
+- subagent 連不到服務會立即寫一份「服務未啟動」報告後結束，不會自動啟動 docker
+
+### 產出位置
+
+- 報告：`.tmp/qa-reports/{YYYYMMDD-HHmm}/report.md`（增量寫入，避免中途失敗丟失進度）
+- 截圖：`.tmp/qa-reports/{YYYYMMDD-HHmm}/screenshots/T{n}-{ac}-{step}.png`
+- 失敗證據檔名以 `-FAIL` 結尾，方便快速定位
+
+> `.tmp/` 已在 `.gitignore`，不會污染 git 工作樹。
+
+### 安全邊界
+
+subagent 的工具白名單嚴格限定 chrome-devtools MCP + Read / Write / Edit / Bash，**禁止修改任何 `admin/` / `prisma/` / `common/` 下的業務程式碼**；Bash 也只用於 `curl` 探活與 `mkdir` 建報告資料夾。設計細節見 [.claude/agents/qa-kanban.md](.claude/agents/qa-kanban.md) 與 [.claude/commands/qa-kanban.md](.claude/commands/qa-kanban.md)。
+
 ## 環境變數
 
 完整清單見 `.env.example`。最常調整的：

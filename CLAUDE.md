@@ -208,8 +208,15 @@ PreToolUse Hook 會在 Edit/Write 程式碼檔前檢查是否有 🔵 狀態的 
 | `/create-spec` | 建立 Spec 文件（需求收集 → 查知識庫 → 分析影響 → 建 Spec → 等確認） |
 | `/sync-docs` | 掃描專案與 `.claude/` 設定，同步更新 `README.md` 與 `CLAUDE.md`（僅補缺漏、不覆蓋自訂內容） |
 | `/sync-skill` | 掃描程式碼與 commands/rules，同步更新 `.claude/skills/` 技能文件 |
+| `/qa-kanban` | 觸發 `qa-kanban` subagent 對 Kanban 看板跑端對端驗收（chrome-devtools MCP）；參數可選 `all` / `smoke` / `tier=N,M` / `AC X.Y` |
 
 > `_spec-convention.md` 為 convention 文件（非 slash 指令），由 `/create-spec` 引用。
+
+### Subagents（`.claude/agents/`）
+
+| Subagent | 用途 |
+| --- | --- |
+| `qa-kanban` | Kanban 看板的端對端 QA 驗收 agent；用 chrome-devtools MCP 依 PRD 的 AC 逐條跑、產出帶截圖的 Markdown 報告至 `.tmp/qa-reports/{YYYYMMDD-HHmm}/`。工具白名單只開 chrome-devtools MCP + Read/Write/Edit/Bash，禁止改業務程式碼。由 `/qa-kanban` 觸發。 |
 
 ### 常駐規則（`.claude/rules/`）
 
