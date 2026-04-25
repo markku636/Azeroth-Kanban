@@ -194,8 +194,8 @@ export default function AuditLogsPage() {
         ) : (
           <div className="rounded-lg bg-gray-0 shadow border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
                     {[
                       t('admin.auditLogs.actor'),
@@ -213,11 +213,11 @@ export default function AuditLogsPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-gray-200">
                   {records.map((record) => {
                     const actionMeta = ACTION_LABELS[record.action];
                     return (
-                      <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={record.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
                             {record.actorEmail ?? '—'}
@@ -272,7 +272,7 @@ export default function AuditLogsPage() {
                     type="button"
                     onClick={() => fetchRecords(pagination.page - 1)}
                     disabled={!pagination.hasPrevPage}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('common.prevPage')}
                   </button>
@@ -280,7 +280,7 @@ export default function AuditLogsPage() {
                     type="button"
                     onClick={() => fetchRecords(pagination.page + 1)}
                     disabled={!pagination.hasNextPage}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {t('common.nextPage')}
                   </button>
