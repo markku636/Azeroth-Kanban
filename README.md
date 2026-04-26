@@ -9,9 +9,9 @@ https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
 1. docker compose up -d
 2. 訪問 http://localhost:3010/admin/login
 
-## 佈署到自己家的K8S，需要開始才訪問的到
+## 佈署到自己家的K8S，需要開機才訪問的到
 https://azeroth-kanban.markkulab.net/admin/kanban 
-<img width="2560" height="1380" alt="image" src="https://github.com/user-attachments/assets/d83be7e8-77eb-4ee5-a972-6c1588b5450a" />
+
 
 ## 功能總覽
 - **四欄看板**：待處理 / 進行中 / 待驗收 / 已完成
