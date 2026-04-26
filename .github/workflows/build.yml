@@ -36,7 +36,7 @@ jobs:
           IMG_LATEST="${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:latest"
 
           docker build \
-            -f Dockerfile \
+            -f admin/Dockerfile \
             -t "$IMG_SHA" \
             -t "$IMG_LATEST" \
             .
