@@ -1,0 +1,239 @@
+# Azeroth 面試作業 — Kanban 網站開發實作過程
+
+> 這份文件不是「我做了什麼」的清單，而是「我為什麼這樣做」的紀錄。
+> 重點不在功能完整度，而在思考方式、拆解方法、以及如何讓 AI 工具在工作流裡可控可追溯。
+
+---
+
+## 0. 我看到題目時的第一反應
+
+題目寫「30 分鐘的小任務、不需要做得很完整」，但我刻意把它當成一個**最小但完整的工程縮影**來做。理由是：
+
+- 30 分鐘能交出一個「會動的 Kanban」，但不會展現我平常的工作習慣。
+- 我想呈現的是**從需求 → 文件 → 實作 → 驗收 → 知識歸檔**的完整迴路
+- 我把長期維護的 Claude Code 工作流（Hooks / Rules / Subagents）放進來
+
+所以這份紀錄會比作業本身大一點，但每一步都對應一個可討論的決策。
+
+---
+
+## 1. 架構選型
+
+評估順序：
+
+1. **案子規模**：單人看板，CRUD + 拖拉，輕量。
+2. **使用者量級**：個人使用，無高併發需求。
+3. **團隊熟悉度**：我長期使用 TypeScript / Next.js / PostgreSQL，可控性高。
+4. **3 年成長性**：未來若擴成多人協作，Next.js 全端 + PG 仍可水平延伸，複雜運算可以搭配Nest或c# 。
+
+**結論**：採用 **Next.js 15（App Router）+ PostgreSQL 16 + Prisma 6**。Next.js 是輕量全端框架，能在同一個 repo 裡涵蓋 UI、API、SSR；PG 是開源、支援全文檢索、地理資訊、JSONB，後續擴充彈性大。
+
+---
+
+## 2. 程式碼基礎建設
+
+### 2.1 沿用既有的 Theme 骨架
+
+我平常會整理一些 Theme（含登入、RBAC、稽核、登入紀錄等基礎模組），所以這次直接拿最近開發的骨架來改。好處：
+
+- 不用花時間重做登入、權限、Layout 等樣板。
+- 30 分鐘可以聚焦在「Kanban 本身」，而不是基礎設施。
+
+### 2.2 資料夾擺放
+
+採用 **Monorepo（npm workspaces）**：
+
+- `common/` — 共用型別（`ApiResult` / `ApiReturnCode`）
+- `admin/` — Next.js 後台（登入、RBAC、Kanban 頁面）
+- `prisma/` — Schema 與 seed
+- `docs/` — PRD / Plan / Spec / Bug / Log / Knowledge / Decision
+
+### 2.3 定義 Coding Standard
+
+把命名、型別、async、React、安全性、錯誤處理（`ApiResult` pattern）等規則寫成 `.claude/rules/coding-standards.md`，讓 AI 寫出來的程式碼跟我手寫的一致。
+
+![Coding Standard 規則 1](attachments/dbed5beb-6bfc-41bc-aaf3-86188078de5a.png)
+![Coding Standard 規則 2](attachments/d1f079e5-bcbd-499c-b4df-151a01dd6123.png)
+
+---
+
+## 3. 定義開發工作流：Write-doc-before-Code
+
+這是我認為**和 AI 協作最關鍵的設計**。透過 Claude Code 的 Hook + Rules 強制走以下流程：
+
+```
+PRD（需求模糊時）→ Plan（SA + WBS）→ Spec（功能太大時拆）→ Code → Log → Knowledge
+```
+
+![工作流規則 1](attachments/6d3d7926-20ff-4acf-ac96-da3f8e48eeb5.png)
+![工作流規則 2](attachments/aa1caf95-52bb-46da-bbd0-200f648afae8.png)
+![工作流規則 3](attachments/3b825679-243f-4e47-8228-e647cf3d3f98.png)
+![工作流規則 4](attachments/c8fa3aaa-bbb2-44c8-b217-74f3afbd0413.png)
+
+### 為什麼要這樣做？
+
+| 問題 | 沒有工作流 | 有工作流 |
+| --- | --- | --- |
+| AI 自由發揮 | 寫一寫就偏題、改了一堆無關檔案 | 受 Spec 約束，只能改「受影響檔案」清單裡的檔 |
+| 改動難追溯 | 只有 commit message | PRD / Plan / Spec / Log 串成完整脈絡 |
+| 知識流失 | 改完就忘 | SessionEnd Hook 自動把已完成的文件歸檔 + 提煉知識 |
+| 大功能難評估 | 一坨 todo | Plan 用 SA + WBS 評估，自動拆 Spec |
+
+### Hook 的硬性攔截
+
+- **PreToolUse（Edit/Write）**：要改程式碼前，必須先有一個 🔵 狀態的 Spec 且其「受影響檔案」清單包含該路徑，否則直接擋下。
+- **PostToolUse**：追蹤被改動的檔案，回填 Spec 進度。
+- **SessionEnd**：自動把標記 ✅ 的 PRD / Plan / Spec / Bug 從 `doing/` 歸檔到 `completed/`，並提煉知識到 `docs/knowledge/`。
+
+![PRD → Plan → Spec 階層](attachments/683dec23-d324-47ee-aa22-6d888e2e3bdd.png)
+
+---
+
+## 4. 製作 PRD
+
+### 4.1 拿到題目後我會先停下來想
+
+通常拿到 PRD 我會問自己幾個問題：
+
+- 有沒有漏掉什麼？（角色權限、登入機制、多語系、RWD…）
+- 有沒有怎麼做能讓系統更好？
+- 哪些是這次該做、哪些是 Non-Goals？
+
+這次題目是 PDF + 影片，我沒有 PM 可以對需求，所以**讓 AI 扮演「挑剔的 PM」**和我對問。
+
+![與 AI 討論需求](attachments/6e199930-27bd-4e4e-b4e5-453a9d6ad808.png)
+
+### 4.2 用 Chrome DevTools MCP 從影片抽影格
+
+題目附的是影片，我請 Claude 用 **chrome-devtools MCP** 把影片打開，逐幀截圖，再回頭更新 PRD 的 UI 細節（欄位名稱、卡片樣式、拖拉互動等）。
+
+![用 chrome-devtools MCP 抽影格](attachments/78abcb15-6ab9-4b9e-9858-985071f857dc.png)
+
+### 4.3 討論紀錄會自動回寫到 PRD
+
+這是工作流的副產物：每一輪「我問 → AI 回 → 我確認」都會被當下回寫到 PRD 對應段落，所以 PRD 不只是需求，也是一份**決策歷史**。等到 PRD 確認後（標記 ✅），就會被 SessionEnd Hook 歸檔到 `requirements/completed/`。
+
+![討論紀錄自動更新到 PRD](attachments/59439f57-cb6e-48ea-9788-734863715fb5.png)
+
+最終產物：[`docs/requirements/completed/20260423-001-kanban-board.md`](../docs/requirements/completed/20260423-001-kanban-board.md)
+
+---
+
+## 5. 從 PRD 生 Plan（SA + WBS）
+
+PRD 確認後，請 AI 依 Plan 範本產出 Plan，內容必含：
+
+- **系統分析（SA）**：資料模型、API、頁面、互動流程（Mermaid 圖）
+- **系統架構**：前後端分層、認證流程
+- **角色與權限**：對應到 RBAC 矩陣
+- **WBS**：把工作切成可估時的小塊
+- **資料表異動**：Prisma schema 的 migration 注意事項
+
+如果 Plan 評估出某些工作太大，AI 會主動把它拆成多個 Spec。
+
+![Plan 文件](attachments/03b2a04b-db8a-4563-bf7c-d35f52934b80.png)
+
+最終產物：[`docs/plans/completed/20260423-001-kanban-board.md`](../docs/plans/completed/20260423-001-kanban-board.md)
+
+---
+
+## 6. 實作：Plan 自動拆 Spec 後逐項執行
+
+下指令大致是這樣：
+
+> 「依據 `@docs/plans/doing/20260423-001-kanban-board.md` 這個計劃幫我實作。」
+
+AI 會先掃 Plan 的 WBS，把功能拆成多個 Spec，每個 Spec 列出「受影響檔案」與驗收條件，逐一通過 PreToolUse Hook 後才動程式碼。
+
+![Spec 拆解後執行](attachments/a95d6445-3bf1-4530-a938-0be2a0023558.png)
+
+這次共產出 11 份 Spec（節錄）：
+
+| Spec | 主題 |
+| --- | --- |
+| 20260425-001 | Keycloak Auth 與部署 |
+| 20260425-002 | Kanban Core（CRUD + 四欄） |
+| 20260425-003 | RWD 與觸控拖拉 |
+| 20260425-004 | i18n Error Code 翻譯 |
+| 20260425-005 | Dark Mode 灰階修正 |
+| 20260425-007 | Me Page 卡片浮起效果 |
+| 20260425-008 | 專案改名 Iqt → Azeroth |
+| 20260426-001 | 修認證 Server 設定 |
+
+---
+
+## 7. 歸檔與提煉知識庫
+
+每次 SessionEnd，Hook 會做兩件事：
+
+1. **歸檔**：標記 ✅ 的 Plan / Spec / Bug 自動從 `doing/` 移到 `completed/`。
+2. **提煉知識**：依 manifest 把可重用的設計決策、踩雷紀錄寫進 `docs/knowledge/`，並維護 `INDEX.md`。
+
+下一次新功能要做時，AI 會先查知識庫，避免重蹈覆轍。
+
+![知識庫提煉](attachments/994ef8fa-0f51-4145-aadd-7229e873ee95.png)
+
+---
+
+## 8. 部署
+
+`docker compose up -d` 一鍵起：
+
+- `postgres` 容器（port 5444）
+- `admin` 容器（Next.js，port 3010）
+- 啟動時自動跑 Prisma migration、seed、Keycloak realm import
+
+驗收條件 G7：使用者 clone 後一條指令就能登入用，這是衡量「部署易用度」的 AC。
+
+---
+
+## 9. 驗收：三層測試
+
+### 9.1 Chrome DevTools MCP 自動測試
+
+請 Claude 開瀏覽器跑使用者旅程，截圖比對。
+
+![chrome-devtools MCP 自動測試](attachments/f2dcf9f4-d339-476d-be94-c1f1ca35daed.png)
+
+### 9.2 人工測試
+
+我自己點過一輪，發現「卡片移動的操作紀錄沒寫進稽核 log」，回頭請 AI 順便檢查還有哪些操作也漏了。這類**負面案例**通常 AI 自己跑不出來，要靠人補。
+
+### 9.3 QA Agent 測試
+
+我定義了一個 `qa-kanban` subagent：
+
+- 工具白名單只開 chrome-devtools MCP + Read/Write/Edit/Bash
+- **禁止改業務程式碼**，只能讀 + 跑測試 + 寫報告
+- 依 PRD 的 AC 逐條驗收，產出帶截圖的 Markdown 報告到 `.tmp/qa-reports/{YYYYMMDD-HHmm}/`
+- 用 `/qa-kanban all`、`/qa-kanban smoke`、`/qa-kanban tier=1,2`、`/qa-kanban AC 4.3` 觸發不同範圍
+
+![QA agent 報告](attachments/9a700eb7-181d-43df-a30b-01ab47c9d536.png)
+
+---
+
+## 10. 我想在面試聊的幾件事
+
+如果評審想深入討論，我比較有把握的幾個切入點：
+
+1. **為什麼要花力氣建工作流？** — 因為 AI 寫得快，但偏題也快。Hook + Rules + 文件是讓速度可控的剎車。
+2. **PRD/Plan/Spec 怎麼拿捏？** — 大型才需要 PRD；中型直接 Spec；≤3 行 / typo / 設定值豁免。我會解釋這個分級的判斷準則。
+3. **AI 寫的 code 要怎麼信？** — 用「受影響檔案」白名單 + Spec AC + QA agent 三層去框，而不是讀完每一行。
+4. **這套流程會不會太重？** — 對個人小專案會。但對團隊長期維護的系統，文件 + 知識庫的複利非常划算。
+5. **如果沒有這些工具，這 30 分鐘怎麼做？** — 我會直接 Next.js + 一個 in-memory store + 拖拉，10 分鐘出 demo，剩下 20 分鐘補測試。先 demo 後補完整度，是另一條路徑的取捨。
+
+---
+
+## 附錄：交付物對照表
+
+| 類別 | 路徑 |
+| --- | --- |
+| PRD | [`docs/requirements/completed/20260423-001-kanban-board.md`](../docs/requirements/completed/20260423-001-kanban-board.md) |
+| Plan | [`docs/plans/completed/20260423-001-kanban-board.md`](../docs/plans/completed/20260423-001-kanban-board.md) |
+| Spec | [`docs/specs/completed/`](../docs/specs/completed/)（共 11 份） |
+| 知識庫 | [`docs/knowledge/INDEX.md`](../docs/knowledge/INDEX.md) |
+| 工作流規則 | [`.claude/rules/spec-before-code.md`](../.claude/rules/spec-before-code.md) |
+| Coding Standard | [`.claude/rules/coding-standards.md`](../.claude/rules/coding-standards.md) |
+| QA Subagent | [`.claude/agents/qa-kanban.md`](../.claude/agents/qa-kanban.md) |
+| Hooks | [`.claude/hooks/`](../.claude/hooks/) |
+| 專案說明 | [`README.md`](../README.md)、[`CLAUDE.md`](../CLAUDE.md) |
