@@ -9,41 +9,41 @@ jobs:
   build:
     runs-on: [self-hosted, k8s]
     timeout-minutes: 120
-    container:
-      image: gcr.io/kaniko-project/executor:v1.21.0-debug
-      options: --entrypoint=""
     env:
       IMAGE_NAME: azeroth-kanban
       BRANCH_NAME: ${{ github.ref_name }}
       SHORT_SHA: ${{ github.sha }}
-      REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
-      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-      REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
-      REGISTRY_INTERNAL_URL: ${{ secrets.REGISTRY_INTERNAL_URL }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare Kaniko docker config
-        shell: sh
+      - name: Build & Push with Kaniko
+        env:
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          REGISTRY_INTERNAL_URL: ${{ secrets.REGISTRY_INTERNAL_URL }}
         run: |
+          set -e
           PUSH_URL="${REGISTRY_INTERNAL_URL:-${REGISTRY_URL}}"
           REGISTRY_HOST="${PUSH_URL#http://}"
           REGISTRY_HOST="${REGISTRY_HOST#https://}"
           REGISTRY_HOST=$(echo "$REGISTRY_HOST" | tr -d '[:space:]')
-          echo "REGISTRY_HOST=$REGISTRY_HOST" >> $GITHUB_ENV
-          mkdir -p /kaniko/.docker
-          AUTH=$(printf "%s:%s" "$REGISTRY_USER" "$REGISTRY_PASSWORD" | base64 | tr -d '\n')
-          echo "{\"auths\":{\"$REGISTRY_HOST\":{\"auth\":\"$AUTH\"}}}" > /kaniko/.docker/config.json
-
-      - name: Build & Push with Kaniko
-        shell: sh
-        run: |
           SHORT="${SHORT_SHA:0:7}"
-          /kaniko/executor \
-            --context ${{ github.workspace }} \
-            --dockerfile ${{ github.workspace }}/Dockerfile \
-            --destination ${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:${SHORT} \
-            --destination ${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:latest \
+
+          KANIKO_DIR="$RUNNER_TEMP/kaniko-config"
+          mkdir -p "$KANIKO_DIR"
+          AUTH=$(printf "%s:%s" "$REGISTRY_USER" "$REGISTRY_PASSWORD" | base64 | tr -d '\n')
+          printf '{"auths":{"%s":{"auth":"%s"}}}' "$REGISTRY_HOST" "$AUTH" > "$KANIKO_DIR/config.json"
+
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -v "$KANIKO_DIR:/kaniko/.docker" \
+            --entrypoint /kaniko/executor \
+            gcr.io/kaniko-project/executor:v1.21.0-debug \
+            --context=/workspace \
+            --dockerfile=/workspace/Dockerfile \
+            --destination=${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:${SHORT} \
+            --destination=${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:latest \
             --insecure \
             --insecure-registry=${REGISTRY_HOST} \
             --skip-tls-verify \
