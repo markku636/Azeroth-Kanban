@@ -1,9 +1,19 @@
 # Azeroth Kanban
 
-個人 Kanban 看板系統（4 欄式 + 拖拉 + RBAC + i18n）— 面試作業展示。
+個人 Kanban 看板系統（4 欄式 + 拖拉 + RBAC + i18n）
+
+## 實作過程記錄
+https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
+
+## 本地運行
+1. docker compose up -d
+2. 訪問 http://localhost:3010/admin/login
+
+## 佈署到自己家的K8S，需要開始才訪問的到
+https://azeroth-kanban.markkulab.net/admin/kanban 
+<img width="2560" height="1380" alt="image" src="https://github.com/user-attachments/assets/d83be7e8-77eb-4ee5-a972-6c1588b5450a" />
 
 ## 功能總覽
-
 - **四欄看板**：待處理 / 進行中 / 待驗收 / 已完成
 - **卡片 CRUD**：頁面頂端 inline 表單新增、Modal 編輯（含 emoji 狀態下拉）、卡片 hover 浮現編輯 / 刪除 icon
 - **拖拉同步**：跨欄與欄內排序，後端 sortOrder 演算法（整數 + 中位數 + normalize）
