@@ -31,7 +31,7 @@
 
 ### 2.3 定義 Coding Standard
 
-把命名、型別、async、React、安全性、錯誤處理（`ApiResult` pattern）等規則寫成 `.claude/rules/coding-standards.md`，讓 AI 寫出來的程式碼跟我手寫的一致。
+把命名、型別、async、React、安全性、錯誤處理（`ApiResult` pattern）等規則寫成 `.claude/rules/coding-standards.md`，讓 AI 寫出來的程式碼有固定的規則。
 ---
 
 ## 3. 定義開發工作流：Write-doc-before-Code
