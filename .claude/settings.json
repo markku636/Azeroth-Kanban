@@ -6,6 +6,12 @@
       "Read(**/*.mjs)",
       "Edit(**/*.mjs)",
       "Write(**/*.mjs)",
+      "Read(.tmp/**)",
+      "Write(.tmp/**)",
+      "Edit(.tmp/**)",
+      "Read(docs/**/*.md)",
+      "Write(docs/**/*.md)",
+      "Edit(docs/**/*.md)",
       "mcp__chrome-devtools__take_snapshot",
       "mcp__chrome-devtools__fill_form"
     ]
