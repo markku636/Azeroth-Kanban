@@ -10,8 +10,11 @@
 3. **目前團隊對於此技術的熟悉度**
 4. **3 年成長性**：目前少量使用者夠用，未來若擴成多人協作，Next.js 全端 + PG 仍可水平延伸，複雜運算或排程服務，可以搭配Nest Js 或c# 程式語言來輔助短版。
 
-主要採用 **Next.js 15（App Router）+ PostgreSQL 16 + Prisma 6**。Next.js 是輕量全端框架，能在同一個 repo 裡涵蓋 UI、API、SSR；PG 是開源、支援全文檢索、地理資訊、JSONB，後續擴充彈性大。
-
+主要採用技術棧是
+* Next.js：輕量的全端框架，可在同一個 repo 中整合 UI、API 與 SSR，提升開發與維護效率
+* PostgreSQL：開源且功能完整，支援全文檢索、地理資訊（PostGIS）與 JSONB，具備良好的擴充彈性
+* Prisma：強型別安全的 ORM，提升開發效率並降低資料庫操作錯誤風險
+* Keycloak：負責身份驗證與授權（Auth / IAM），支援 OAuth2 / OpenID Connect，方便整合企業級登入機制
 ---
 
 ## 2. 程式碼基礎建設
