@@ -1,11 +1,19 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Title, Text } from "rizzui";
 import { useTranslation } from "@/hooks/use-translation";
 import LanguageSwitcher from "@/components/language-switcher";
+import { routes } from "@/config/routes";
+
+function resolveCallbackUrl(raw: string | null): string {
+  if (!raw) return routes.kanban;
+  // 僅允許站內相對路徑，避免 open redirect
+  if (!raw.startsWith("/") || raw.startsWith("//")) return routes.kanban;
+  return raw;
+}
 
 const QUICK_FILL_PRESETS = [
   {
@@ -31,9 +39,14 @@ const QUICK_FILL_PRESETS = [
   },
 ] as const;
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const { t } = useTranslation();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = useMemo(
+    () => resolveCallbackUrl(searchParams.get("callbackUrl")),
+    [searchParams],
+  );
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -59,12 +72,12 @@ export default function AdminLoginPage() {
         username: username.trim(),
         password: password.trim(),
         redirect: false,
-        callbackUrl: "/admin",
+        callbackUrl,
       });
       if (result?.error) {
         setError(t("login.errorInvalid"));
       } else if (result?.ok) {
-        router.push("/admin");
+        router.push(callbackUrl);
         router.refresh();
       }
     } catch {
@@ -165,5 +178,13 @@ export default function AdminLoginPage() {
         </Text>
       </div>
     </div>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }

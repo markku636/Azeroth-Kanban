@@ -124,7 +124,7 @@ if (ALLOW_CREDENTIALS) {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
-  pages: { signIn: "/admin/login" },
+  pages: { signIn: "/login" },
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
 
   callbacks: {

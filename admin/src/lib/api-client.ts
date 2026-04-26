@@ -4,6 +4,7 @@ import { signOut } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { ApiReturnCode, type ApiResult } from '@azeroth/common';
 import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, type Locale, SUPPORTED_LOCALES } from '@/config/i18n';
+import { routes } from '@/config/routes';
 import zhTW from '@/locales/zh-TW.json';
 import en from '@/locales/en.json';
 
@@ -38,7 +39,7 @@ function handleSessionExpired(): void {
   toast.error(message);
 
   setTimeout(() => {
-    signOut({ callbackUrl: '/admin/login' });
+    signOut({ callbackUrl: routes.login });
   }, SESSION_EXPIRED_REDIRECT_DELAY_MS);
 }
 
