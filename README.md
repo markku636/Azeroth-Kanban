@@ -6,11 +6,10 @@
 https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
 
 ## 本地運行
-1. 會需要在您的電腦，安裝docker desktop for widnows
-2. 並執行 docker compose up -d
-3. 才能http://localhost:3010/admin/login
-   
-## 最後用 Helm 佈署到自己家的K8S，需要開機才訪問的到
+1. docker compose up -d
+2. 訪問 http://localhost:3010/admin/login
+
+## 佈署到自己家的K8S，需要開機才訪問的到
 https://azeroth-kanban.markkulab.net/admin/kanban 
 
 
@@ -43,7 +42,7 @@ https://azeroth-kanban.markkulab.net/admin/kanban
 | 拖拉 | @dnd-kit (core / sortable / utilities) | React 19 相容、Pointer / Touch / Keyboard 三 sensor |
 | Toast | react-hot-toast | 輕量、簡單 API |
 | i18n | 自製 useTranslation hook + JSON 字典 | 支援巢狀 key + `{{var}}` 插值，無 next-intl 重構成本 |
-| 部署 | Docker Compose（一鍵） | 本機 |
+| 部署 | Docker Compose（一鍵）+ Helm chart（K8s） | 本機與正式環境皆覆蓋 |
 
 ## 安裝與啟動
 

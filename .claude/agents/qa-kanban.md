@@ -110,13 +110,45 @@ mkdir -p .tmp/qa-reports/{TS}/screenshots
 
 | Tier | 主題 | PRD AC | 帳號 | 重點動作 |
 |---|---|---|---|---|
-| T1 | Smoke：登入 + 看板顯示 | US-6 AC 6.1–6.2、US-2 AC 2.1–2.2 | admin@example.com / Admin@1234 | login → 重導 /kanban → 4 欄（📋/🚀/👀/✅）都在；header 無 logo、sidebar 仍有 logo |
+| T1 | Smoke：登入 + 看板顯示 | US-6 AC 6.1–6.2、US-2 AC 2.1–2.2 | admin@example.com / Admin@1234 | login（依 Keycloak flag 分流，見下方說明）→ 重導 /kanban → 4 欄（📋/🚀/👀/✅）都在；header 無 logo、sidebar 仍有 logo |
 | T2 | 卡片 CRUD + Toast 文案 | US-1 AC 1.1–1.5、US-3 AC 3.1–3.7、US-5 AC 5.1–5.5 | admin | inline 表單（title→description→submit 三段式）→ 新增 toast「卡片已新增至「待處理」!」→ hover 鉛筆編輯 title／description 走 `updateSuccess`「卡片已更新」；改 status 改走 `moveSuccess`「卡片已移動至「{狀態}」!」→ hover 垃圾桶 + 二次確認刪除 |
 | T3 | 拖拉 | US-4 AC 4.1–4.7 | admin | 跨欄拖拉 → toast「卡片已移動至…」；**同欄 reorder 不顯示 toast**；optimistic UI 立即生效；KeyboardSensor 可用；icon button 點擊區 44×44（`h-11 w-11`） |
 | T4 | RBAC + ownership | PRD § 3.2、AC 6.3、QA-driven fixes | user / viewer | viewer 訪問 `/roles` `/user-roles` `/audit-logs` `/login-records` → server-side 307 redirect 到 `/kanban`；viewer kanban 頁無 inline 表單、卡片無 hover icons、無法拖拉；user 跨帳號看不到對方卡片 |
 | T5 | 輸入驗證 + errorCode 翻譯 | AC 1.2、AC 3.x、AC 10.5、PRD § 12.2 | admin | 空 title / >120 字 / >2000 字 → 紅色 toast；errorCode 為 lower.snake_case 格式（`kanban.title_required` 等），不是 `KANBAN_*` |
 | T6 | i18n 多語系 | US-10 AC 10.1–10.5 | admin | 切 zh-TW ↔ en；欄位 / toast / 錯誤訊息全翻；toast 走 `{{status}}` interpolation；reload 後保留 |
 | T7 | RWD 響應式（mobile-fullbleed） | US-7 AC 7.1–7.5 + Spec 20260427-003 | admin | 375：欄位**橫向滑動 + snap**，每欄寬約 = 視窗寬（`w-[85%]` 露下一欄一截，配合外層 `-mr-6` 出血到視窗右緣，無左右白邊）；768：每欄 320px；1280+：4 欄 grid 並排；三斷點各截圖 |
+
+#### AC 6.2 — Keycloak feature flag 分流判定（**必讀**）
+
+PRD AC 6.2 字面是「登入頁僅顯示『以 Keycloak 登入』按鈕」，但實作以 `NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED` 切換。**真實預期行為依 flag 而定**，兩種情境都算 ✅ Pass，**不要標 ⚠️ Note**：
+
+**Step 1：偵測 flag 值**（任一方式取得即可）
+
+```bash
+# 優先讀 .env / .env.local / .env.development
+grep -h '^NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED' .env .env.local .env.development admin/.env admin/.env.local 2>/dev/null | tail -1
+# 取不到時（例：值在 docker-compose 或 process env），用 page snapshot 結構推斷：
+#   有 email/password input → flag=false
+#   只有「以 Keycloak 登入」單一按鈕 → flag=true
+```
+
+**Step 2：依 flag 套用不同斷言**
+
+| Flag | 預期 UI | 通過條件 | 結果 |
+|---|---|---|---|
+| `true`（或 SSO 啟用） | 僅「以 Keycloak 登入」按鈕，無 email/password 輸入框 | 點擊按鈕能跳轉 Keycloak realm，回來後登入成功 | ✅ Pass |
+| `false`（或未設定） | 顯示 email/password 帳密表單 | 用 admin@example.com / Admin@1234 帳密登入成功 | ✅ Pass |
+
+**Step 3：報告寫法**
+
+報告中明確標註偵測到的 flag 值與對應的驗證路徑，例如：
+```markdown
+- **結果**：✅ Pass（flag=false → Credentials 路徑）
+- **偵測**：`NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED=false`，登入頁應顯示帳密表單
+- **斷言**：✅ 帳密表單存在 ✅ admin 帳密登入成功 ✅ 重導 /kanban
+```
+
+**禁止**將 Credentials 路徑當成「降級 / 未達預期」標 ⚠️ Note；flag=false 時帳密表單**就是**正確 UI。**只有**當 flag 與實際 UI 不一致（例：flag=true 但仍顯示帳密表單，或反之）才標 ❌ Fail。
 
 #### chrome-devtools MCP 操作範式
 
@@ -307,9 +339,11 @@ find . -path ./node_modules -prune -o -name '*.png' -newer ".tmp/qa-reports/${TS
 - **斷言**：當前 URL 含 `/login?callbackUrl=`
 - **截圖**：`screenshots/T1-AC6.1-redirect.png`
 
-### AC 6.2 登入頁僅顯示「以 Keycloak 登入」按鈕
+### AC 6.2 登入頁依 Keycloak flag 顯示對應 UI
 
-- **結果**：⚠️ Note — Keycloak SSO 預設關閉（`NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED=false`），登入頁顯示帳密表單；改驗 Credentials 路徑（admin@example.com 登入成功）
+- **結果**：✅ Pass（flag=false → Credentials 路徑）
+- **偵測**：`NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED=false`，登入頁應顯示帳密表單
+- **斷言**：✅ email/password 輸入框存在 ✅ admin@example.com 登入成功 ✅ 重導 `/kanban`
 - **截圖**：`screenshots/T1-AC6.2-login.png`
 
 ---
