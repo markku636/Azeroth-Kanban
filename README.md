@@ -10,7 +10,7 @@ https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
 2. 並執行 docker compose up -d
 3. 才能http://localhost:3010/admin/login
    
-## 佈署到自己家的K8S，需要開機才訪問的到
+## 最後用 Helm 佈署到自己家的K8S，需要開機才訪問的到
 https://azeroth-kanban.markkulab.net/admin/kanban 
 
 
