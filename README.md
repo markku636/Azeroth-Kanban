@@ -43,7 +43,7 @@ https://azeroth-kanban.markkulab.net/admin/kanban
 | 拖拉 | @dnd-kit (core / sortable / utilities) | React 19 相容、Pointer / Touch / Keyboard 三 sensor |
 | Toast | react-hot-toast | 輕量、簡單 API |
 | i18n | 自製 useTranslation hook + JSON 字典 | 支援巢狀 key + `{{var}}` 插值，無 next-intl 重構成本 |
-| 部署 | Docker Compose（一鍵）+ Helm chart（K8s） | 本機與正式環境皆覆蓋 |
+| 部署 | Docker Compose（一鍵） | 本機 |
 
 ## 安裝與啟動
 
