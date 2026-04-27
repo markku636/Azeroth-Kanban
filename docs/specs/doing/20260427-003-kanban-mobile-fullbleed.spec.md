@@ -8,7 +8,7 @@
 
 ## 目標
 
-iPhone SE（375px）瀏覽 `/admin/kanban` 時：
+iPhone SE（375px）瀏覽 `/kanban` 時：
 
 1. Kanban 頁面**佔滿整個視窗寬度**，移除手機累積的 32px 左右白邊。
 2. 橫向滑動的每個欄位**整欄等於一個視窗寬**，配合 snap 達到「滑一下切到下一欄」的體驗。
@@ -85,7 +85,7 @@ iPhone SE（375px）瀏覽 `/admin/kanban` 時：
 - [ ] iPad（768）：每欄 320px，可同時看到約 2 欄 + 一點下一欄。
 - [ ] 桌面 1440：4 欄 grid 並排，與目前桌面行為一致。
 - [ ] 手機尺寸下拖拉卡片仍正常（@dnd-kit TouchSensor）。
-- [ ] 其他 dashboard 頁（`/admin/roles`, `/admin/audit-logs`）padding 未受影響。
+- [ ] 其他 dashboard 頁（`/roles`, `/audit-logs`）padding 未受影響。
 
 ## 風險評估
 

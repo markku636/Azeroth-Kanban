@@ -81,7 +81,7 @@ export default function Sidebar({ className }: { className?: string }) {
             width={140}
             height={40}
             priority
-            className="h-20 w-auto xl:h-10"
+            className="h-24 w-auto max-xl:h-20"
           />
         </Link>
       </div>

@@ -41,7 +41,7 @@ argument-hint: "[all | smoke | tier=N,M | AC X.Y]"
 
 請用 `Agent` 工具呼叫 `qa-kanban` subagent，將 `$ARGUMENTS` 完整傳入作為任務參數。subagent 會：
 
-1. **Pre-flight check** — `curl -sf http://localhost:3010/admin/login` 探活
+1. **Pre-flight check** — `curl -sf http://localhost:3010/login` 探活
 2. **Read PRD** — 從 `docs/requirements/doing/20260423-001-kanban-board.md` 擷取 AC 清單
 3. **Setup output dir** — `mkdir -p .tmp/qa-reports/{YYYYMMDD-HHmm}/screenshots`
 4. **Run scenarios** — 依參數過濾的 tier 順序跑，每個 AC 跑完即增量追加到 `report.md`

@@ -7,7 +7,7 @@ https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
 
 ## 本地運行
 1. docker compose up -d
-2. 訪問 http://localhost:3010/admin/login
+2. 訪問 http://localhost:3010/
 
 ## 佈署到自己家的K8S，需要開機才訪問的到
 https://azeroth-kanban.markkulab.net/admin/kanban 
@@ -55,7 +55,7 @@ docker compose up -d
 docker compose logs admin -f      # 看到 [entrypoint] seed: ✅ success 即可
 ```
 
-打開 http://localhost:3010 → 自動 redirect 到 `/admin/login`。
+打開 http://localhost:3010 → 自動 redirect 到 `/login`。
 
 容器啟動時會自動：
 1. 等 postgres healthy
@@ -101,14 +101,14 @@ npm run dev
 
 | 路徑 | 內容 |
 | --- | --- |
-| `/admin/login` | 帳密登入頁 |
-| `/admin` | Dashboard 入口 |
-| `/admin/kanban` | Kanban 看板（4 欄 + 拖拉 + inline 新增 + 編輯 Modal） |
-| `/admin/me` | 個人資訊 |
-| `/admin/roles` | 角色管理 + Role-Permission 勾選 Modal（admin 限定） |
-| `/admin/user-roles` | 使用者-角色指派（admin 限定） |
-| `/admin/audit-logs` | 操作稽核紀錄（admin 限定） |
-| `/admin/login-records` | 登入紀錄（admin 限定） |
+| `/login` | 帳密登入頁 |
+| `/` | Dashboard 入口（登入後自動導向 `/kanban`） |
+| `/kanban` | Kanban 看板（4 欄 + 拖拉 + inline 新增 + 編輯 Modal） |
+| `/me` | 個人資訊 |
+| `/roles` | 角色管理 + Role-Permission 勾選 Modal（admin 限定） |
+| `/user-roles` | 使用者-角色指派（admin 限定） |
+| `/audit-logs` | 操作稽核紀錄（admin 限定） |
+| `/login-records` | 登入紀錄（admin 限定） |
 
 ## 專案結構
 
