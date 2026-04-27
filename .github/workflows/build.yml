@@ -23,17 +23,22 @@ jobs:
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
           REGISTRY_INTERNAL_URL: ${{ secrets.REGISTRY_INTERNAL_URL }}
         run: |
-          set -e
+          set -euo pipefail
           PUSH_URL="${REGISTRY_INTERNAL_URL:-${REGISTRY_URL}}"
           REGISTRY_HOST="${PUSH_URL#http://}"
           REGISTRY_HOST="${REGISTRY_HOST#https://}"
           REGISTRY_HOST=$(echo "$REGISTRY_HOST" | tr -d '[:space:]')
           SHORT="${SHORT_SHA:0:7}"
 
-          echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
-
           IMG_SHA="${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:${SHORT}"
           IMG_LATEST="${REGISTRY_HOST}/library/${IMAGE_NAME}/${BRANCH_NAME}:latest"
+
+          echo "::group::Image targets"
+          echo "  SHA   : $IMG_SHA"
+          echo "  LATEST: $IMG_LATEST"
+          echo "::endgroup::"
+
+          echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin "$REGISTRY_HOST"
 
           docker build \
             -f admin/Dockerfile \
@@ -43,3 +48,34 @@ jobs:
 
           docker push "$IMG_SHA"
           docker push "$IMG_LATEST"
+
+      - name: Verify tags in registry
+        env:
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          PUBLIC_HOST="${REGISTRY_URL#http://}"
+          PUBLIC_HOST="${PUBLIC_HOST#https://}"
+          PUBLIC_HOST="${PUBLIC_HOST%%/*}"
+          SHORT="${SHORT_SHA:0:7}"
+
+          REPO_PATH="library/${IMAGE_NAME}/${BRANCH_NAME}"
+          TAGS_URL="https://${PUBLIC_HOST}/v2/${REPO_PATH}/tags/list"
+
+          echo "Verifying tags at $TAGS_URL"
+          for attempt in 1 2 3; do
+            TAGS_JSON=$(curl -sk -u "${REGISTRY_USER}:${REGISTRY_PASSWORD}" "$TAGS_URL" || echo "")
+            if echo "$TAGS_JSON" | grep -q "\"$SHORT\"" && echo "$TAGS_JSON" | grep -q '"latest"'; then
+              echo "✓ Both tags present: $SHORT, latest"
+              echo "$TAGS_JSON"
+              exit 0
+            fi
+            echo "Attempt $attempt: tags not yet visible, retrying..."
+            sleep 5
+          done
+
+          echo "::error::Tags '$SHORT' or 'latest' missing from $REPO_PATH after push"
+          echo "Response: $TAGS_JSON"
+          exit 1
