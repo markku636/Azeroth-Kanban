@@ -6,9 +6,10 @@
 https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
 
 ## 本地運行
-1. docker compose up -d
-2. 訪問 http://localhost:3010/admin/login
-
+1. 會需要在您的電腦，安裝docker desktop for widnows
+2. 並執行 docker compose up -d
+3. 才能http://localhost:3010/admin/login
+   
 ## 佈署到自己家的K8S，需要開機才訪問的到
 https://azeroth-kanban.markkulab.net/admin/kanban 
 
