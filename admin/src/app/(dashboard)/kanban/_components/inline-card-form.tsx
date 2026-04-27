@@ -35,7 +35,7 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
       onSubmit={handleSubmit}
       className="rounded-lg border border-gray-200 bg-gray-0 dark:bg-gray-100 p-3 shadow-sm"
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-2">
         <input
           type="text"
           value={title}
@@ -44,24 +44,10 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
           placeholder={t('admin.kanban.newCardPlaceholder')}
           maxLength={120}
           disabled={disabled || submitting}
-          className="flex-1 rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+          className="w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
         />
-        <button
-          type="submit"
-          disabled={!title.trim() || disabled || submitting}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {submitting ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <PiPlusBold className="h-4 w-4" />
-          )}
-          {t('admin.kanban.addCard')}
-        </button>
-      </div>
 
-      {expanded && (
-        <div className="mt-2">
+        {expanded && (
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -71,8 +57,21 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
             disabled={disabled || submitting}
             className="w-full rounded-md border border-gray-300 bg-gray-0 dark:bg-gray-100 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
           />
-        </div>
-      )}
+        )}
+
+        <button
+          type="submit"
+          disabled={!title.trim() || disabled || submitting}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:self-end"
+        >
+          {submitting ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <PiPlusBold className="h-4 w-4" />
+          )}
+          {t('admin.kanban.addCard')}
+        </button>
+      </div>
     </form>
   );
 }

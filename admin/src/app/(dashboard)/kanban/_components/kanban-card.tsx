@@ -37,7 +37,7 @@ export function KanbanCard({ card, onEdit, onDelete, isOverlay, readOnly }: Kanb
         isOverlay ? 'border-blue-400 shadow-lg ring-2 ring-blue-200 dark:ring-blue-900' : 'border-gray-200 hover:shadow-md'
       } ${readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
     >
-      <div className="pr-12">
+      <div className={!readOnly && !isOverlay ? 'pr-24' : ''}>
         <h3 className="break-words text-sm font-semibold text-gray-900">
           {card.title}
         </h3>
@@ -49,7 +49,7 @@ export function KanbanCard({ card, onEdit, onDelete, isOverlay, readOnly }: Kanb
       </div>
 
       {!readOnly && !isOverlay && (
-        <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="absolute right-1 top-1 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
@@ -57,10 +57,10 @@ export function KanbanCard({ card, onEdit, onDelete, isOverlay, readOnly }: Kanb
               e.stopPropagation();
               onEdit(card);
             }}
-            className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+            className="flex h-11 w-11 items-center justify-center rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
             aria-label="edit"
           >
-            <PiPencilBold className="h-3.5 w-3.5" />
+            <PiPencilBold className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -69,10 +69,10 @@ export function KanbanCard({ card, onEdit, onDelete, isOverlay, readOnly }: Kanb
               e.stopPropagation();
               onDelete(card);
             }}
-            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+            className="flex h-11 w-11 items-center justify-center rounded text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
             aria-label="delete"
           >
-            <PiTrashBold className="h-3.5 w-3.5" />
+            <PiTrashBold className="h-4 w-4" />
           </button>
         </div>
       )}

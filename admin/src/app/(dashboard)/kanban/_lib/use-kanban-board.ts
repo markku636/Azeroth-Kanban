@@ -92,7 +92,9 @@ export function useKanbanBoard() {
       if (res.success && res.data) {
         const card = res.data;
         setBoard((prev) => ({ ...prev, TODO: [...prev.TODO, card] }));
-        toast.success(t('admin.kanban.createSuccess'));
+        toast.success(
+          t('admin.kanban.createSuccess', { status: t('admin.kanban.statusTodo') })
+        );
         return true;
       }
       toast.error(tApiError(res, t, 'admin.kanban.createFailed'));
@@ -104,6 +106,15 @@ export function useKanbanBoard() {
   const updateCard = useCallback(
     async (id: string, patch: { title?: string; description?: string | null; status?: CardStatus }) => {
       const previous = cloneBoard(board);
+      // 找出舊狀態，用於比對是否真的有 status change
+      let oldStatus: CardStatus | null = null;
+      for (const status of CARD_STATUS_ORDER) {
+        if (board[status].some((c) => c.id === id)) {
+          oldStatus = status;
+          break;
+        }
+      }
+
       // optimistic：在所有欄裡找出並更新
       setBoard((prev) => {
         const next = cloneBoard(prev);
@@ -122,11 +133,18 @@ export function useKanbanBoard() {
         body: JSON.stringify(patch),
       });
       if (res.success && res.data) {
-        // 若改了 status，後端會放到新欄末端；重新 load 以同步 sortOrder
-        if (patch.status) {
+        const statusChanged = patch.status && patch.status !== oldStatus;
+        if (statusChanged) {
+          // 若改了 status，後端會放到新欄末端；重新 load 以同步 sortOrder
           await loadBoard();
+          toast.success(
+            t('admin.kanban.moveSuccess', {
+              status: t(`admin.kanban.status${capitalize(patch.status!)}`),
+            })
+          );
+        } else {
+          toast.success(t('admin.kanban.updateSuccess'));
         }
-        toast.success(t('admin.kanban.updateSuccess'));
         return true;
       }
       setBoard(previous);
@@ -170,13 +188,15 @@ export function useKanbanBoard() {
   const moveCard = useCallback(
     async (id: string, toStatus: CardStatus, targetIndex: number) => {
       const previous = cloneBoard(board);
-      // 取移動的 card
+      // 取移動的 card 與其原本所在欄
       let movedCard: CardDto | undefined;
+      let fromStatus: CardStatus | undefined;
       const optimistic: Board = cloneBoard(board);
       for (const status of CARD_STATUS_ORDER) {
         const idx = optimistic[status].findIndex((c) => c.id === id);
         if (idx >= 0) {
           movedCard = optimistic[status][idx];
+          fromStatus = status;
           optimistic[status] = [
             ...optimistic[status].slice(0, idx),
             ...optimistic[status].slice(idx + 1),
@@ -184,7 +204,7 @@ export function useKanbanBoard() {
           break;
         }
       }
-      if (!movedCard) return false;
+      if (!movedCard || !fromStatus) return false;
 
       // 計算 beforeId / afterId（目標欄移除自己後）
       const targetCol = optimistic[toStatus];
@@ -214,7 +234,14 @@ export function useKanbanBoard() {
       if (res.success && res.data) {
         // 同步真實 sortOrder（保險，避免 normalize 後不一致）
         await loadBoard();
-        toast.success(t('admin.kanban.moveSuccess', { status: t(`admin.kanban.status${capitalize(toStatus)}`) }));
+        // 同欄重排 (fromStatus === toStatus) 不顯示 toast；僅跨欄才顯示
+        if (fromStatus !== toStatus) {
+          toast.success(
+            t('admin.kanban.moveSuccess', {
+              status: t(`admin.kanban.status${capitalize(toStatus)}`),
+            })
+          );
+        }
         return true;
       }
       setBoard(previous);

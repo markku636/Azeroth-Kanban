@@ -25,7 +25,7 @@ export function KanbanColumn({ status, cards, onEdit, onDelete, readOnly }: Kanb
   });
 
   return (
-    <div className={`flex h-full min-h-[200px] min-w-[280px] flex-shrink-0 snap-start flex-col rounded-lg border lg:min-w-0 lg:flex-shrink ${config.bg} ${config.border}`}>
+    <div className={`flex h-full min-h-[200px] w-[85%] flex-shrink-0 snap-start flex-col rounded-lg border sm:w-[320px] sm:min-w-[280px] lg:w-auto lg:min-w-0 lg:flex-shrink ${config.bg} ${config.border}`}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-inherit px-3 py-2.5">
         <div className="flex items-center gap-2">

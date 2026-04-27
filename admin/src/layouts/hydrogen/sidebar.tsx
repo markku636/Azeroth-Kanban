@@ -75,7 +75,14 @@ export default function Sidebar({ className }: { className?: string }) {
           aria-label="Site Logo"
           className="text-gray-800 hover:text-gray-900"
         >
-          <Image src="/logo.png" alt="IQT.AI" width={140} height={40} priority />
+          <Image
+            src="/logo.png"
+            alt="IQT.AI"
+            width={140}
+            height={40}
+            priority
+            className="h-20 w-auto xl:h-10"
+          />
         </Link>
       </div>
 

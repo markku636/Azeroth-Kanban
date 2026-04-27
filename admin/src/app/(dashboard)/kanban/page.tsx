@@ -17,6 +17,8 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { CardStatus } from '@prisma/client';
 import { useTranslation } from '@/hooks/use-translation';
 import { useConfirm } from '@/hooks/use-confirm';
+import { useHasPermission } from '@/hooks/use-permissions';
+import { PERMISSIONS } from '@/config/permissions';
 import { CARD_STATUS_ORDER } from './_lib/card-status';
 import { useKanbanBoard, type CardDto } from './_lib/use-kanban-board';
 import { InlineCardForm } from './_components/inline-card-form';
@@ -30,6 +32,10 @@ export default function KanbanPage() {
   const { board, loading, addCard, updateCard, deleteCard, moveCard } = useKanbanBoard();
   const [activeCard, setActiveCard] = useState<CardDto | null>(null);
   const [editing, setEditing] = useState<CardDto | null>(null);
+  const canCreate = useHasPermission(PERMISSIONS.KANBAN_CREATE);
+  const canEdit = useHasPermission(PERMISSIONS.KANBAN_EDIT);
+  const canDelete = useHasPermission(PERMISSIONS.KANBAN_DELETE);
+  const readOnly = !canEdit && !canDelete;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -98,15 +104,17 @@ export default function KanbanPage() {
   };
 
   return (
-    <div className="flex h-full flex-col p-4 sm:p-6">
+    <div className="flex h-full flex-col px-2 py-2 sm:p-6">
       <div className="mb-4 text-center">
         <h1 className="text-2xl font-bold text-gray-900">{t('admin.kanban.title')}</h1>
         <p className="mt-1 text-sm text-gray-500">{t('admin.kanban.description')}</p>
       </div>
 
-      <div className="mb-4">
-        <InlineCardForm onSubmit={addCard} disabled={loading} />
-      </div>
+      {canCreate && (
+        <div className="mb-4">
+          <InlineCardForm onSubmit={addCard} disabled={loading} />
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-1 items-center justify-center">
@@ -119,7 +127,7 @@ export default function KanbanPage() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex flex-1 flex-row gap-3 overflow-x-auto pb-2 snap-x snap-mandatory lg:grid lg:grid-cols-4 lg:overflow-x-visible lg:snap-none">
+          <div className="-mr-6 flex flex-1 flex-row gap-3 overflow-x-auto pb-2 snap-x snap-mandatory sm:mr-0 lg:grid lg:grid-cols-4 lg:overflow-x-visible lg:snap-none">
             {CARD_STATUS_ORDER.map((status) => (
               <KanbanColumn
                 key={status}
@@ -127,6 +135,7 @@ export default function KanbanPage() {
                 cards={board[status]}
                 onEdit={(c) => setEditing(c)}
                 onDelete={handleDelete}
+                readOnly={readOnly}
               />
             ))}
           </div>
