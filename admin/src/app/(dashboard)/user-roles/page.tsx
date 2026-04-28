@@ -75,11 +75,11 @@ export default function UserRolesPage() {
   const openEditModal = (user: UserItem) => {
     setEditUser(user);
     setSelectedRole(user.role);
-    if (allRoles.length === 0) fetchRoles();
+    if (allRoles.length === 0) {fetchRoles();}
   };
 
   const handleSave = async () => {
-    if (!editUser) return;
+    if (!editUser) {return;}
     setSaving(true);
     try {
       const res = await fetch(`/api/v1/admin/users/${editUser.id}/role`, {

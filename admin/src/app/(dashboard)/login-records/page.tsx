@@ -53,10 +53,10 @@ export default function LoginRecordsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '20' });
-      if (emailFilter) params.set('email', emailFilter);
-      if (statusFilter) params.set('status', statusFilter);
-      if (startDate) params.set('startDate', startDate);
-      if (endDate) params.set('endDate', endDate);
+      if (emailFilter) {params.set('email', emailFilter);}
+      if (statusFilter) {params.set('status', statusFilter);}
+      if (startDate) {params.set('startDate', startDate);}
+      if (endDate) {params.set('endDate', endDate);}
 
       const res = await fetch(`/api/v1/admin/login-records?${params}`);
       const json = await res.json();

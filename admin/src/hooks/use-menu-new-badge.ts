@@ -9,7 +9,7 @@ const STORAGE_KEY_PREFIX = "iqt-menu-visited";
 const visitedRoutesAtom = atom<Set<string>>(new Set<string>());
 
 function readFromStorage(storageKey: string): Set<string> {
-  if (typeof window === "undefined") return new Set();
+  if (typeof window === "undefined") {return new Set();}
   try {
     const raw = localStorage.getItem(storageKey);
     return raw ? new Set<string>(JSON.parse(raw) as string[]) : new Set();
@@ -45,7 +45,7 @@ export function useMenuNewBadge() {
 
   const markVisited = useCallback(
     (href: string): void => {
-      if (visited.has(href)) return;
+      if (visited.has(href)) {return;}
       const updated = new Set(visited);
       updated.add(href);
       setVisited(updated);

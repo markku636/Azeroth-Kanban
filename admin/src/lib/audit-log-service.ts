@@ -43,6 +43,6 @@ export async function createAuditLog(params: CreateAuditLogParams): Promise<void
 
 export function getIpFromRequest(request: { headers: { get: (key: string) => string | null } }): string | undefined {
   const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
+  if (forwarded) {return forwarded.split(',')[0].trim();}
   return request.headers.get('x-real-ip') ?? undefined;
 }

@@ -54,19 +54,19 @@ export default function KanbanPage() {
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
     const found = cardIndex.get(id);
-    if (found) setActiveCard(board[found.status][found.index] ?? null);
+    if (found) {setActiveCard(board[found.status][found.index] ?? null);}
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveCard(null);
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {return;}
     const activeId = String(active.id);
     const overId = String(over.id);
-    if (activeId === overId) return;
+    if (activeId === overId) {return;}
 
     const fromInfo = cardIndex.get(activeId);
-    if (!fromInfo) return;
+    if (!fromInfo) {return;}
 
     // 解析目標 column 與 index
     let toStatus: CardStatus | null = null;
@@ -78,7 +78,7 @@ export default function KanbanPage() {
       toIndex = board[toStatus].length;
     } else {
       const overInfo = cardIndex.get(overId);
-      if (!overInfo) return;
+      if (!overInfo) {return;}
       toStatus = overInfo.status;
       toIndex = overInfo.index;
       // 同欄拖到自己後面 → index 需要調整為「移除自己後再插入」
@@ -88,7 +88,7 @@ export default function KanbanPage() {
         // 故不調整 toIndex；拿掉自己後 overInfo.index 就會自動往前 1（對齊我們在 moveCard 處理的邏輯）
       }
     }
-    if (!toStatus) return;
+    if (!toStatus) {return;}
 
     await moveCard(activeId, toStatus, toIndex);
   };
@@ -99,7 +99,7 @@ export default function KanbanPage() {
       message: t('admin.kanban.deleteConfirm', { title: card.title }),
       type: 'danger',
     });
-    if (!ok) return;
+    if (!ok) {return;}
     await deleteCard(card.id);
   };
 
@@ -141,7 +141,7 @@ export default function KanbanPage() {
           </div>
           <DragOverlay>
             {activeCard ? (
-              <KanbanCard card={activeCard} onEdit={() => {}} onDelete={() => {}} isOverlay />
+              <KanbanCard card={activeCard} onEdit={() => undefined} onDelete={() => undefined} isOverlay />
             ) : null}
           </DragOverlay>
         </DndContext>

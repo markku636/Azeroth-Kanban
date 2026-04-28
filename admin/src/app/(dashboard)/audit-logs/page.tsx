@@ -42,7 +42,7 @@ const ENTITY_TYPE_OPTIONS = [
 
 function JsonExpander({ value }: { value: string | null }) {
   const [expanded, setExpanded] = useState(false);
-  if (!value) return <span className="text-gray-400">—</span>;
+  if (!value) {return <span className="text-gray-400">—</span>;}
 
   let parsed: unknown;
   try {
@@ -90,11 +90,11 @@ export default function AuditLogsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: '20' });
-      if (actorEmailFilter) params.set('actorEmail', actorEmailFilter);
-      if (entityTypeFilter) params.set('entityType', entityTypeFilter);
-      if (actionFilter) params.set('action', actionFilter);
-      if (startDate) params.set('startDate', startDate);
-      if (endDate) params.set('endDate', endDate);
+      if (actorEmailFilter) {params.set('actorEmail', actorEmailFilter);}
+      if (entityTypeFilter) {params.set('entityType', entityTypeFilter);}
+      if (actionFilter) {params.set('action', actionFilter);}
+      if (startDate) {params.set('startDate', startDate);}
+      if (endDate) {params.set('endDate', endDate);}
 
       const res = await fetch(`/api/v1/admin/audit-logs?${params}`);
       const json = await res.json();

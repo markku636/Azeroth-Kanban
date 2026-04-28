@@ -19,7 +19,7 @@ export function InlineCardForm({ onSubmit, disabled }: InlineCardFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
+    if (!trimmed) {return;}
     setSubmitting(true);
     const ok = await onSubmit(trimmed, description.trim() || undefined);
     setSubmitting(false);

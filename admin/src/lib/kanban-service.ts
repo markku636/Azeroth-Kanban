@@ -1,8 +1,7 @@
 import type { CardStatus, KanbanCard, Prisma } from '@prisma/client';
 import { ApiErrorCode } from '@azeroth/common';
 import { prisma } from '@/lib/prisma';
-import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
-import type { ApiResult } from '@/lib/api-response';
+import { ApiResponse, ApiReturnCode, type ApiResult } from '@/lib/api-response';
 import { createAuditLog } from '@/lib/audit-log-service';
 
 const SORT_GAP = 1000;
@@ -225,7 +224,7 @@ export async function updateCard(
     }
 
     const data: Prisma.KanbanCardUpdateInput = {};
-    if (patch.title !== undefined) data.title = patch.title.trim();
+    if (patch.title !== undefined) {data.title = patch.title.trim();}
     if (patch.description !== undefined) {
       data.description = patch.description ? patch.description.trim() : null;
     }
@@ -328,7 +327,7 @@ export async function moveCard(
         where: { id, ownerId },
         select: { id: true, title: true, status: true, sortOrder: true },
       });
-      if (!before) return null;
+      if (!before) {return null;}
 
       const newSortOrder = await computeSortOrder(tx, ownerId, input);
 
@@ -346,7 +345,7 @@ export async function moveCard(
           where: { id },
           select: { id: true, title: true, status: true, sortOrder: true },
         });
-        if (normalized) afterMove = normalized;
+        if (normalized) {afterMove = normalized;}
       }
       return { before, after: afterMove };
     });
@@ -426,7 +425,7 @@ async function needsNormalize(
     select: { sortOrder: true },
   });
   for (let i = 1; i < cards.length; i++) {
-    if (cards[i].sortOrder - cards[i - 1].sortOrder < NORMALIZE_THRESHOLD) return true;
+    if (cards[i].sortOrder - cards[i - 1].sortOrder < NORMALIZE_THRESHOLD) {return true;}
   }
   return cards.some((c) => c.sortOrder < 1);
 }

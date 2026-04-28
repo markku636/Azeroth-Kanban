@@ -117,7 +117,7 @@ export default function RolesPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingRole) return;
+    if (!editingRole) {return;}
     setFormSubmitting(true);
     try {
       const res = await fetch(`/api/v1/admin/roles/${editingRole.id}`, {
@@ -145,7 +145,7 @@ export default function RolesPage() {
   };
 
   const handleDelete = async (role: Role) => {
-    if (!(await confirm({ title: t('common.confirm'), message: t('admin.roles.deleteConfirm', { name: role.displayName }), type: 'danger' }))) return;
+    if (!(await confirm({ title: t('common.confirm'), message: t('admin.roles.deleteConfirm', { name: role.displayName }), type: 'danger' }))) {return;}
     try {
       const res = await fetch(`/api/v1/admin/roles/${role.id}`, { method: 'DELETE' });
       const json = await res.json();
@@ -219,7 +219,7 @@ export default function RolesPage() {
   };
 
   const handleSavePermissions = async () => {
-    if (!permissionRole) return;
+    if (!permissionRole) {return;}
     setPermissionSaving(true);
     try {
       const res = await fetch(`/api/v1/admin/roles/${permissionRole.id}/permissions`, {

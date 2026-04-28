@@ -24,7 +24,7 @@ export const GET = withPermission(
   async (_request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
     const ownerId = session?.user?.memberId;
-    if (!ownerId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
     const { id } = await params;
     return ApiResponse.json(await getCard(ownerId, id));
   }
@@ -35,7 +35,7 @@ export const PATCH = withPermission(
   async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
     const ownerId = session?.user?.memberId;
-    if (!ownerId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
     const { id } = await params;
 
     let body: { title?: unknown; description?: unknown; status?: unknown };
@@ -46,9 +46,9 @@ export const PATCH = withPermission(
     }
 
     const patch: { title?: string; description?: string | null; status?: CardStatus } = {};
-    if (typeof body.title === 'string') patch.title = body.title;
-    if (typeof body.description === 'string') patch.description = body.description;
-    else if (body.description === null) patch.description = null;
+    if (typeof body.title === 'string') {patch.title = body.title;}
+    if (typeof body.description === 'string') {patch.description = body.description;}
+    else if (body.description === null) {patch.description = null;}
     if (typeof body.status === 'string' && VALID_STATUSES.includes(body.status as CardStatus)) {
       patch.status = body.status as CardStatus;
     }
@@ -62,7 +62,7 @@ export const DELETE = withPermission(
   async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
     const ownerId = session?.user?.memberId;
-    if (!ownerId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
     const { id } = await params;
     return ApiResponse.json(await deleteCard(ownerId, id, buildActor(session, request)));
   }

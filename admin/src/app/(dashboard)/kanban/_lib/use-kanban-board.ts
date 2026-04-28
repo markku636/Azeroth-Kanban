@@ -204,7 +204,7 @@ export function useKanbanBoard() {
           break;
         }
       }
-      if (!movedCard || !fromStatus) return false;
+      if (!movedCard || !fromStatus) {return false;}
 
       // 計算 beforeId / afterId（目標欄移除自己後）
       const targetCol = optimistic[toStatus];

@@ -20,7 +20,7 @@ export function clearPermissionCache(): void {
  * 會查詢本地 DB 的 Role → RolePermission → Permission
  */
 export async function getUserPermissions(roles: string[]): Promise<string[]> {
-  if (!roles.length) return [];
+  if (!roles.length) {return [];}
 
   // 產生快取 key（排序後 join）
   const cacheKey = [...roles].sort().join(',');

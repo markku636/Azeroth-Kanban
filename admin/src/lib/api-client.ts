@@ -23,7 +23,7 @@ const sessionExpiredMessages: Record<Locale, string> = {
 let isHandlingSessionExpired = false;
 
 function resolveLocale(): Locale {
-  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+  if (typeof window === 'undefined') {return DEFAULT_LOCALE;}
   const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
   if (stored && (SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
     return stored as Locale;
@@ -32,7 +32,7 @@ function resolveLocale(): Locale {
 }
 
 function handleSessionExpired(): void {
-  if (isHandlingSessionExpired) return;
+  if (isHandlingSessionExpired) {return;}
   isHandlingSessionExpired = true;
 
   const message = sessionExpiredMessages[resolveLocale()];

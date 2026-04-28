@@ -17,7 +17,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function isCacheValid(rolesKey: string): boolean {
   return (
-    cachedPermissions != null &&
+    cachedPermissions !== null &&
     cacheRolesKey === rolesKey &&
     Date.now() < cacheExpiresAt
   );
@@ -37,7 +37,7 @@ export function usePermissions(): PermissionsState {
   const rolesKey = [...roles].sort().join(",");
 
   useEffect(() => {
-    if (status === "loading") return;
+    if (status === "loading") {return;}
     if (!session?.user || !roles.length) {
       setState({ permissions: [], isLoading: false });
       return;
@@ -54,7 +54,7 @@ export function usePermissions(): PermissionsState {
     async function fetchPermissions() {
       try {
         const res = await fetch("/api/v1/admin/user/permissions");
-        if (!res.ok) throw new Error("Failed to fetch permissions");
+        if (!res.ok) {throw new Error("Failed to fetch permissions");}
         const json = await res.json();
         const perms: string[] = json.data ?? [];
 

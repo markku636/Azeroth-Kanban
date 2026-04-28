@@ -26,7 +26,7 @@ const statusStyles: Record<StatusType, string> = {
 };
 
 export function StatusAlert({ message, type, visible, className }: StatusAlertProps) {
-  if (!visible) return null;
+  if (!visible) {return null;}
 
   return (
     <div
@@ -60,7 +60,7 @@ export default function ApiResultPanel({
   details,
   className,
 }: ApiResultPanelProps) {
-  if (!visible) return null;
+  if (!visible) {return null;}
 
   const formattedDetails =
     typeof details === 'object' ? JSON.stringify(details, null, 2) : String(details || '');

@@ -1,11 +1,10 @@
 import { auth } from "@/auth";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = new Set<string>(["/login"]);
 const POST_LOGIN_PATH = "/kanban";
 
-export default auth(async (req: NextRequest & { auth: { user?: unknown } | null }) => {
+export default auth((req: NextRequest & { auth: { user?: unknown } | null }) => {
   const { pathname } = req.nextUrl;
   const isAuthenticated = !!req.auth?.user;
 

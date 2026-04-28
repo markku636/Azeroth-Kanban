@@ -21,7 +21,7 @@ let currentLocale: Locale = DEFAULT_LOCALE;
 const listeners = new Set<() => void>();
 
 function initLocale(): Locale {
-  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+  if (typeof window === 'undefined') {return DEFAULT_LOCALE;}
   const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
   if (stored && (SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
     return stored as Locale;
@@ -50,7 +50,7 @@ function getServerSnapshot(): Locale {
 }
 
 function changeLocale(locale: Locale) {
-  if (locale === currentLocale) return;
+  if (locale === currentLocale) {return;}
   currentLocale = locale;
   if (typeof window !== 'undefined') {
     localStorage.setItem(LOCALE_STORAGE_KEY, locale);
@@ -63,7 +63,7 @@ function resolve(dict: Record<string, unknown>, key: string): string | undefined
   const parts = key.split('.');
   let node: unknown = dict;
   for (const part of parts) {
-    if (node == null || typeof node !== 'object') return undefined;
+    if (node === null || typeof node !== 'object') {return undefined;}
     node = (node as Record<string, unknown>)[part];
   }
   return typeof node === 'string' ? node : undefined;
@@ -74,9 +74,9 @@ function interpolate(
   template: string,
   params?: Record<string, string | number>
 ): string {
-  if (!params) return template;
+  if (!params) {return template;}
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) =>
-    params[key] != null ? String(params[key]) : `{{${key}}}`
+    params[key] !== undefined && params[key] !== null ? String(params[key]) : `{{${key}}}`
   );
 }
 
@@ -88,12 +88,12 @@ export function useTranslation() {
     (key: string, params?: Record<string, string | number>): string => {
       const dict = dictionaries[locale];
       const value = resolve(dict, key);
-      if (value != null) return interpolate(value, params);
+      if (value !== undefined) {return interpolate(value, params);}
 
       // Fallback to zh-TW if current locale is different
       if (locale !== 'zh-TW') {
         const fallback = resolve(dictionaries['zh-TW'], key);
-        if (fallback != null) return interpolate(fallback, params);
+        if (fallback !== undefined) {return interpolate(fallback, params);}
       }
 
       // Last resort: return the key itself

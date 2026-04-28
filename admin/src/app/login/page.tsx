@@ -9,9 +9,9 @@ import LanguageSwitcher from "@/components/language-switcher";
 import { routes } from "@/config/routes";
 
 function resolveCallbackUrl(raw: string | null): string {
-  if (!raw) return routes.kanban;
+  if (!raw) {return routes.kanban;}
   // 僅允許站內相對路徑，避免 open redirect
-  if (!raw.startsWith("/") || raw.startsWith("//")) return routes.kanban;
+  if (!raw.startsWith("/") || raw.startsWith("//")) {return routes.kanban;}
   return raw;
 }
 

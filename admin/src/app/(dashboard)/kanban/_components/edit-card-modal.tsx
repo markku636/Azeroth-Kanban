@@ -30,11 +30,11 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
     }
   }, [card]);
 
-  if (!card) return null;
+  if (!card) {return null;}
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {return;}
     setSubmitting(true);
     const ok = await onSubmit(card.id, {
       title: title.trim(),
@@ -42,7 +42,7 @@ export function EditCardModal({ card, onClose, onSubmit }: EditCardModalProps) {
       status,
     });
     setSubmitting(false);
-    if (ok) onClose();
+    if (ok) {onClose();}
   };
 
   return (
