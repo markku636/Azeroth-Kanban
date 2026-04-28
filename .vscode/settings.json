@@ -1,0 +1,51 @@
+{
+  // ─── 編輯器：存檔自動排版 + 修補 ─────────────────────────────────
+  "editor.defaultFormatter": "esbenp.prettier-vscode", // 預設 formatter 為 Prettier
+  "editor.formatOnSave": true, // 存檔時自動排版
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit", // 存檔時跑 ESLint --fix（僅在明確配置時觸發）
+    "source.organizeImports": "explicit" // 存檔時整理 import 順序、移除未使用 import
+  },
+
+  // ─── 各檔案類型的 formatter（顯式指定避免被其他套件搶走）──────
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }, // 含註解的 JSON（如 tsconfig、本檔）
+  "[markdown]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[prisma]": { "editor.defaultFormatter": "Prisma.prisma" }, // Prisma schema 用官方套件排版
+
+  // ─── ESLint ─────────────────────────────────────────────────────
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"], // 啟用 lint 的語言（本專案不寫 Vue / HTML，無需加入）
+  "eslint.workingDirectories": [{ "pattern": "admin" }], // monorepo 中只有 admin 有 .eslintrc.json
+
+  // ─── TypeScript ─────────────────────────────────────────────────
+  "typescript.tsdk": "admin/node_modules/typescript/lib", // 強制使用 admin workspace 的 TS 版本（5.8.2）
+  "typescript.enablePromptUseWorkspaceTsdk": true, // 開啟工作區時自動詢問是否使用 workspace TS
+
+  // ─── Tailwind CSS IntelliSense ─────────────────────────────────
+  // 讓 Tailwind 的自動完成 / 排序也能在 cn() / clsx() / twMerge() 內生效
+  "tailwindCSS.experimental.classRegex": [
+    ["cn\\(([^)]*)\\)", "'([^']*)'"],
+    ["clsx\\(([^)]*)\\)", "'([^']*)'"],
+    ["twMerge\\(([^)]*)\\)", "'([^']*)'"]
+  ],
+
+  // ─── i18n Ally（對應 admin/src/hooks/use-translation.ts）─────
+  "i18n-ally.localesPaths": ["admin/src/locales"], // dict 路徑
+  "i18n-ally.sourceLanguage": "zh-TW", // 來源語言（DEFAULT_LOCALE）
+  "i18n-ally.displayLanguage": "zh-TW",
+  "i18n-ally.keystyle": "nested", // dict 是巢狀結構
+  "i18n-ally.enabledFrameworks": ["react", "general"], // 不使用 next-intl / vue-i18n
+  "i18n-ally.enabledParsers": ["json"],
+  // 對應 use-translation.ts 的呼叫慣例：t('key') 或 t('key', { var })
+  "i18n-ally.regex.usageMatchAppend": ["[^\\w]t\\(\\s*['\"`]({key})['\"`]"],
+
+  // ─── 一致的檔案結尾 ─────────────────────────────────────────────
+  "files.eol": "\n", // 統一換行符（與 .prettierrc endOfLine 對齊）
+  "files.insertFinalNewline": true, // 檔案結尾保留一個換行
+  "files.trimTrailingWhitespace": true // 自動移除行尾空白
+}
