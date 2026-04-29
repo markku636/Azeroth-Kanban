@@ -7,6 +7,12 @@ import { useTranslation } from '@/hooks/use-translation';
 import { tApiError } from '@/lib/translate-api-error';
 import { CARD_STATUS_ORDER } from './card-status';
 
+export interface OwnerDto {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface CardDto {
   id: string;
   title: string;
@@ -15,6 +21,7 @@ export interface CardDto {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  owner: OwnerDto;
 }
 
 export type Board = Record<CardStatus, CardDto[]>;

@@ -1,4 +1,4 @@
-import type { CardStatus, KanbanCard, Prisma } from '@prisma/client';
+import type { CardStatus, KanbanCard, Member, Prisma } from '@prisma/client';
 import { ApiErrorCode } from '@azeroth/common';
 import { prisma } from '@/lib/prisma';
 import { ApiResponse, ApiReturnCode, type ApiResult } from '@/lib/api-response';
@@ -7,10 +7,18 @@ import { createAuditLog } from '@/lib/audit-log-service';
 const SORT_GAP = 1000;
 const NORMALIZE_THRESHOLD = 2;
 
+export interface OwnerDto {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export type CardDto = Pick<
   KanbanCard,
   'id' | 'title' | 'description' | 'status' | 'sortOrder' | 'createdAt' | 'updatedAt'
->;
+> & {
+  owner: OwnerDto;
+};
 
 export type GroupedCards = Record<CardStatus, CardDto[]>;
 
@@ -22,7 +30,14 @@ export interface KanbanActor {
   ipAddress?: string;
 }
 
+/** 服務層方法選項：bypassOwnership 為 true 時跳過 ownerId 過濾（路由層已驗證權限） */
+export interface KanbanOpOptions {
+  bypassOwnership?: boolean;
+}
+
 const ALL_STATUSES: CardStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'];
+
+type CardWithOwner = KanbanCard & { owner: Pick<Member, 'id' | 'name' | 'email'> };
 
 function auditFromCard(card: Pick<KanbanCard, 'title' | 'description' | 'status' | 'sortOrder'>) {
   return {
@@ -33,7 +48,7 @@ function auditFromCard(card: Pick<KanbanCard, 'title' | 'description' | 'status'
   };
 }
 
-function toDto(card: KanbanCard): CardDto {
+function toDto(card: CardWithOwner): CardDto {
   return {
     id: card.id,
     title: card.title,
@@ -42,6 +57,11 @@ function toDto(card: KanbanCard): CardDto {
     sortOrder: card.sortOrder,
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,
+    owner: {
+      id: card.owner.id,
+      name: card.owner.name,
+      email: card.owner.email,
+    },
   };
 }
 
@@ -54,12 +74,17 @@ function emptyBoard(): GroupedCards {
   };
 }
 
+const OWNER_INCLUDE = {
+  owner: { select: { id: true, name: true, email: true } },
+} as const;
+
 /** 列出某使用者的所有卡片，按 status 分組、欄內按 sortOrder 排序 */
 export async function listOwnerBoard(ownerId: string): Promise<ApiResult<GroupedCards>> {
   try {
     const cards = await prisma.kanbanCard.findMany({
       where: { ownerId },
       orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }],
+      include: OWNER_INCLUDE,
     });
     const grouped = emptyBoard();
     for (const c of cards) {
@@ -71,7 +96,29 @@ export async function listOwnerBoard(ownerId: string): Promise<ApiResult<Grouped
     return ApiResponse.error(
       ApiReturnCode.INTERNAL_ERROR,
       '載入看板失敗，請稍後再試',
-      ApiErrorCode.SYSTEM.DB_ERROR
+      ApiErrorCode.SYSTEM.DB_ERROR,
+    );
+  }
+}
+
+/** 列出全部使用者的卡片（admin 視角，需 kanban.view_all） */
+export async function listAllBoard(): Promise<ApiResult<GroupedCards>> {
+  try {
+    const cards = await prisma.kanbanCard.findMany({
+      orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }],
+      include: OWNER_INCLUDE,
+    });
+    const grouped = emptyBoard();
+    for (const c of cards) {
+      grouped[c.status].push(toDto(c));
+    }
+    return ApiResponse.success(grouped, '取得看板成功');
+  } catch (e) {
+    console.error('[KanbanService.listAllBoard]', e);
+    return ApiResponse.error(
+      ApiReturnCode.INTERNAL_ERROR,
+      '載入看板失敗，請稍後再試',
+      ApiErrorCode.SYSTEM.DB_ERROR,
     );
   }
 }
@@ -80,7 +127,7 @@ export async function listOwnerBoard(ownerId: string): Promise<ApiResult<Grouped
 async function maxSortOrderInColumn(
   ownerId: string,
   status: CardStatus,
-  client: Prisma.TransactionClient | typeof prisma = prisma
+  client: Prisma.TransactionClient | typeof prisma = prisma,
 ): Promise<number> {
   const result = await client.kanbanCard.aggregate({
     where: { ownerId, status },
@@ -93,13 +140,13 @@ async function maxSortOrderInColumn(
 export async function createCard(
   ownerId: string,
   input: { title: string; description?: string },
-  actor?: KanbanActor
+  actor?: KanbanActor,
 ): Promise<ApiResult<CardDto>> {
   if (!input.title?.trim()) {
     return ApiResponse.error(
       ApiReturnCode.VALIDATION_ERROR,
       '請輸入卡片標題',
-      ApiErrorCode.KANBAN.TITLE_REQUIRED
+      ApiErrorCode.KANBAN.TITLE_REQUIRED,
     );
   }
   const title = input.title.trim();
@@ -107,7 +154,7 @@ export async function createCard(
     return ApiResponse.error(
       ApiReturnCode.VALIDATION_ERROR,
       '標題長度不可超過 120 字',
-      ApiErrorCode.KANBAN.TITLE_TOO_LONG
+      ApiErrorCode.KANBAN.TITLE_TOO_LONG,
     );
   }
   const description = input.description?.trim() || null;
@@ -115,7 +162,7 @@ export async function createCard(
     return ApiResponse.error(
       ApiReturnCode.VALIDATION_ERROR,
       '描述長度不可超過 2000 字',
-      ApiErrorCode.KANBAN.DESCRIPTION_TOO_LONG
+      ApiErrorCode.KANBAN.DESCRIPTION_TOO_LONG,
     );
   }
 
@@ -129,6 +176,7 @@ export async function createCard(
         sortOrder: maxOrder + SORT_GAP,
         ownerId,
       },
+      include: OWNER_INCLUDE,
     });
     await createAuditLog({
       actorId: actor?.id,
@@ -146,29 +194,44 @@ export async function createCard(
     return ApiResponse.error(
       ApiReturnCode.INTERNAL_ERROR,
       '建立卡片失敗，請稍後再試',
-      ApiErrorCode.SYSTEM.DB_ERROR
+      ApiErrorCode.SYSTEM.DB_ERROR,
     );
   }
 }
 
-/** 取得單張卡片（強制 ownerId 過濾） */
-export async function getCard(ownerId: string, id: string): Promise<ApiResult<CardDto>> {
+function buildCardWhere(
+  id: string,
+  ownerId: string,
+  options?: KanbanOpOptions,
+): Prisma.KanbanCardWhereInput {
+  return options?.bypassOwnership ? { id } : { id, ownerId };
+}
+
+/** 取得單張卡片（預設強制 ownerId 過濾；bypassOwnership=true 時跳過） */
+export async function getCard(
+  ownerId: string,
+  id: string,
+  options?: KanbanOpOptions,
+): Promise<ApiResult<CardDto>> {
   try {
-    const card = await prisma.kanbanCard.findFirst({ where: { id, ownerId } });
+    const card = await prisma.kanbanCard.findFirst({
+      where: buildCardWhere(id, ownerId, options),
+      include: OWNER_INCLUDE,
+    });
     if (!card) {
       return ApiResponse.error(
         ApiReturnCode.NOT_FOUND,
         '找不到此卡片',
-        ApiErrorCode.KANBAN.CARD_NOT_FOUND
+        ApiErrorCode.KANBAN.CARD_NOT_FOUND,
       );
     }
     return ApiResponse.success(toDto(card), '取得卡片成功');
   } catch (e) {
-    console.error('[KanbanService.getCard]', { ownerId, id }, e);
+    console.error('[KanbanService.getCard]', { ownerId, id, options }, e);
     return ApiResponse.error(
       ApiReturnCode.INTERNAL_ERROR,
       '讀取卡片失敗',
-      ApiErrorCode.SYSTEM.DB_ERROR
+      ApiErrorCode.SYSTEM.DB_ERROR,
     );
   }
 }
@@ -178,21 +241,22 @@ export async function updateCard(
   ownerId: string,
   id: string,
   patch: { title?: string; description?: string | null; status?: CardStatus },
-  actor?: KanbanActor
+  actor?: KanbanActor,
+  options?: KanbanOpOptions,
 ): Promise<ApiResult<CardDto>> {
   if (patch.title !== undefined) {
     if (!patch.title.trim()) {
       return ApiResponse.error(
         ApiReturnCode.VALIDATION_ERROR,
         '請輸入卡片標題',
-        ApiErrorCode.KANBAN.TITLE_REQUIRED
+        ApiErrorCode.KANBAN.TITLE_REQUIRED,
       );
     }
     if (patch.title.trim().length > 120) {
       return ApiResponse.error(
         ApiReturnCode.VALIDATION_ERROR,
         '標題長度不可超過 120 字',
-        ApiErrorCode.KANBAN.TITLE_TOO_LONG
+        ApiErrorCode.KANBAN.TITLE_TOO_LONG,
       );
     }
   }
@@ -200,44 +264,47 @@ export async function updateCard(
     return ApiResponse.error(
       ApiReturnCode.VALIDATION_ERROR,
       '描述長度不可超過 2000 字',
-      ApiErrorCode.KANBAN.DESCRIPTION_TOO_LONG
+      ApiErrorCode.KANBAN.DESCRIPTION_TOO_LONG,
     );
   }
   if (patch.status && !ALL_STATUSES.includes(patch.status)) {
     return ApiResponse.error(
       ApiReturnCode.VALIDATION_ERROR,
       '狀態無效',
-      ApiErrorCode.KANBAN.INVALID_STATUS
+      ApiErrorCode.KANBAN.INVALID_STATUS,
     );
   }
 
   try {
     const existing = await prisma.kanbanCard.findFirst({
-      where: { id, ownerId },
+      where: buildCardWhere(id, ownerId, options),
     });
     if (!existing) {
       return ApiResponse.error(
         ApiReturnCode.NOT_FOUND,
         '找不到此卡片',
-        ApiErrorCode.KANBAN.CARD_NOT_FOUND
+        ApiErrorCode.KANBAN.CARD_NOT_FOUND,
       );
     }
 
     const data: Prisma.KanbanCardUpdateInput = {};
-    if (patch.title !== undefined) {data.title = patch.title.trim();}
+    if (patch.title !== undefined) {
+      data.title = patch.title.trim();
+    }
     if (patch.description !== undefined) {
       data.description = patch.description ? patch.description.trim() : null;
     }
-    // 改 status 時也要重算 sortOrder（落新欄末端）
+    // 改 status 時也要重算 sortOrder（落新欄末端，使用卡片實際 owner）
     if (patch.status !== undefined && patch.status !== existing.status) {
       data.status = patch.status;
-      const maxOrder = await maxSortOrderInColumn(ownerId, patch.status);
+      const maxOrder = await maxSortOrderInColumn(existing.ownerId, patch.status);
       data.sortOrder = maxOrder + SORT_GAP;
     }
 
     const card = await prisma.kanbanCard.update({
       where: { id },
       data,
+      include: OWNER_INCLUDE,
     });
     await createAuditLog({
       actorId: actor?.id,
@@ -252,11 +319,11 @@ export async function updateCard(
     });
     return ApiResponse.success(toDto(card), '卡片已更新');
   } catch (e) {
-    console.error('[KanbanService.updateCard]', { ownerId, id }, e);
+    console.error('[KanbanService.updateCard]', { ownerId, id, options }, e);
     return ApiResponse.error(
       ApiReturnCode.INTERNAL_ERROR,
       '更新卡片失敗',
-      ApiErrorCode.SYSTEM.DB_ERROR
+      ApiErrorCode.SYSTEM.DB_ERROR,
     );
   }
 }
@@ -265,15 +332,18 @@ export async function updateCard(
 export async function deleteCard(
   ownerId: string,
   id: string,
-  actor?: KanbanActor
+  actor?: KanbanActor,
+  options?: KanbanOpOptions,
 ): Promise<ApiResult<{ id: string }>> {
   try {
-    const existing = await prisma.kanbanCard.findFirst({ where: { id, ownerId } });
+    const existing = await prisma.kanbanCard.findFirst({
+      where: buildCardWhere(id, ownerId, options),
+    });
     if (!existing) {
       return ApiResponse.error(
         ApiReturnCode.NOT_FOUND,
         '找不到此卡片',
-        ApiErrorCode.KANBAN.CARD_NOT_FOUND
+        ApiErrorCode.KANBAN.CARD_NOT_FOUND,
       );
     }
     await prisma.kanbanCard.delete({ where: { id } });
@@ -289,11 +359,11 @@ export async function deleteCard(
     });
     return ApiResponse.success({ id }, '卡片已刪除');
   } catch (e) {
-    console.error('[KanbanService.deleteCard]', { ownerId, id }, e);
+    console.error('[KanbanService.deleteCard]', { ownerId, id, options }, e);
     return ApiResponse.error(
       ApiReturnCode.INTERNAL_ERROR,
       '刪除卡片失敗',
-      ApiErrorCode.SYSTEM.DB_ERROR
+      ApiErrorCode.SYSTEM.DB_ERROR,
     );
   }
 }
@@ -306,46 +376,56 @@ export async function deleteCard(
  *   - 只有 beforeId（要插在 beforeId 之後）：sortOrder = beforeId.sortOrder + GAP
  *   - 兩者皆有（要插在中間）：sortOrder = (before + after) / 2
  *   - 計算結果與相鄰差距 < NORMALIZE_THRESHOLD → 觸發 normalize
+ *
+ * 跨 owner 操作（bypassOwnership=true）時，sort 計算以卡片實際 owner 為準，
+ * 才能正確找到該欄的相鄰卡片做位置運算。
  */
 export async function moveCard(
   ownerId: string,
   id: string,
   input: { status: CardStatus; beforeId?: string | null; afterId?: string | null },
-  actor?: KanbanActor
+  actor?: KanbanActor,
+  options?: KanbanOpOptions,
 ): Promise<ApiResult<{ id: string; status: CardStatus; sortOrder: number }>> {
   if (!ALL_STATUSES.includes(input.status)) {
     return ApiResponse.error(
       ApiReturnCode.VALIDATION_ERROR,
       '狀態無效',
-      ApiErrorCode.KANBAN.INVALID_STATUS
+      ApiErrorCode.KANBAN.INVALID_STATUS,
     );
   }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
       const before = await tx.kanbanCard.findFirst({
-        where: { id, ownerId },
-        select: { id: true, title: true, status: true, sortOrder: true },
+        where: buildCardWhere(id, ownerId, options),
+        select: { id: true, title: true, status: true, sortOrder: true, ownerId: true },
       });
-      if (!before) {return null;}
+      if (!before) {
+        return null;
+      }
 
-      const newSortOrder = await computeSortOrder(tx, ownerId, input);
+      // sort 計算用卡片實際 owner，跨 owner 操作才能找到相鄰卡片
+      const targetOwnerId = before.ownerId;
+      const newSortOrder = await computeSortOrder(tx, targetOwnerId, input);
 
       const updated = await tx.kanbanCard.update({
         where: { id },
         data: { status: input.status, sortOrder: newSortOrder },
-        select: { id: true, title: true, status: true, sortOrder: true },
+        select: { id: true, title: true, status: true, sortOrder: true, ownerId: true },
       });
 
       // 觸發 normalize：撈出該欄全部卡片，重排
       let afterMove = updated;
-      if (await needsNormalize(tx, ownerId, input.status)) {
-        await normalizeColumn(tx, ownerId, input.status);
+      if (await needsNormalize(tx, targetOwnerId, input.status)) {
+        await normalizeColumn(tx, targetOwnerId, input.status);
         const normalized = await tx.kanbanCard.findUnique({
           where: { id },
-          select: { id: true, title: true, status: true, sortOrder: true },
+          select: { id: true, title: true, status: true, sortOrder: true, ownerId: true },
         });
-        if (normalized) {afterMove = normalized;}
+        if (normalized) {
+          afterMove = normalized;
+        }
       }
       return { before, after: afterMove };
     });
@@ -354,7 +434,7 @@ export async function moveCard(
       return ApiResponse.error(
         ApiReturnCode.NOT_FOUND,
         '找不到此卡片',
-        ApiErrorCode.KANBAN.CARD_NOT_FOUND
+        ApiErrorCode.KANBAN.CARD_NOT_FOUND,
       );
     }
 
@@ -365,21 +445,33 @@ export async function moveCard(
       entityType: 'KanbanCard',
       entityId: id,
       action: 'move',
-      oldValue: { title: result.before.title, status: result.before.status, sortOrder: result.before.sortOrder },
-      newValue: { title: result.after.title, status: result.after.status, sortOrder: result.after.sortOrder },
+      oldValue: {
+        title: result.before.title,
+        status: result.before.status,
+        sortOrder: result.before.sortOrder,
+      },
+      newValue: {
+        title: result.after.title,
+        status: result.after.status,
+        sortOrder: result.after.sortOrder,
+      },
       ipAddress: actor?.ipAddress,
     });
 
     return ApiResponse.success(
-      { id: result.after.id, status: result.after.status, sortOrder: result.after.sortOrder },
-      '卡片已移動'
+      {
+        id: result.after.id,
+        status: result.after.status,
+        sortOrder: result.after.sortOrder,
+      },
+      '卡片已移動',
     );
   } catch (e) {
-    console.error('[KanbanService.moveCard]', { ownerId, id, input }, e);
+    console.error('[KanbanService.moveCard]', { ownerId, id, input, options }, e);
     return ApiResponse.error(
       ApiReturnCode.INTERNAL_ERROR,
       '移動卡片失敗',
-      ApiErrorCode.SYSTEM.DB_ERROR
+      ApiErrorCode.SYSTEM.DB_ERROR,
     );
   }
 }
@@ -387,7 +479,7 @@ export async function moveCard(
 async function computeSortOrder(
   tx: Prisma.TransactionClient,
   ownerId: string,
-  input: { status: CardStatus; beforeId?: string | null; afterId?: string | null }
+  input: { status: CardStatus; beforeId?: string | null; afterId?: string | null },
 ): Promise<number> {
   // afterId / beforeId 解析（限同 owner、同 status 才有效）
   const refIds = [input.beforeId, input.afterId].filter((v): v is string => !!v);
@@ -417,7 +509,7 @@ async function computeSortOrder(
 async function needsNormalize(
   tx: Prisma.TransactionClient,
   ownerId: string,
-  status: CardStatus
+  status: CardStatus,
 ): Promise<boolean> {
   const cards = await tx.kanbanCard.findMany({
     where: { ownerId, status },
@@ -425,7 +517,9 @@ async function needsNormalize(
     select: { sortOrder: true },
   });
   for (let i = 1; i < cards.length; i++) {
-    if (cards[i].sortOrder - cards[i - 1].sortOrder < NORMALIZE_THRESHOLD) {return true;}
+    if (cards[i].sortOrder - cards[i - 1].sortOrder < NORMALIZE_THRESHOLD) {
+      return true;
+    }
   }
   return cards.some((c) => c.sortOrder < 1);
 }
@@ -433,7 +527,7 @@ async function needsNormalize(
 async function normalizeColumn(
   tx: Prisma.TransactionClient,
   ownerId: string,
-  status: CardStatus
+  status: CardStatus,
 ): Promise<void> {
   const cards = await tx.kanbanCard.findMany({
     where: { ownerId, status },

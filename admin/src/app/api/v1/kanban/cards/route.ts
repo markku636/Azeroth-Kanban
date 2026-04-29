@@ -3,8 +3,14 @@ import type { Session } from 'next-auth';
 import { auth } from '@/auth';
 import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import { withPermission } from '@/lib/with-permission';
+import { hasPermission } from '@/lib/permission-service';
 import { PERMISSIONS } from '@/config/permissions';
-import { listOwnerBoard, createCard, type KanbanActor } from '@/lib/kanban-service';
+import {
+  listAllBoard,
+  listOwnerBoard,
+  createCard,
+  type KanbanActor,
+} from '@/lib/kanban-service';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 
 function buildActor(session: Session, request: NextRequest): KanbanActor {
@@ -18,11 +24,13 @@ function buildActor(session: Session, request: NextRequest): KanbanActor {
 
 export const GET = withPermission(PERMISSIONS.KANBAN_VIEW, async () => {
   const session = await auth();
-  const ownerId = session?.user?.memberId;
-  if (!ownerId) {
+  const memberId = session?.user?.memberId;
+  if (!memberId) {
     return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
   }
-  return ApiResponse.json(await listOwnerBoard(ownerId));
+  const roles = session.user.roles ?? [];
+  const canViewAll = await hasPermission(roles, PERMISSIONS.KANBAN_VIEW_ALL);
+  return ApiResponse.json(canViewAll ? await listAllBoard() : await listOwnerBoard(memberId));
 });
 
 export const POST = withPermission(PERMISSIONS.KANBAN_CREATE, async (request: NextRequest) => {
@@ -44,7 +52,7 @@ export const POST = withPermission(PERMISSIONS.KANBAN_CREATE, async (request: Ne
         title: typeof body.title === 'string' ? body.title : '',
         description: typeof body.description === 'string' ? body.description : undefined,
       },
-      buildActor(session, request)
-    )
+      buildActor(session, request),
+    ),
   );
 });

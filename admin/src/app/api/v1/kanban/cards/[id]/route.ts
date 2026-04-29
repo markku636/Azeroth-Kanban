@@ -6,6 +6,7 @@ import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import { withPermission } from '@/lib/with-permission';
 import { PERMISSIONS } from '@/config/permissions';
 import { getCard, updateCard, deleteCard, type KanbanActor } from '@/lib/kanban-service';
+import { ensureOwnerOrAllPermission } from '@/lib/kanban-permission';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 
 const VALID_STATUSES: CardStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'];
@@ -23,20 +24,45 @@ export const GET = withPermission(
   PERMISSIONS.KANBAN_VIEW,
   async (_request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
-    const ownerId = session?.user?.memberId;
-    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
+    const memberId = session?.user?.memberId;
+    if (!memberId) {
+      return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    }
     const { id } = await params;
-    return ApiResponse.json(await getCard(ownerId, id));
-  }
+    const check = await ensureOwnerOrAllPermission(
+      memberId,
+      session.user.roles ?? [],
+      id,
+      PERMISSIONS.KANBAN_VIEW_ALL,
+    );
+    if (!check.ok) {
+      return check.response;
+    }
+    return ApiResponse.json(
+      await getCard(check.ownerId, id, { bypassOwnership: check.bypassOwnership }),
+    );
+  },
 );
 
 export const PATCH = withPermission(
   PERMISSIONS.KANBAN_EDIT,
   async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
-    const ownerId = session?.user?.memberId;
-    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
+    const memberId = session?.user?.memberId;
+    if (!memberId) {
+      return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    }
     const { id } = await params;
+
+    const check = await ensureOwnerOrAllPermission(
+      memberId,
+      session.user.roles ?? [],
+      id,
+      PERMISSIONS.KANBAN_EDIT_ALL,
+    );
+    if (!check.ok) {
+      return check.response;
+    }
 
     let body: { title?: unknown; description?: unknown; status?: unknown };
     try {
@@ -46,24 +72,50 @@ export const PATCH = withPermission(
     }
 
     const patch: { title?: string; description?: string | null; status?: CardStatus } = {};
-    if (typeof body.title === 'string') {patch.title = body.title;}
-    if (typeof body.description === 'string') {patch.description = body.description;}
-    else if (body.description === null) {patch.description = null;}
+    if (typeof body.title === 'string') {
+      patch.title = body.title;
+    }
+    if (typeof body.description === 'string') {
+      patch.description = body.description;
+    } else if (body.description === null) {
+      patch.description = null;
+    }
     if (typeof body.status === 'string' && VALID_STATUSES.includes(body.status as CardStatus)) {
       patch.status = body.status as CardStatus;
     }
 
-    return ApiResponse.json(await updateCard(ownerId, id, patch, buildActor(session, request)));
-  }
+    return ApiResponse.json(
+      await updateCard(check.ownerId, id, patch, buildActor(session, request), {
+        bypassOwnership: check.bypassOwnership,
+      }),
+    );
+  },
 );
 
 export const DELETE = withPermission(
   PERMISSIONS.KANBAN_DELETE,
   async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
-    const ownerId = session?.user?.memberId;
-    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
+    const memberId = session?.user?.memberId;
+    if (!memberId) {
+      return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    }
     const { id } = await params;
-    return ApiResponse.json(await deleteCard(ownerId, id, buildActor(session, request)));
-  }
+
+    const check = await ensureOwnerOrAllPermission(
+      memberId,
+      session.user.roles ?? [],
+      id,
+      PERMISSIONS.KANBAN_DELETE_ALL,
+    );
+    if (!check.ok) {
+      return check.response;
+    }
+
+    return ApiResponse.json(
+      await deleteCard(check.ownerId, id, buildActor(session, request), {
+        bypassOwnership: check.bypassOwnership,
+      }),
+    );
+  },
 );

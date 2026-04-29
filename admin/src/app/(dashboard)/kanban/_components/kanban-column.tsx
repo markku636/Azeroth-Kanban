@@ -13,10 +13,24 @@ interface KanbanColumnProps {
   cards: CardDto[];
   onEdit: (card: CardDto) => void;
   onDelete: (card: CardDto) => void;
-  readOnly?: boolean;
+  currentMemberId: string | null;
+  canEditOwn: boolean;
+  canDeleteOwn: boolean;
+  canEditAll: boolean;
+  canDeleteAll: boolean;
 }
 
-export function KanbanColumn({ status, cards, onEdit, onDelete, readOnly }: KanbanColumnProps) {
+export function KanbanColumn({
+  status,
+  cards,
+  onEdit,
+  onDelete,
+  currentMemberId,
+  canEditOwn,
+  canDeleteOwn,
+  canEditAll,
+  canDeleteAll,
+}: KanbanColumnProps) {
   const { t } = useTranslation();
   const config = CARD_STATUS_CONFIG[status];
   const { setNodeRef, isOver } = useDroppable({
@@ -25,14 +39,14 @@ export function KanbanColumn({ status, cards, onEdit, onDelete, readOnly }: Kanb
   });
 
   return (
-    <div className={`flex h-full min-h-[200px] w-[85%] flex-shrink-0 snap-start flex-col rounded-lg border sm:w-[320px] sm:min-w-[280px] lg:w-auto lg:min-w-0 lg:flex-shrink ${config.bg} ${config.border}`}>
+    <div
+      className={`flex h-full min-h-[200px] w-[85%] flex-shrink-0 snap-start flex-col rounded-lg border sm:w-[320px] sm:min-w-[280px] lg:w-auto lg:min-w-0 lg:flex-shrink ${config.bg} ${config.border}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between border-b border-inherit px-3 py-2.5">
         <div className="flex items-center gap-2">
           <span className="text-base">{config.emoji}</span>
-          <h2 className="text-sm font-semibold text-gray-800">
-            {t(config.labelKey)}
-          </h2>
+          <h2 className="text-sm font-semibold text-gray-800">{t(config.labelKey)}</h2>
         </div>
         <span className="rounded-full bg-gray-0/60 px-2 py-0.5 text-xs font-medium text-gray-600">
           {cards.length}
@@ -53,15 +67,22 @@ export function KanbanColumn({ status, cards, onEdit, onDelete, readOnly }: Kanb
                 {t('admin.kanban.emptyColumn')}
               </p>
             )}
-            {cards.map((card) => (
-              <KanbanCard
-                key={card.id}
-                card={card}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                readOnly={readOnly}
-              />
-            ))}
+            {cards.map((card) => {
+              const isOwn = currentMemberId !== null && card.owner.id === currentMemberId;
+              const canEdit = (isOwn && canEditOwn) || canEditAll;
+              const canDelete = (isOwn && canDeleteOwn) || canDeleteAll;
+              return (
+                <KanbanCard
+                  key={card.id}
+                  card={card}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  isOwn={isOwn}
+                />
+              );
+            })}
           </div>
         </SortableContext>
       </div>

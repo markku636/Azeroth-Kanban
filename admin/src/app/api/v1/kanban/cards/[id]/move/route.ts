@@ -6,6 +6,7 @@ import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import { withPermission } from '@/lib/with-permission';
 import { PERMISSIONS } from '@/config/permissions';
 import { moveCard, type KanbanActor } from '@/lib/kanban-service';
+import { ensureOwnerOrAllPermission } from '@/lib/kanban-permission';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 
 const VALID_STATUSES: CardStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'];
@@ -23,9 +24,21 @@ export const POST = withPermission(
   PERMISSIONS.KANBAN_EDIT,
   async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
-    const ownerId = session?.user?.memberId;
-    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
+    const memberId = session?.user?.memberId;
+    if (!memberId) {
+      return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    }
     const { id } = await params;
+
+    const check = await ensureOwnerOrAllPermission(
+      memberId,
+      session.user.roles ?? [],
+      id,
+      PERMISSIONS.KANBAN_EDIT_ALL,
+    );
+    if (!check.ok) {
+      return check.response;
+    }
 
     let body: { status?: unknown; beforeId?: unknown; afterId?: unknown };
     try {
@@ -39,15 +52,16 @@ export const POST = withPermission(
 
     return ApiResponse.json(
       await moveCard(
-        ownerId,
+        check.ownerId,
         id,
         {
           status: body.status as CardStatus,
           beforeId: typeof body.beforeId === 'string' ? body.beforeId : null,
           afterId: typeof body.afterId === 'string' ? body.afterId : null,
         },
-        buildActor(session, request)
-      )
+        buildActor(session, request),
+        { bypassOwnership: check.bypassOwnership },
+      ),
     );
-  }
+  },
 );

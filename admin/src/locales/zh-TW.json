@@ -627,7 +627,8 @@
       "statusTodo": "待處理",
       "statusInProgress": "進行中",
       "statusInReview": "待驗收",
-      "statusDone": "已完成"
+      "statusDone": "已完成",
+      "ownerYou": "我"
     },
     "userRoles": {
       "title": "使用者角色",

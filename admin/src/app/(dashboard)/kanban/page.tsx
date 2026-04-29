@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   DndContext,
   DragOverlay,
@@ -29,18 +30,21 @@ import { EditCardModal } from './_components/edit-card-modal';
 export default function KanbanPage() {
   const { t } = useTranslation();
   const confirm = useConfirm();
+  const { data: session } = useSession();
   const { board, loading, addCard, updateCard, deleteCard, moveCard } = useKanbanBoard();
   const [activeCard, setActiveCard] = useState<CardDto | null>(null);
   const [editing, setEditing] = useState<CardDto | null>(null);
   const canCreate = useHasPermission(PERMISSIONS.KANBAN_CREATE);
-  const canEdit = useHasPermission(PERMISSIONS.KANBAN_EDIT);
-  const canDelete = useHasPermission(PERMISSIONS.KANBAN_DELETE);
-  const readOnly = !canEdit && !canDelete;
+  const canEditOwn = useHasPermission(PERMISSIONS.KANBAN_EDIT);
+  const canDeleteOwn = useHasPermission(PERMISSIONS.KANBAN_DELETE);
+  const canEditAll = useHasPermission(PERMISSIONS.KANBAN_EDIT_ALL);
+  const canDeleteAll = useHasPermission(PERMISSIONS.KANBAN_DELETE_ALL);
+  const currentMemberId = session?.user?.memberId ?? null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   const cardIndex = useMemo(() => {
@@ -54,19 +58,27 @@ export default function KanbanPage() {
   const handleDragStart = (event: DragStartEvent) => {
     const id = String(event.active.id);
     const found = cardIndex.get(id);
-    if (found) {setActiveCard(board[found.status][found.index] ?? null);}
+    if (found) {
+      setActiveCard(board[found.status][found.index] ?? null);
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveCard(null);
     const { active, over } = event;
-    if (!over) {return;}
+    if (!over) {
+      return;
+    }
     const activeId = String(active.id);
     const overId = String(over.id);
-    if (activeId === overId) {return;}
+    if (activeId === overId) {
+      return;
+    }
 
     const fromInfo = cardIndex.get(activeId);
-    if (!fromInfo) {return;}
+    if (!fromInfo) {
+      return;
+    }
 
     // 解析目標 column 與 index
     let toStatus: CardStatus | null = null;
@@ -78,17 +90,15 @@ export default function KanbanPage() {
       toIndex = board[toStatus].length;
     } else {
       const overInfo = cardIndex.get(overId);
-      if (!overInfo) {return;}
+      if (!overInfo) {
+        return;
+      }
       toStatus = overInfo.status;
       toIndex = overInfo.index;
-      // 同欄拖到自己後面 → index 需要調整為「移除自己後再插入」
-      if (fromInfo.status === toStatus && fromInfo.index < overInfo.index) {
-        // dnd-kit drop on item 表示「插在該 item 之前」；同欄下移時要 +1 才算「之後」
-        // 但因為 useKanbanBoard.moveCard 內部會先 remove 自己再 insert，這裡傳遞要求位置即可
-        // 故不調整 toIndex；拿掉自己後 overInfo.index 就會自動往前 1（對齊我們在 moveCard 處理的邏輯）
-      }
     }
-    if (!toStatus) {return;}
+    if (!toStatus) {
+      return;
+    }
 
     await moveCard(activeId, toStatus, toIndex);
   };
@@ -99,7 +109,9 @@ export default function KanbanPage() {
       message: t('admin.kanban.deleteConfirm', { title: card.title }),
       type: 'danger',
     });
-    if (!ok) {return;}
+    if (!ok) {
+      return;
+    }
     await deleteCard(card.id);
   };
 
@@ -135,13 +147,23 @@ export default function KanbanPage() {
                 cards={board[status]}
                 onEdit={(c) => setEditing(c)}
                 onDelete={handleDelete}
-                readOnly={readOnly}
+                currentMemberId={currentMemberId}
+                canEditOwn={canEditOwn}
+                canDeleteOwn={canDeleteOwn}
+                canEditAll={canEditAll}
+                canDeleteAll={canDeleteAll}
               />
             ))}
           </div>
           <DragOverlay>
             {activeCard ? (
-              <KanbanCard card={activeCard} onEdit={() => undefined} onDelete={() => undefined} isOverlay />
+              <KanbanCard
+                card={activeCard}
+                onEdit={() => undefined}
+                onDelete={() => undefined}
+                isOverlay
+                isOwn={activeCard.owner.id === currentMemberId}
+              />
             ) : null}
           </DragOverlay>
         </DndContext>

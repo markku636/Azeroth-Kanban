@@ -19,10 +19,13 @@ export const PERMISSIONS = {
   LOGIN_RECORDS_VIEW: 'login_records.view',
 
   // Kanban 看板
-  KANBAN_VIEW:   'kanban.view',
-  KANBAN_CREATE: 'kanban.create',
-  KANBAN_EDIT:   'kanban.edit',
-  KANBAN_DELETE: 'kanban.delete',
+  KANBAN_VIEW:       'kanban.view',
+  KANBAN_CREATE:     'kanban.create',
+  KANBAN_EDIT:       'kanban.edit',
+  KANBAN_DELETE:     'kanban.delete',
+  KANBAN_VIEW_ALL:   'kanban.view_all',
+  KANBAN_EDIT_ALL:   'kanban.edit_all',
+  KANBAN_DELETE_ALL: 'kanban.delete_all',
 
   // 角色-權限指派
   ROLE_PERMISSIONS_VIEW: 'role_permissions.view',

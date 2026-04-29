@@ -26,6 +26,9 @@ const PERMISSIONS = [
   { code: 'kanban.create',       groupCode: 'KANBAN',          groupName: '看板',         name: '新增卡片',       description: '建立新卡片' },
   { code: 'kanban.edit',         groupCode: 'KANBAN',          groupName: '看板',         name: '編輯卡片',       description: '編輯卡片（含拖拉改狀態 / 排序）' },
   { code: 'kanban.delete',       groupCode: 'KANBAN',          groupName: '看板',         name: '刪除卡片',       description: '刪除卡片' },
+  { code: 'kanban.view_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '檢視所有卡片',   description: '檢視所有使用者建立的卡片（含 owner 資訊）' },
+  { code: 'kanban.edit_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '編輯所有卡片',   description: '編輯任何使用者的卡片（含拖拉改狀態 / 排序）' },
+  { code: 'kanban.delete_all',   groupCode: 'KANBAN',          groupName: '看板',         name: '刪除所有卡片',   description: '刪除任何使用者的卡片' },
   // ─── 角色權限管理 ───
   { code: 'role_permissions.view', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '檢視角色權限',   description: '檢視 Role-Permission 指派' },
   { code: 'role_permissions.edit', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '編輯角色權限',   description: '在 UI 指派 Role 持有的 permissions' },

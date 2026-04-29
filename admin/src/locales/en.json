@@ -614,7 +614,8 @@
       "statusTodo": "Todo",
       "statusInProgress": "In Progress",
       "statusInReview": "In Review",
-      "statusDone": "Done"
+      "statusDone": "Done",
+      "ownerYou": "You"
     },
     "userRoles": {
       "title": "User Roles",
