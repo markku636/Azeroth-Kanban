@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, k8s]
+    runs-on: gha-azeroth-kanban
     timeout-minutes: 120
     env:
       IMAGE_NAME: azeroth-kanban
