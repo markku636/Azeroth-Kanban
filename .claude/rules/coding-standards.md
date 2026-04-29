@@ -33,7 +33,7 @@
 
 - **強制使用 TypeScript**：所有程式碼必須以 `.ts` / `.tsx` 撰寫，禁止使用 `.js` / `.jsx`
 - 避免使用 `any`，僅在絕對必要的例外情況下使用
-- 善用 ESLint 與 Prettier 維持一致品質
+- 嚴格遵守專案 ESLint / Prettier 設定（詳見 §15）
 - 使用嚴格相等（`===`、`!==`），禁止使用 `==`、`!=` 鬆散比較
 
 ---
@@ -324,4 +324,79 @@ Server log 訊息格式建議：`[ClassName.methodName] 關鍵參數=值, 說明
   result.message = '操作失敗，請稍後再試';
 }
 ```
+
+---
+
+## 十五、ESLint 與 Prettier 排版規範（硬性）
+
+AI 在產出任何程式碼前，**必須**先讀取並遵守專案根目錄下的 ESLint / Prettier 設定檔，產出後也必須符合 lint 與 format 通過的狀態。這是硬性規範，AI 不得自行覆寫專案規則或產出與設定不一致的程式碼。
+
+### 15.1 設定檔來源（單一真實來源）
+
+| 工具 | 設定檔 | 優先級 |
+| --- | --- | --- |
+| ESLint | [`admin/.eslintrc.json`](../../admin/.eslintrc.json) | 專案規則 > 個人偏好 |
+| Prettier | [`admin/.prettierrc`](../../admin/.prettierrc) | 專案規則 > 個人偏好 |
+
+- 若使用者未來新增 `eslint.config.{js,mjs,ts}` 或 `prettier.config.{js,mjs,ts}`，AI 應優先讀取新版設定檔
+- AI **禁止**在程式碼內以 `// eslint-disable-*` / `// prettier-ignore` 等指令繞過規則，除非：
+  1. 使用者明確要求
+  2. 該規則確實與正確程式邏輯衝突，且已在註解中說明原因（必須包含「為何不能修」「規則名稱」）
+
+### 15.2 Prettier 必須遵守的格式設定
+
+依據 `admin/.prettierrc`，以下為硬性格式要求（AI 在產出 / 編輯程式碼時必須符合）：
+
+| 設定項 | 值 | 說明 |
+| --- | --- | --- |
+| `semi` | `true` | 行末必須加分號 |
+| `singleQuote` | `true` | TS / JS 字串使用單引號 `'`；避免雙引號 `"` |
+| `jsxSingleQuote` | `false` | JSX 屬性使用雙引號（`<Foo bar="baz" />`） |
+| `trailingComma` | `"all"` | 多行陣列 / 物件 / 參數列表末尾必須加逗號 |
+| `printWidth` | `100` | 單行最長 100 字元，超過必須換行 |
+| `tabWidth` | `2` | 縮排 2 空白 |
+| `useTabs` | `false` | 一律使用空白，禁止 tab 字元 |
+| `bracketSpacing` | `true` | 物件字面量大括號內加空白：`{ foo }` 而非 `{foo}` |
+| `bracketSameLine` | `false` | JSX 多屬性時 `>` 換行寫 |
+| `arrowParens` | `"always"` | 箭頭函式參數一律加括號：`(x) => x`，禁止 `x => x` |
+| `endOfLine` | `"lf"` | 換行符使用 LF（Unix），禁止 CRLF |
+| Tailwind class 排序 | 啟用 `prettier-plugin-tailwindcss` | 類別順序由 plugin 決定，AI 不得手動排序 |
+
+> Tailwind 函式 `cn`、`clsx`、`twMerge` 內部的 class 字串會被 plugin 自動排序，AI 在產出時不需手動排，但**字串內必須是空白分隔的合法 Tailwind utilities**。
+
+### 15.3 ESLint 必須遵守的關鍵規則
+
+依據 `admin/.eslintrc.json`，AI 產出程式碼必須避免下列違規（節錄硬性規則，非完整列表，完整以設定檔為準）：
+
+- **變數宣告**：禁止 `var`；可不被重新賦值的變數必須用 `const`（含解構：解構中只要有一個成員可為 const 就要用 const）
+- **嚴格相等**：`eqeqeq` — 必須 `===` / `!==`（與 §二 重複，雙重保險）
+- **控制流**：`curly` — `if` / `for` / `while` 一律加大括號；禁止 `else` 後僅有單一 `if`（用 `else if`）
+- **避免 dead code**：禁止空語句區塊（`no-empty`）、空函式（`no-empty-function`）、空解構（`no-empty-pattern`）
+- **避免重複**：禁止從同一模組重複 `import`（`no-duplicate-imports`）；禁止函式參數 / 物件 key / switch case 重名
+- **async/await**：`require-await` — `async` 函式內必須有 `await`，否則改為一般函式
+- **Class**：單一檔案只允許一個 class（`max-classes-per-file`）
+- **NaN 比較**：必須用 `Number.isNaN()`，禁止 `x === NaN`
+- **物件存取**：能用點號就用點號（`obj.foo`），不寫 `obj['foo']`
+- **`else return`**：`if` 區塊內 return 後不再寫 `else`（讓邏輯扁平）
+
+### 15.4 AI 自我檢查流程
+
+AI 完成程式碼編輯後，必須在心中模擬以下檢查（可視為「產出前的自審清單」）：
+
+1. **Prettier 格式**：行寬 / 引號 / 分號 / 縮排 / trailing comma 是否符合 §15.2？
+2. **ESLint 規則**：是否觸發 §15.3 列出的任一硬性違規？
+3. **Import 順序**：是否符合 §十、Import 管理？
+4. **Tailwind class**：若有 `className`，是否使用 `cn()` 包裝多條件 class？
+
+**未通過自審 → 必須先修正再回應使用者**，禁止把「請執行 `npm run lint` / `npm run format` 修一下」的任務丟回給使用者。
+
+### 15.5 推薦驗證指令（使用者端執行）
+
+| 指令 | 用途 |
+| --- | --- |
+| `npm run lint` | 跑完整 ESLint 檢查 |
+| `npx prettier --check .` | 檢查 format 是否一致 |
+| `npx prettier --write .` | 自動格式化（產出後可選用） |
+
+> AI **不應**在每次小改動後自動跑這些指令；但若使用者回報「lint / format 失敗」，AI 必須立即依錯誤訊息修正，不得忽略。
 
