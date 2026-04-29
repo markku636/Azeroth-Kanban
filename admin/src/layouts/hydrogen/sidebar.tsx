@@ -21,8 +21,8 @@ export default function Sidebar({ className }: { className?: string }) {
 
   // Filter menu items based on user permissions, hiding empty category labels
   const filteredItems = useMemo(() => {
-    if (isLoading) return menuItems;
-    if (permissions.length === 0) return menuItems;
+    if (isLoading) {return menuItems;}
+    if (permissions.length === 0) {return menuItems;}
 
     const result: MenuItem[] = [];
     let i = 0;
@@ -59,7 +59,7 @@ export default function Sidebar({ className }: { className?: string }) {
     const activeItem = filteredItems.find(
       (i) => i.href === pathname && i.showNewBadge
     );
-    if (activeItem?.href) markVisited(activeItem.href);
+    if (activeItem?.href) {markVisited(activeItem.href);}
   }, [pathname, filteredItems, markVisited]);
 
   return (
@@ -75,7 +75,14 @@ export default function Sidebar({ className }: { className?: string }) {
           aria-label="Site Logo"
           className="text-gray-800 hover:text-gray-900"
         >
-          <Image src="/logo.png" alt="IQT.AI" width={140} height={40} priority />
+          <Image
+            src="/logo.png"
+            alt="IQT.AI"
+            width={140}
+            height={40}
+            priority
+            className="h-24 w-auto max-xl:h-20"
+          />
         </Link>
       </div>
 

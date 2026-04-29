@@ -1,0 +1,28 @@
+# Build artifacts
+**/dist/
+**/.next/
+**/build/
+**/out/
+**/coverage/
+
+# Dependencies
+**/node_modules/
+
+# Prisma generated
+prisma/migrations/
+**/.prisma/
+**/@prisma/
+
+# Lockfiles
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Env / logs
+.env
+.env.*
+*.log
+
+# Misc
+.DS_Store
+.tmp/

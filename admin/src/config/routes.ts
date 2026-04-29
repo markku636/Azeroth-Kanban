@@ -1,13 +1,13 @@
 // ─── 公司端（Admin Portal）路由 ───
 export const adminRoutes = {
-  login: '/admin/login',
-  dashboard: '/admin',
-  me: '/admin/me',
-  kanban: '/admin/kanban',
-  roles: { list: '/admin/roles' },
-  userRoles: { list: '/admin/user-roles' },
-  auditLogs: '/admin/audit-logs',
-  loginRecords: '/admin/login-records',
+  login: '/login',
+  dashboard: '/kanban',
+  me: '/me',
+  kanban: '/kanban',
+  roles: { list: '/roles' },
+  userRoles: { list: '/user-roles' },
+  auditLogs: '/audit-logs',
+  loginRecords: '/login-records',
 };
 
 // 向下相容

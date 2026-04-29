@@ -4,6 +4,7 @@ import { signOut } from 'next-auth/react';
 import toast from 'react-hot-toast';
 import { ApiReturnCode, type ApiResult } from '@azeroth/common';
 import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, type Locale, SUPPORTED_LOCALES } from '@/config/i18n';
+import { routes } from '@/config/routes';
 import zhTW from '@/locales/zh-TW.json';
 import en from '@/locales/en.json';
 
@@ -22,7 +23,7 @@ const sessionExpiredMessages: Record<Locale, string> = {
 let isHandlingSessionExpired = false;
 
 function resolveLocale(): Locale {
-  if (typeof window === 'undefined') return DEFAULT_LOCALE;
+  if (typeof window === 'undefined') {return DEFAULT_LOCALE;}
   const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
   if (stored && (SUPPORTED_LOCALES as readonly string[]).includes(stored)) {
     return stored as Locale;
@@ -31,14 +32,14 @@ function resolveLocale(): Locale {
 }
 
 function handleSessionExpired(): void {
-  if (isHandlingSessionExpired) return;
+  if (isHandlingSessionExpired) {return;}
   isHandlingSessionExpired = true;
 
   const message = sessionExpiredMessages[resolveLocale()];
   toast.error(message);
 
   setTimeout(() => {
-    signOut({ callbackUrl: '/admin/login' });
+    signOut({ callbackUrl: routes.login });
   }, SESSION_EXPIRED_REDIRECT_DELAY_MS);
 }
 

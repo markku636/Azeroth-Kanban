@@ -1,3 +1,78 @@
 {
-  "extends": "next/core-web-vitals"
+  // 繼承 Next.js 官方推薦：含 React Hooks、a11y、Core Web Vitals 相關規則
+  "extends": "next/core-web-vitals",
+  "rules": {
+    // ─── 關閉的規則（與本專案風格不符）────────────────────────
+    "react/no-unescaped-entities": "off", // 允許 JSX 中直接寫 ' " < > 等字元
+    "@next/next/no-page-custom-font": "off", // 允許自訂字型載入方式
+    "@typescript-eslint/no-explicit-any": "off", // 允許使用 any（必要時）
+
+    // ─── 變數與宣告 ─────────────────────────────────────────
+    "no-var": "error", // 禁止 var，要求使用 let 或 const
+    "prefer-const": [
+      "error",
+      {
+        "destructuring": "any", // 解構中只要有一個變數可為 const，就要求改用 const
+        "ignoreReadBeforeAssign": false
+      }
+    ], // 不可被重新賦值的變數必須使用 const
+
+    // ─── 比較與控制流 ───────────────────────────────────────
+    "eqeqeq": ["error", "always"], // 強制使用 === 和 !==，禁止 == 和 !=
+    "curly": "error", // 所有控制語句（if/for/while…）必須加大括號
+    "dot-notation": "error", // 屬性存取盡可能使用點號（obj.foo 而非 obj['foo']）
+    "block-scoped-var": "error", // var 宣告的使用範圍限制在其區塊內
+
+    // ─── 類別 ───────────────────────────────────────────────
+    "max-classes-per-file": "error", // 單一檔案僅允許一個類別
+    "no-class-assign": "error", // 禁止修改類別宣告的變數
+    "no-const-assign": "error", // 禁止修改 const 宣告的變數
+    "no-dupe-class-members": "error", // 禁止類別成員出現重複名稱
+
+    // ─── 可能錯誤（Possible Errors）─────────────────────────
+    "getter-return": ["error", { "allowImplicit": true }], // getter 必須有 return（允許隱式 undefined）
+    "no-control-regex": "error", // 禁止在正則中出現控制字元
+    "no-dupe-args": "error", // 禁止函式參數重名
+    "no-dupe-keys": "error", // 禁止物件字面量出現重複 key
+    "no-duplicate-case": "error", // 禁止 switch 出現重複的 case
+    "no-empty": "error", // 禁止空語句區塊
+    "no-empty-character-class": "error", // 禁止正則中使用空字元集 []
+    "no-ex-assign": "error", // 禁止對 catch 子句的例外變數重新賦值
+    "no-func-assign": "error", // 禁止對 function 宣告重新賦值
+    "no-inner-declarations": "error", // 函式 / 變數宣告必須在頂層作用域
+    "no-irregular-whitespace": "error", // 禁止不規則的空白字元
+    "no-obj-calls": "error", // 禁止把 Math / JSON / Reflect 當函式呼叫
+    "no-unsafe-negation": "error", // 禁止對關係運算子左操作數使用否定（!a in b）
+    "require-atomic-updates": "error", // 禁止 await/yield 造成的競態條件賦值
+    "use-isnan": "error", // 比較 NaN 必須使用 Number.isNaN()
+    "valid-typeof": ["error", { "requireStringLiterals": true }], // typeof 的比較字串必須是有效的型別字面量
+
+    // ─── 最佳實踐（Best Practices）──────────────────────────
+    "no-case-declarations": "error", // case 子句中的詞法宣告必須包在大括號內
+    "no-else-return": "error", // 禁止 if-return 後再接 else
+    "no-empty-function": "error", // 禁止空函式
+    "no-empty-pattern": "error", // 禁止空解構模式
+    "no-fallthrough": ["error", { "commentPattern": "break[\\s\\w]*omitted" }], // 禁止 case 落空，註解含 "break omitted" 可豁免
+    "no-global-assign": "error", // 禁止對原生 / 唯讀的全域物件賦值
+    "no-octal": "error", // 禁用八進制字面量（如 010）
+    "no-redeclare": "error", // 禁止重複宣告同名變數
+    "no-self-assign": "error", // 禁止自我賦值（a = a）
+    "no-with": "error", // 禁用 with 語句
+    "require-await": "error", // async 函式內必須有 await
+    "no-shadow-restricted-names": "error", // 禁止以保留字命名（如 NaN、Infinity）
+    "no-lonely-if": "error", // 禁止 else 區塊內只有一個 if（應改用 else if）
+
+    // ─── ES6+ ───────────────────────────────────────────────
+    "no-duplicate-imports": "error", // 禁止從同一模組重複 import
+    "no-new-symbol": "error", // 禁止對 Symbol 使用 new
+    "require-yield": "error" // generator 函式內必須有 yield
+  },
+  "overrides": [
+    {
+      "files": ["*.json"],
+      "rules": {
+        "quotes": "off"
+      }
+    }
+  ]
 }

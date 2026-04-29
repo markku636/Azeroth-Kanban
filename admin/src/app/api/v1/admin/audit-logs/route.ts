@@ -31,12 +31,12 @@ export const GET = withPermission(
     const endDateRaw = searchParams.get('endDate');
 
     const where: Prisma.AuditLogWhereInput = {};
-    if (entityType) where.entityType = entityType;
-    if (action) where.action = action;
-    if (actorEmail) where.actorEmail = { contains: actorEmail, mode: 'insensitive' };
+    if (entityType) {where.entityType = entityType;}
+    if (action) {where.action = action;}
+    if (actorEmail) {where.actorEmail = { contains: actorEmail, mode: 'insensitive' };}
     if (startDateRaw || endDateRaw) {
       const createdAt: Prisma.DateTimeFilter = {};
-      if (startDateRaw) createdAt.gte = new Date(startDateRaw);
+      if (startDateRaw) {createdAt.gte = new Date(startDateRaw);}
       if (endDateRaw) {
         const end = new Date(endDateRaw);
         end.setDate(end.getDate() + 1);

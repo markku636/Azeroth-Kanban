@@ -24,7 +24,7 @@ export const POST = withPermission(
   async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
     const session = await auth();
     const ownerId = session?.user?.memberId;
-    if (!ownerId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    if (!ownerId) {return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');}
     const { id } = await params;
 
     let body: { status?: unknown; beforeId?: unknown; afterId?: unknown };

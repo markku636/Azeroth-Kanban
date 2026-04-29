@@ -19,7 +19,7 @@ interface KeycloakProfile {
 }
 
 function getIp(request?: Request): string | null {
-  if (!request) return null;
+  if (!request) {return null;}
   return (
     request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     request.headers.get("x-real-ip") ??
@@ -52,9 +52,9 @@ async function recordLoginEvent(data: {
 }
 
 function pickPrimaryRole(roles: readonly string[] | undefined): SystemRole | null {
-  if (!roles || roles.length === 0) return null;
+  if (!roles || roles.length === 0) {return null;}
   for (const r of ROLE_PRIORITY) {
-    if (roles.includes(r)) return r;
+    if (roles.includes(r)) {return r;}
   }
   return null;
 }
@@ -85,7 +85,7 @@ if (ALLOW_CREDENTIALS) {
         password: { label: "密碼", type: "password" },
       },
       async authorize(credentials, request) {
-        if (!credentials?.username || !credentials?.password) return null;
+        if (!credentials?.username || !credentials?.password) {return null;}
         const email = (credentials.username as string).trim().toLowerCase();
         const password = credentials.password as string;
         const ip = getIp(request as Request | undefined);
@@ -124,7 +124,7 @@ if (ALLOW_CREDENTIALS) {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers,
-  pages: { signIn: "/admin/login" },
+  pages: { signIn: "/login" },
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
 
   callbacks: {
@@ -133,7 +133,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (account?.provider === "keycloak" && profile) {
         const kcProfile = profile as KeycloakProfile;
         const sub = kcProfile.sub;
-        if (!sub) return false;
+        if (!sub) {return false;}
 
         const email =
           (kcProfile.email ?? kcProfile.preferred_username ?? `${sub}@keycloak.local`).toLowerCase();
@@ -181,8 +181,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // 第一次登入：把 memberId / roles 塞進 token
       if (user) {
         const u = user as { id?: string; roles?: string[] };
-        if (u.id) token.memberId = u.id;
-        if (u.roles) token.roles = u.roles;
+        if (u.id) {token.memberId = u.id;}
+        if (u.roles) {token.roles = u.roles;}
       }
       // Keycloak：第一次登入時還沒有 user.id（auth.ts 設計上沒有透過 adapter），補查一次 DB
       if (account?.provider === "keycloak" && profile) {
@@ -199,13 +199,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
 
-    async session({ session, token }) {
+    session({ session, token }) {
       session.user.memberId = (token.memberId as string) ?? "";
       session.user.roles = (token.roles as string[]) ?? [];
       return session;
     },
 
-    async authorized({ auth }) {
+    authorized({ auth }) {
       return !!auth?.user;
     },
   },

@@ -75,7 +75,7 @@ export default function EditModal({
   };
 
   const handleSave = async () => {
-    if (!validate()) return;
+    if (!validate()) {return;}
 
     setIsSaving(true);
     try {

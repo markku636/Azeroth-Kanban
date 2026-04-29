@@ -35,13 +35,13 @@ export function PromptDialogBody({
   const canSubmit = !required || value.trim().length > 0;
 
   const submit = () => {
-    if (!canSubmit) return;
+    if (!canSubmit) {return;}
     setLoading(true);
     onConfirm(value.trim());
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && canSubmit) submit();
+    if (e.key === 'Enter' && canSubmit) {submit();}
   };
 
   return (

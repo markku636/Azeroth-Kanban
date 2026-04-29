@@ -5,7 +5,15 @@
       "mcp__*",
       "Read(**/*.mjs)",
       "Edit(**/*.mjs)",
-      "Write(**/*.mjs)"
+      "Write(**/*.mjs)",
+      "Read(.tmp/**)",
+      "Write(.tmp/**)",
+      "Edit(.tmp/**)",
+      "Read(docs/**/*.md)",
+      "Write(docs/**/*.md)",
+      "Edit(docs/**/*.md)",
+      "Bash(mv \"e:/e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/.tmp/qa-reports/20260426-2126/screenshots/\"*.png \"e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/.tmp/qa-reports/20260426-2126/screenshots/\")",
+      "Bash(rm -rf \"e:/e\")"
     ],
     "additionalDirectories": [
       "E:\\VisualStudioProject\\IBuyPower.Apps\\IBuypower.GIT\\kanban\\.claude"

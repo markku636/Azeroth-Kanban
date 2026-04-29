@@ -1,5 +1,5 @@
 export function hexToRGB(hex: string) {
-  if (!hex) return "";
+  if (!hex) {return "";}
 
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

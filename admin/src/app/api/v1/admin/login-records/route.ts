@@ -29,11 +29,11 @@ export const GET = withPermission(
     const endDateRaw = searchParams.get('endDate');
 
     const where: Prisma.LoginRecordWhereInput = {};
-    if (email) where.email = { contains: email, mode: 'insensitive' };
-    if (status) where.status = status;
+    if (email) {where.email = { contains: email, mode: 'insensitive' };}
+    if (status) {where.status = status;}
     if (startDateRaw || endDateRaw) {
       const createdAt: Prisma.DateTimeFilter = {};
-      if (startDateRaw) createdAt.gte = new Date(startDateRaw);
+      if (startDateRaw) {createdAt.gte = new Date(startDateRaw);}
       if (endDateRaw) {
         // 結束日期包含當天：設為隔日 00:00
         const end = new Date(endDateRaw);

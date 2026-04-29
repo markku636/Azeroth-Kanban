@@ -45,7 +45,7 @@
         "http://host.docker.internal:3010"
       ],
       "attributes": {
-        "post.logout.redirect.uris": "http://localhost:3010/admin/login##http://localhost:3000/admin/login##http://host.docker.internal:3010/admin/login"
+        "post.logout.redirect.uris": "http://localhost:3010/login##http://localhost:3000/login##http://host.docker.internal:3010/login"
       },
       "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "email"],
       "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]

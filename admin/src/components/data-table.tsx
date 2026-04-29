@@ -95,7 +95,7 @@ export default function DataTable<T>({
   const isSomeSelected = selectable && allKeys.some((k) => selectedKeys?.has(k));
 
   const toggleAll = () => {
-    if (!onSelectionChange) return;
+    if (!onSelectionChange) {return;}
     if (isAllSelected) {
       // Deselect all current page items
       const next = new Set(selectedKeys);
@@ -110,7 +110,7 @@ export default function DataTable<T>({
   };
 
   const toggleOne = (key: string | number) => {
-    if (!onSelectionChange) return;
+    if (!onSelectionChange) {return;}
     const next = new Set(selectedKeys);
     if (next.has(key)) {
       next.delete(key);
@@ -190,7 +190,7 @@ export default function DataTable<T>({
                     type="checkbox"
                     title={t('common.selectAll')}
                     checked={isAllSelected}
-                    ref={(el) => { if (el) el.indeterminate = !isAllSelected && isSomeSelected; }}
+                    ref={(el) => { if (el) {el.indeterminate = !isAllSelected && isSomeSelected;} }}
                     onChange={toggleAll}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />

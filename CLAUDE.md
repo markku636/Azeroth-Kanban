@@ -150,7 +150,7 @@ npm run build
 
 預計新增：
 - `KanbanCard` Prisma model（id、title、description、status、sortOrder、createdAt、updatedAt）
-- `/admin/kanban` 頁面
+- `/kanban` 頁面
 - `/api/v1/kanban/cards` CRUD + 狀態更新 API
 - @dnd-kit 拖拉整合
 
