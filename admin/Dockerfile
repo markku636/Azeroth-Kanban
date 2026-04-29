@@ -26,7 +26,7 @@ COPY common/ ./common/
 COPY admin/  ./admin/
 COPY prisma/ ./prisma/
 
-# 產生 Prisma Client
+# 產生 Prisma Client（寫到根 /app/node_modules/@prisma/client）
 RUN npx prisma generate --schema ./prisma/schema.prisma
 
 # Build-time dummy 環境變數

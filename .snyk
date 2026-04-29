@@ -1,0 +1,17 @@
+# Snyk policy file — manual mode
+# https://docs.snyk.io/manage-risk/policies/the-.snyk-file
+
+version: v1.25.0
+
+ignore:
+  # lodash@4.17.21 — Arbitrary Code Injection (high)
+  # Transitive via @hookform/devtools (dev-only), recharts, simplebar-react, swagger-ui-react.
+  # fixedIn=4.18.1 declared by Snyk advisory but lodash 4.18.x is NOT released on npm
+  # (latest is still 4.17.21). No upstream fix path available.
+  # Re-evaluate quarterly; replace via npm overrides once lodash 4.18.x ships.
+  SNYK-JS-LODASH-15869625:
+    - '*':
+        reason: No stable fix released — lodash 4.18.x not yet on npm registry. Transitive only.
+        expires: '2026-07-29T00:00:00Z'
+
+patch: {}

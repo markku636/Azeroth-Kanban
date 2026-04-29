@@ -187,6 +187,63 @@ npm run lint
 npm run build
 ```
 
+## 資安掃描（Snyk）
+
+本專案使用 [Snyk](https://snyk.io) 做資安漏洞掃描，採**手動執行**模式（無 CI 整合）。
+
+### 快速上手
+
+```bash
+npx -y snyk@latest auth        # 一次性，會開瀏覽器登入 / 貼 API token
+npm run security:deps          # 跑第一次掃看結果
+```
+
+### 首次設定
+
+1. 註冊 Snyk 帳號（免費 plan 每月 200 tests，足夠小型專案）：https://app.snyk.io
+2. 取得 API token：https://app.snyk.io/account → Auth Token
+3. 本機認證（一次性，token 會存到 `~/.config/configstore/snyk.json`）：
+
+```bash
+npx -y snyk@latest auth
+```
+
+### 常用指令
+
+```bash
+# 掃 npm 依賴漏洞（最常用，high+critical 才報）
+npm run security:deps
+
+# 掃 docker-compose.yml 設定風險（IaC）
+npm run security:iac
+
+# 掃 base image CVE（postgres + keycloak）
+npm run security:container
+
+# 三類一起跑
+npm run security:all
+
+# 輸出 JSON 報告到 .tmp/snyk-report.json
+npm run security:report
+```
+
+### 何時該跑
+
+- `npm install` 引入新套件後
+- 升級套件版本後（特別是 framework：Next.js / Prisma / NextAuth）
+- 上版前快速 check
+- 收到 GitHub Dependabot alert 時交叉驗證
+
+### 客製 severity threshold
+
+預設只看 `high` 以上。要看全部漏洞：
+
+```bash
+npx -y snyk@latest test --all-projects --severity-threshold=low
+```
+
+> 補充：`npm audit` 是 npm 內建工具，可作為 Snyk 的快速替代（無需 token、僅掃 npm 依賴）。
+
 ## QA 自動驗收（`/qa-kanban`）
 
 本專案內建一個 Claude Code subagent — `qa-kanban`，由 [.claude/agents/qa-kanban.md](.claude/agents/qa-kanban.md) 定義，會用 [chrome-devtools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) 開實際瀏覽器跑端對端 UI 驗收，依 PRD 的 AC 逐條驗、產出帶截圖的 Markdown 報告。

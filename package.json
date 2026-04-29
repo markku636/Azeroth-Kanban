@@ -22,10 +22,22 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
-    "prisma:reset": "prisma migrate reset"
+    "prisma:reset": "prisma migrate reset",
+    "security:deps": "npx -y snyk@latest test --all-projects --severity-threshold=high --policy-path=.snyk",
+    "security:iac": "npx -y snyk@latest iac test docker-compose.yml --policy-path=.snyk",
+    "security:container": "npx -y snyk@latest container test postgres:16-alpine quay.io/keycloak/keycloak:26.0 --policy-path=.snyk",
+    "security:all": "npm run security:deps && npm run security:iac && npm run security:container",
+    "security:report": "npx -y snyk@latest test --all-projects --policy-path=.snyk --json-file-output=.tmp/snyk-report.json"
   },
   "devDependencies": {
-    "prisma": "^6.19.2",
-    "tsx": "^4.21.0"
+    "prisma": "6.19.2",
+    "tsx": "4.21.0"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.2"
+  },
+  "overrides": {
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   }
 }

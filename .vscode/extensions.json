@@ -4,7 +4,6 @@
     "dbaeumer.vscode-eslint",
     "Prisma.prisma",
     "bradlc.vscode-tailwindcss",
-    "editorconfig.editorconfig",
     "lokalise.i18n-ally"
   ]
 }
