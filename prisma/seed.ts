@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -21,23 +22,42 @@ const PERMISSIONS = [
   // ─── 稽核 ───
   { code: 'audit_logs.view',     groupCode: 'AUDIT',           groupName: '稽核',         name: '檢視稽核紀錄',   description: '檢視稽核紀錄' },
   { code: 'login_records.view',  groupCode: 'AUDIT',           groupName: '稽核',         name: '檢視登入紀錄',   description: '檢視登入紀錄' },
-  // ─── Kanban ───
-  { code: 'kanban.view',         groupCode: 'KANBAN',          groupName: '看板',         name: '檢視看板',       description: '進入 Kanban 並檢視自己的卡片' },
-  { code: 'kanban.create',       groupCode: 'KANBAN',          groupName: '看板',         name: '新增卡片',       description: '建立新卡片' },
-  { code: 'kanban.edit',         groupCode: 'KANBAN',          groupName: '看板',         name: '編輯卡片',       description: '編輯卡片（含拖拉改狀態 / 排序）' },
-  { code: 'kanban.delete',       groupCode: 'KANBAN',          groupName: '看板',         name: '刪除卡片',       description: '刪除卡片' },
-  { code: 'kanban.view_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '檢視所有卡片',   description: '檢視所有使用者建立的卡片（含 owner 資訊）' },
-  { code: 'kanban.edit_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '編輯所有卡片',   description: '編輯任何使用者的卡片（含拖拉改狀態 / 排序）' },
-  { code: 'kanban.delete_all',   groupCode: 'KANBAN',          groupName: '看板',         name: '刪除所有卡片',   description: '刪除任何使用者的卡片' },
+  // ─── Selkie 事故 ───
+  { code: 'incidents.view',      groupCode: 'INCIDENTS',       groupName: 'Selkie 事故',  name: '檢視事故',       description: '檢視自己負責的事故' },
+  { code: 'incidents.create',    groupCode: 'INCIDENTS',       groupName: 'Selkie 事故',  name: '建立事故',       description: '建立新事故' },
+  { code: 'incidents.edit',      groupCode: 'INCIDENTS',       groupName: 'Selkie 事故',  name: '編輯事故',       description: '編輯事故狀態 / 嚴重度等' },
+  { code: 'incidents.delete',    groupCode: 'INCIDENTS',       groupName: 'Selkie 事故',  name: '刪除事故',       description: '刪除事故' },
+  { code: 'incidents.view_all',  groupCode: 'INCIDENTS',       groupName: 'Selkie 事故',  name: '檢視所有事故',   description: '檢視所有使用者的事故' },
+  { code: 'incidents.triage',    groupCode: 'INCIDENTS',       groupName: 'Selkie 事故',  name: '觸發 AI 調查',   description: '觸發 Selkie agent 自動 triage 調查' },
   // ─── 角色權限管理 ───
   { code: 'role_permissions.view', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '檢視角色權限',   description: '檢視 Role-Permission 指派' },
   { code: 'role_permissions.edit', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '編輯角色權限',   description: '在 UI 指派 Role 持有的 permissions' },
+  // ─── 主動監控 ───
+  { code: 'monitors.view',   groupCode: 'MONITORS', groupName: '主動監控', name: '檢視監控',   description: '檢視監控目標列表與狀態' },
+  { code: 'monitors.create', groupCode: 'MONITORS', groupName: '主動監控', name: '新增監控',   description: '新增監控目標' },
+  { code: 'monitors.edit',   groupCode: 'MONITORS', groupName: '主動監控', name: '編輯監控',   description: '編輯監控目標 / 啟停 / 立即執行' },
+  { code: 'monitors.delete', groupCode: 'MONITORS', groupName: '主動監控', name: '刪除監控',   description: '刪除監控目標' },
+  // ─── 通知通道 ───
+  { code: 'notification_channels.view',   groupCode: 'NOTIFICATION_CHANNELS', groupName: '通知通道', name: '檢視通知通道', description: '檢視通知通道列表' },
+  { code: 'notification_channels.create', groupCode: 'NOTIFICATION_CHANNELS', groupName: '通知通道', name: '新增通知通道', description: '新增 Slack / Webhook / Console 通道' },
+  { code: 'notification_channels.edit',   groupCode: 'NOTIFICATION_CHANNELS', groupName: '通知通道', name: '編輯通知通道', description: '編輯通知通道' },
+  { code: 'notification_channels.delete', groupCode: 'NOTIFICATION_CHANNELS', groupName: '通知通道', name: '刪除通知通道', description: '刪除通知通道' },
+  // ─── 維護視窗 ───
+  { code: 'maintenance_windows.view',   groupCode: 'MAINTENANCE_WINDOWS', groupName: '維護視窗', name: '檢視維護視窗', description: '檢視排程維護視窗' },
+  { code: 'maintenance_windows.create', groupCode: 'MAINTENANCE_WINDOWS', groupName: '維護視窗', name: '新增維護視窗', description: '新增排程維護視窗' },
+  { code: 'maintenance_windows.edit',   groupCode: 'MAINTENANCE_WINDOWS', groupName: '維護視窗', name: '編輯維護視窗', description: '編輯排程維護視窗' },
+  { code: 'maintenance_windows.delete', groupCode: 'MAINTENANCE_WINDOWS', groupName: '維護視窗', name: '刪除維護視窗', description: '刪除排程維護視窗' },
 ] as const;
 
 const ROLE_PERMISSION_MATRIX: Record<string, readonly string[]> = {
   admin: PERMISSIONS.map((p) => p.code),
-  user: ['kanban.view', 'kanban.create', 'kanban.edit', 'kanban.delete'],
-  viewer: ['kanban.view'],
+  user: [
+    'incidents.view', 'incidents.create', 'incidents.edit', 'incidents.triage',
+    'monitors.view', 'monitors.create', 'monitors.edit',
+    'notification_channels.view',
+    'maintenance_windows.view',
+  ],
+  viewer: ['incidents.view', 'monitors.view'],
 };
 
 const DEFAULT_MEMBERS = [
@@ -116,12 +136,239 @@ async function seedMembers(): Promise<void> {
   console.log(`[seed] members: ${DEFAULT_MEMBERS.length}`);
 }
 
+// Selkie：範例事故。code / service 對應 selkie agent 的 mock 後端資料，
+// 確保 seed 後開箱即可對 INC-1024 / INC-1025 端到端跑 triage。
+const SAMPLE_INCIDENTS = [
+  {
+    code: 'INC-1024',
+    title: 'checkout-api 5xx 錯誤率飆升並出現 pod crashloop',
+    service: 'checkout-api',
+    description:
+      'PagerDuty 告警：checkout-api HTTP 5xx 比例 > 25% 持續 5 分鐘，多個 pod 進入 CrashLoopBackOff。',
+    source: 'pagerduty',
+    severity: 'SEV1',
+    status: 'TRIGGERED',
+  },
+  {
+    code: 'INC-1025',
+    title: 'payments-api 付款延遲與失敗率飆升',
+    service: 'payments-api',
+    description:
+      'PagerDuty 告警：payments-api HTTP 5xx > 10% 持續 5 分鐘，p99 延遲 > 5s，多筆付款逾時失敗。',
+    source: 'pagerduty',
+    severity: 'SEV2',
+    status: 'TRIGGERED',
+  },
+] as const;
+
+async function seedIncidents(): Promise<void> {
+  const owner = await prisma.member.findUnique({ where: { email: 'admin@example.com' } });
+  if (!owner) {
+    console.warn('[seed] admin member not found, skip incidents');
+    return;
+  }
+  for (const inc of SAMPLE_INCIDENTS) {
+    await prisma.incident.upsert({
+      where: { code: inc.code },
+      update: {},
+      create: { ...inc, ownerId: owner.id },
+    });
+  }
+  console.log(`[seed] incidents: ${SAMPLE_INCIDENTS.length}`);
+}
+
+// ─── 通知通道(主動監控用)───
+async function seedNotificationChannels(): Promise<Map<string, string>> {
+  const owner = await prisma.member.findUnique({ where: { email: 'admin@example.com' } });
+  if (!owner) {
+    console.warn('[seed] admin member not found, skip notification channels');
+    return new Map();
+  }
+  const channels = [
+    {
+      name: 'console-log',
+      kind: 'CONSOLE' as const,
+      config: { description: '把通知 console.log 到 admin 容器(demo / dev 用)' },
+      enabled: true,
+    },
+  ];
+  const map = new Map<string, string>();
+  for (const ch of channels) {
+    const row = await prisma.notificationChannel.upsert({
+      where: { name: ch.name },
+      update: { kind: ch.kind, config: ch.config, enabled: ch.enabled },
+      create: { ...ch, ownerId: owner.id },
+    });
+    map.set(ch.name, row.id);
+  }
+  console.log(`[seed] notification_channels: ${map.size}`);
+  return map;
+}
+
+// ─── 主動監控:對齊 simulator 注入的 5 種故障情境,涵蓋所有 check kind / log mode ───
+type SeedMonitor = {
+  name: string;
+  kind: 'HTTP' | 'TCP' | 'KEYWORD' | 'PUSH' | 'LOG';
+  service: string;
+  severity: 'SEV1' | 'SEV2' | 'SEV3' | 'SEV4';
+  autoTriage?: boolean;
+  tags?: string[];
+  groupName?: string;
+  // HTTP / KEYWORD
+  url?: string;
+  bodyKeywordInclude?: string;
+  // TCP
+  tcpHost?: string;
+  tcpPort?: number;
+  // PUSH
+  pushTimeoutSeconds?: number;
+  // LOG
+  logMode?: 'ERROR_RATE' | 'ERROR_COUNT' | 'LATENCY_P99' | 'KEYWORD';
+  logWindowMinutes?: number;
+  errorRateThreshold?: number;
+  errorCountThreshold?: number;
+  latencyP99Threshold?: number;
+  logKeyword?: string;
+  // 進階
+  severityRamp?: Array<{ atOrAbove: number; severity: 'SEV1' | 'SEV2' | 'SEV3' | 'SEV4' }>;
+};
+
+const SAMPLE_MONITORS: SeedMonitor[] = [
+  // HTTP 健康 ×5(對應 simulator 的 5 個 sim 服務)
+  { name: 'checkout-api HTTP',      kind: 'HTTP', service: 'checkout-api',      url: 'http://sim-checkout:3000/api/health',  severity: 'SEV2', autoTriage: true,  tags: ['http', 'checkout'],  groupName: '電商核心' },
+  { name: 'payments-api HTTP',      kind: 'HTTP', service: 'payments-api',      url: 'http://sim-payments:3000/api/health',  severity: 'SEV1', autoTriage: true,  tags: ['http', 'payments'],  groupName: '電商核心' },
+  { name: 'cart-service HTTP',      kind: 'HTTP', service: 'cart-service',      url: 'http://sim-cart:3000/api/health',      severity: 'SEV2', autoTriage: false, tags: ['http', 'cart'],      groupName: '電商核心' },
+  { name: 'order-service HTTP',     kind: 'HTTP', service: 'order-service',     url: 'http://sim-orders:3000/api/health',    severity: 'SEV2', autoTriage: false, tags: ['http', 'orders'],    groupName: '電商核心' },
+  { name: 'inventory-service HTTP', kind: 'HTTP', service: 'inventory-service', url: 'http://sim-inventory:3000/api/health', severity: 'SEV1', autoTriage: true,  tags: ['http', 'inventory'], groupName: '電商核心' },
+  // LOG ERROR_RATE ×5,帶嚴重度 ramp 示範
+  { name: 'checkout-api 錯誤率',     kind: 'LOG', service: 'checkout-api',     logMode: 'ERROR_RATE', logWindowMinutes: 5, errorRateThreshold: 5,  severity: 'SEV3', autoTriage: true,
+    severityRamp: [{ atOrAbove: 30, severity: 'SEV1' }, { atOrAbove: 10, severity: 'SEV2' }, { atOrAbove: 5, severity: 'SEV3' }],
+    tags: ['log', 'checkout'], groupName: '電商核心' },
+  { name: 'payments-api 錯誤率',     kind: 'LOG', service: 'payments-api',     logMode: 'ERROR_RATE', logWindowMinutes: 5, errorRateThreshold: 5,  severity: 'SEV2', autoTriage: true,
+    severityRamp: [{ atOrAbove: 30, severity: 'SEV1' }, { atOrAbove: 10, severity: 'SEV2' }],
+    tags: ['log', 'payments'], groupName: '電商核心' },
+  { name: 'cart-service 錯誤率',     kind: 'LOG', service: 'cart-service',     logMode: 'ERROR_RATE', logWindowMinutes: 5, errorRateThreshold: 10, severity: 'SEV3', tags: ['log', 'cart'],      groupName: '電商核心' },
+  { name: 'order-service 錯誤率',    kind: 'LOG', service: 'order-service',    logMode: 'ERROR_RATE', logWindowMinutes: 5, errorRateThreshold: 10, severity: 'SEV3', tags: ['log', 'orders'],    groupName: '電商核心' },
+  { name: 'inventory-service 錯誤率', kind: 'LOG', service: 'inventory-service', logMode: 'ERROR_RATE', logWindowMinutes: 5, errorRateThreshold: 10, severity: 'SEV2', tags: ['log', 'inventory'], groupName: '電商核心' },
+  // TCP
+  { name: 'checkout-api TCP 連線',   kind: 'TCP',     service: 'checkout-api', tcpHost: 'sim-checkout', tcpPort: 3000, severity: 'SEV2', tags: ['tcp', 'checkout'] },
+  // KEYWORD(HTTP + body 內容)
+  { name: 'checkout-api 健康內容',   kind: 'KEYWORD', service: 'checkout-api', url: 'http://sim-checkout:3000/api/health', bodyKeywordInclude: 'ok', severity: 'SEV3', tags: ['keyword', 'checkout'] },
+  // PUSH(範例:daily batch 必須每天 push 心跳)
+  { name: 'daily-batch 心跳',        kind: 'PUSH',    service: 'batch-jobs',    pushTimeoutSeconds: 300, severity: 'SEV2', tags: ['push', 'batch'] },
+  // LOG LATENCY_P99(對應 cart-service 的 slow 故障)
+  { name: 'cart-service p99 延遲',   kind: 'LOG', service: 'cart-service', logMode: 'LATENCY_P99', logWindowMinutes: 5, latencyP99Threshold: 5000, severity: 'SEV3',
+    severityRamp: [{ atOrAbove: 15000, severity: 'SEV1' }, { atOrAbove: 8000, severity: 'SEV2' }, { atOrAbove: 5000, severity: 'SEV3' }],
+    tags: ['log', 'latency', 'cart'] },
+];
+
+// LOG monitor 相依於對應 HTTP monitor —— HTTP 已 DOWN 時抑制 LOG 的重複告警
+const SAMPLE_DEPENDENCIES: Array<{ child: string; parent: string }> = [
+  { child: 'checkout-api 錯誤率', parent: 'checkout-api HTTP' },
+  { child: 'payments-api 錯誤率', parent: 'payments-api HTTP' },
+];
+
+async function seedMonitors(channelIdByName: Map<string, string>): Promise<void> {
+  const owner = await prisma.member.findUnique({ where: { email: 'admin@example.com' } });
+  if (!owner) {
+    console.warn('[seed] admin member not found, skip monitors');
+    return;
+  }
+  const consoleChannelId = channelIdByName.get('console-log');
+
+  // 第一輪:upsert 所有 monitors(暫不設 dependsOnMonitorId,因父監控可能尚未存在)
+  const nameToId = new Map<string, string>();
+  for (const m of SAMPLE_MONITORS) {
+    const data = {
+      name: m.name,
+      kind: m.kind,
+      service: m.service,
+      severity: m.severity,
+      autoTriage: m.autoTriage ?? false,
+      tags: m.tags ?? [],
+      groupName: m.groupName ?? null,
+      url: m.url ?? null,
+      bodyKeywordInclude: m.bodyKeywordInclude ?? null,
+      tcpHost: m.tcpHost ?? null,
+      tcpPort: m.tcpPort ?? null,
+      pushTimeoutSeconds: m.pushTimeoutSeconds ?? 600,
+      pushToken: m.kind === 'PUSH' ? randomUUID() : null,
+      logMode: m.logMode ?? null,
+      logWindowMinutes: m.logWindowMinutes ?? 5,
+      errorRateThreshold: m.errorRateThreshold ?? null,
+      errorCountThreshold: m.errorCountThreshold ?? null,
+      latencyP99Threshold: m.latencyP99Threshold ?? null,
+      logKeyword: m.logKeyword ?? null,
+      severityRamp: m.severityRamp ? (m.severityRamp as unknown as object) : null,
+      ownerId: owner.id,
+    };
+    const row = await prisma.monitor.upsert({
+      where: { name: m.name },
+      // update 時不動執行期狀態(state / consecutiveFailures / openIncidentId / 計時器欄位)
+      update: {
+        kind: data.kind,
+        service: data.service,
+        severity: data.severity,
+        autoTriage: data.autoTriage,
+        tags: data.tags,
+        groupName: data.groupName,
+        url: data.url,
+        bodyKeywordInclude: data.bodyKeywordInclude,
+        tcpHost: data.tcpHost,
+        tcpPort: data.tcpPort,
+        pushTimeoutSeconds: data.pushTimeoutSeconds,
+        logMode: data.logMode,
+        logWindowMinutes: data.logWindowMinutes,
+        errorRateThreshold: data.errorRateThreshold,
+        errorCountThreshold: data.errorCountThreshold,
+        latencyP99Threshold: data.latencyP99Threshold,
+        logKeyword: data.logKeyword,
+        severityRamp: data.severityRamp,
+      },
+      create: data,
+    });
+    nameToId.set(m.name, row.id);
+
+    // 關聯 console-log channel(若已 seed)
+    if (consoleChannelId) {
+      await prisma.monitorChannel.upsert({
+        where: { monitorId_channelId: { monitorId: row.id, channelId: consoleChannelId } },
+        update: {},
+        create: {
+          monitorId: row.id,
+          channelId: consoleChannelId,
+          notifyOnDown: true,
+          notifyOnRecovery: true,
+          notifyOnReAlert: false,
+        },
+      });
+    }
+  }
+
+  // 第二輪:設定 dependsOnMonitorId(父子皆已 upsert)
+  for (const dep of SAMPLE_DEPENDENCIES) {
+    const childId = nameToId.get(dep.child);
+    const parentId = nameToId.get(dep.parent);
+    if (childId && parentId) {
+      await prisma.monitor.update({
+        where: { id: childId },
+        data: { dependsOnMonitorId: parentId },
+      });
+    }
+  }
+
+  console.log(`[seed] monitors: ${SAMPLE_MONITORS.length}(含 ${SAMPLE_DEPENDENCIES.length} 個相依)`);
+}
+
 async function main() {
   console.log('[seed] start');
   const roleIdByName = await seedRoles();
   const permissionIdByCode = await seedPermissions();
   await seedRolePermissions(roleIdByName, permissionIdByCode);
   await seedMembers();
+  await seedIncidents();
+  const channelIdByName = await seedNotificationChannels();
+  await seedMonitors(channelIdByName);
   console.log('[seed] done');
 }
 

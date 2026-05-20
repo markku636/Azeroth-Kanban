@@ -1,0 +1,12 @@
+{
+  "incidentId": "INC-1024",
+  "name": "checkout-api OOM 導致 pod crashloop",
+  "description": "checkout-api 部署 v2.8.0(PR #482,新增未設上限的記憶體快取)後,heap 耗盡造成 OOMKilled 與 CrashLoopBackOff。",
+  "expected": {
+    "severity": ["SEV1", "SEV2"],
+    "rootCauseKeywords": ["482", "OutOfMemoryError", "快取", "eviction"],
+    "culpritService": "checkout-api",
+    "culpritDeploy": "v2.8.0",
+    "shouldRecommendRollback": true
+  }
+}

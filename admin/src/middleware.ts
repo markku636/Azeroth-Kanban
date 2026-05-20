@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = new Set<string>(["/login"]);
-const POST_LOGIN_PATH = "/kanban";
+const POST_LOGIN_PATH = "/incidents";
 
 export default auth((req: NextRequest & { auth: { user?: unknown } | null }) => {
   const { pathname } = req.nextUrl;

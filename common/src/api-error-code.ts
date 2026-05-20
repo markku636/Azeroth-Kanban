@@ -20,14 +20,6 @@ export const ApiErrorCode = {
     MAX_LENGTH:  'validation.max_length',
     INVALID:     'validation.invalid',
   },
-  KANBAN: {
-    CARD_NOT_FOUND:      'kanban.card_not_found',
-    FORBIDDEN_NOT_OWNER: 'kanban.forbidden_not_owner',
-    INVALID_STATUS:      'kanban.invalid_status',
-    TITLE_REQUIRED:      'kanban.title_required',
-    TITLE_TOO_LONG:      'kanban.title_too_long',
-    DESCRIPTION_TOO_LONG:'kanban.description_too_long',
-  },
   ROLE_PERMISSIONS: {
     ROLE_NOT_FOUND:       'role_permissions.role_not_found',
     PERMISSION_NOT_FOUND: 'role_permissions.permission_not_found',
@@ -45,7 +37,6 @@ export const ApiErrorCode = {
 export type ApiErrorCodeValue =
   | (typeof ApiErrorCode.AUTH)[keyof typeof ApiErrorCode.AUTH]
   | (typeof ApiErrorCode.VALIDATION)[keyof typeof ApiErrorCode.VALIDATION]
-  | (typeof ApiErrorCode.KANBAN)[keyof typeof ApiErrorCode.KANBAN]
   | (typeof ApiErrorCode.ROLE_PERMISSIONS)[keyof typeof ApiErrorCode.ROLE_PERMISSIONS]
   | (typeof ApiErrorCode.RATE_LIMIT)[keyof typeof ApiErrorCode.RATE_LIMIT]
   | (typeof ApiErrorCode.SYSTEM)[keyof typeof ApiErrorCode.SYSTEM];

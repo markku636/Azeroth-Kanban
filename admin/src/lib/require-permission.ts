@@ -6,7 +6,7 @@ import { hasPermission } from '@/lib/permission-service';
  * Server-side per-page RBAC guard.
  *
  * - 未登入 → redirect /login
- * - 登入但缺 permission → redirect /kanban
+ * - 登入但缺 permission → redirect /incidents
  *
  * 用於 server `layout.tsx`：
  *   await requirePermission(PERMISSIONS.ROLES_VIEW);
@@ -19,6 +19,6 @@ export async function requirePermission(code: string): Promise<void> {
   const roles = (session.user.roles ?? []) as string[];
   const ok = await hasPermission(roles, code);
   if (!ok) {
-    redirect('/kanban');
+    redirect('/incidents');
   }
 }

@@ -21,34 +21,14 @@ model Member {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  kanbanCards  KanbanCard[]
+  incidents            Incident[]
+  agentRuns            AgentRun[]
+  monitors             Monitor[]
+  notificationChannels NotificationChannel[]
+  maintenanceWindows   MaintenanceWindow[]
 
   @@index([isActive])
   @@map("members")
-}
-
-// ─── Kanban 卡片 ───
-enum CardStatus {
-  TODO
-  IN_PROGRESS
-  IN_REVIEW
-  DONE
-}
-
-model KanbanCard {
-  id          String     @id @default(cuid())
-  title       String     @db.VarChar(120)
-  description String?    @db.VarChar(2000)
-  status      CardStatus @default(TODO)
-  sortOrder   Int        @map("sort_order")
-  ownerId     String     @map("owner_id")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-
-  owner Member @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  @@index([ownerId, status, sortOrder], name: "idx_owner_status_order")
-  @@map("kanban_card")
 }
 
 // ─── 角色 ───
@@ -130,4 +110,275 @@ model LoginRecord {
   @@index([status])
   @@index([createdAt])
   @@map("login_records")
+}
+
+// ─── Selkie 事故 ───
+enum IncidentStatus {
+  TRIGGERED
+  INVESTIGATING
+  MITIGATING
+  RESOLVED
+}
+
+enum IncidentSeverity {
+  SEV1
+  SEV2
+  SEV3
+  SEV4
+}
+
+model Incident {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  title       String            @db.VarChar(200)
+  service     String
+  description String?           @db.VarChar(4000)
+  source      String            @default("manual")
+  status      IncidentStatus    @default(TRIGGERED)
+  severity    IncidentSeverity?
+  triggeredAt DateTime          @default(now()) @map("triggered_at")
+  ownerId     String            @map("owner_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  owner            Member         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  agentRuns        AgentRun[]
+  agentMessages    AgentMessage[]
+  monitorsOpenedBy Monitor[]      @relation("MonitorOpenIncident")
+
+  @@index([ownerId, status])
+  @@index([createdAt])
+  @@map("incidents")
+}
+
+// ─── Selkie agent 執行紀錄 ───
+enum AgentRunStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+model AgentRun {
+  id             String         @id @default(cuid())
+  incidentId     String         @map("incident_id")
+  status         AgentRunStatus @default(QUEUED)
+  threadId       String         @map("thread_id")
+  finalSummary   String?        @map("final_summary") @db.Text
+  reportMarkdown String?        @map("report_markdown") @db.Text
+  error          String?        @db.Text
+  startedAt      DateTime?      @map("started_at")
+  finishedAt     DateTime?      @map("finished_at")
+  createdById    String         @map("created_by_id")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  incident  Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  createdBy Member   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@map("agent_runs")
+}
+
+// ─── Selkie 事故對話訊息 ───
+// 事故詳情頁的「追問 Selkie」面板:triage 完成後,使用者可在同一事故上繼續對話。
+// 後續提問透過該事故最新一次成功 AgentRun 的 threadId,沿用 LangGraph checkpointer 記憶。
+enum AgentMessageRole {
+  USER
+  ASSISTANT
+}
+
+model AgentMessage {
+  id          String           @id @default(cuid())
+  incidentId  String           @map("incident_id")
+  role        AgentMessageRole
+  content     String           @db.Text
+  createdById String?          @map("created_by_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId, createdAt])
+  @@map("agent_messages")
+}
+
+// ─── 主動監控(Uptime-Kuma 進階版)───
+// admin/src/instrumentation.ts → admin/src/lib/monitor-engine.ts 內建排程引擎,
+// 定期執行 monitor 的檢查(HTTP / TCP / KEYWORD / PUSH / LOG)、判斷嚴重度、
+// 自動建事故 / 自動解決、依通知通道 fan-out。
+
+enum MonitorKind {
+  HTTP
+  TCP
+  KEYWORD
+  PUSH
+  LOG
+}
+
+enum MonitorState {
+  PENDING
+  UP
+  DOWN
+  PAUSED
+  MAINTENANCE
+}
+
+enum MonitorCheckResult {
+  OK
+  FAIL
+  SKIPPED
+  MAINTENANCE
+}
+
+enum MonitorLogMode {
+  ERROR_RATE
+  ERROR_COUNT
+  LATENCY_P99
+  KEYWORD
+}
+
+enum NotificationChannelKind {
+  SLACK_WEBHOOK
+  GENERIC_WEBHOOK
+  CONSOLE
+}
+
+model Monitor {
+  id                    String              @id @default(cuid())
+  name                  String              @unique @db.VarChar(120)
+  kind                  MonitorKind
+  enabled               Boolean             @default(true)
+  // 通用設定
+  intervalSeconds       Int                 @default(60) @map("interval_seconds")
+  severity              IncidentSeverity    @default(SEV3)
+  severityRamp          Json?               @map("severity_ramp")
+  autoTriage            Boolean             @default(false) @map("auto_triage")
+  failureThreshold      Int                 @default(2) @map("failure_threshold")
+  reAlertMinutes        Int                 @default(0) @map("re_alert_minutes")
+  incidentTitleTemplate String?             @map("incident_title_template") @db.VarChar(300)
+  // HTTP / KEYWORD —— url 是「容器主機名」(如 sim-checkout),與 service 是兩件事
+  url                   String?
+  httpMethod            String?             @map("http_method") @db.VarChar(10)
+  httpHeaders           Json?               @map("http_headers")
+  httpBody              String?             @map("http_body") @db.Text
+  expectedStatusLow     Int                 @default(200) @map("expected_status_low")
+  expectedStatusHigh    Int                 @default(299) @map("expected_status_high")
+  bodyKeywordInclude    String?             @map("body_keyword_include") @db.VarChar(200)
+  bodyKeywordExclude    String?             @map("body_keyword_exclude") @db.VarChar(200)
+  timeoutMs             Int                 @default(5000) @map("timeout_ms")
+  // TCP
+  tcpHost               String?             @map("tcp_host")
+  tcpPort               Int?                @map("tcp_port")
+  // PUSH
+  pushToken             String?             @map("push_token") @db.VarChar(64)
+  pushTimeoutSeconds    Int                 @default(600) @map("push_timeout_seconds")
+  lastPushAt            DateTime?           @map("last_push_at")
+  // LOG —— service 同時是 ES service.keyword 與 Incident.service(邏輯服務名)
+  service               String?
+  logMode               MonitorLogMode?     @map("log_mode")
+  logWindowMinutes      Int                 @default(5) @map("log_window_minutes")
+  logLevel              String              @default("ERROR") @map("log_level") @db.VarChar(20)
+  errorRateThreshold    Float?              @map("error_rate_threshold")
+  errorCountThreshold   Int?                @map("error_count_threshold")
+  latencyP99Threshold   Int?                @map("latency_p99_threshold")
+  logKeyword            String?             @map("log_keyword") @db.VarChar(200)
+  // 維護視窗(一次性快速設定)
+  maintenanceUntil      DateTime?           @map("maintenance_until")
+  // 標籤 / 分組
+  tags                  String[]
+  groupName             String?             @map("group_name") @db.VarChar(80)
+  // 相依
+  dependsOnMonitorId    String?             @map("depends_on_monitor_id")
+  // 活躍時段 JSON:{ timezone, weekdays:[0..6], startHour, endHour }
+  activeSchedule        Json?               @map("active_schedule")
+  // 執行期狀態
+  state                 MonitorState        @default(PENDING)
+  consecutiveFailures   Int                 @default(0) @map("consecutive_failures")
+  lastCheckedAt         DateTime?           @map("last_checked_at")
+  lastResult            MonitorCheckResult? @map("last_result")
+  lastLatencyMs         Int?                @map("last_latency_ms")
+  lastMagnitude         Float?              @map("last_magnitude")
+  openIncidentId        String?             @map("open_incident_id")
+  lastNotifiedAt        DateTime?           @map("last_notified_at")
+  // 擁有者 + 時間戳
+  ownerId               String              @map("owner_id")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  owner              Member              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  openIncident       Incident?           @relation("MonitorOpenIncident", fields: [openIncidentId], references: [id], onDelete: SetNull)
+  dependsOn          Monitor?            @relation("MonitorDependency", fields: [dependsOnMonitorId], references: [id], onDelete: SetNull)
+  dependents         Monitor[]           @relation("MonitorDependency")
+  checks             MonitorCheck[]
+  channelLinks       MonitorChannel[]
+  maintenanceWindows MaintenanceWindow[]
+
+  @@index([enabled, lastCheckedAt])
+  @@index([ownerId])
+  @@index([kind])
+  @@map("monitors")
+}
+
+model MonitorCheck {
+  id        String             @id @default(cuid())
+  monitorId String             @map("monitor_id")
+  result    MonitorCheckResult
+  // 量測值:errorRate %、latencyMs、errorCount、push 延遲秒數、或 1/0(binary)
+  magnitude Float?
+  latencyMs Int?               @map("latency_ms")
+  detail    String?            @db.VarChar(500)
+  checkedAt DateTime           @default(now()) @map("checked_at")
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, checkedAt])
+  @@map("monitor_checks")
+}
+
+model MaintenanceWindow {
+  id          String   @id @default(cuid())
+  monitorId   String?  @map("monitor_id")
+  startsAt    DateTime @map("starts_at")
+  endsAt      DateTime @map("ends_at")
+  reason      String?  @db.VarChar(300)
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  monitor   Monitor? @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  createdBy Member   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([startsAt, endsAt])
+  @@index([monitorId])
+  @@map("maintenance_windows")
+}
+
+model NotificationChannel {
+  id        String                  @id @default(cuid())
+  name      String                  @unique @db.VarChar(120)
+  kind      NotificationChannelKind
+  // config JSON:Slack 用 { webhookUrl };Generic 用 { url, headers? };Console 不需 config
+  config    Json
+  enabled   Boolean                 @default(true)
+  ownerId   String                  @map("owner_id")
+  createdAt DateTime                @default(now()) @map("created_at")
+  updatedAt DateTime                @updatedAt @map("updated_at")
+
+  owner    Member           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  monitors MonitorChannel[]
+
+  @@map("notification_channels")
+}
+
+model MonitorChannel {
+  id               String  @id @default(cuid())
+  monitorId        String  @map("monitor_id")
+  channelId        String  @map("channel_id")
+  notifyOnDown     Boolean @default(true) @map("notify_on_down")
+  notifyOnRecovery Boolean @default(true) @map("notify_on_recovery")
+  notifyOnReAlert  Boolean @default(false) @map("notify_on_re_alert")
+
+  monitor Monitor             @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  channel NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, channelId])
+  @@map("monitor_channels")
 }

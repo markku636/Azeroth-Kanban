@@ -52,4 +52,5 @@ yarn-error.log*
 .env*.local
 google-credentials.json
 *-credentials.json
+service-account*.json
 .next

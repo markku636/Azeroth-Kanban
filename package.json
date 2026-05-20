@@ -4,13 +4,14 @@
   "private": true,
   "workspaces": [
     "common",
+    "selkie",
     "admin"
   ],
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   },
   "scripts": {
-    "dev": "npm run build --workspace=common && npm run dev --workspace=admin",
+    "dev": "npm run build --workspace=common && npm run build --workspace=selkie && npm run dev --workspace=admin",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",

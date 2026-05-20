@@ -1,0 +1,10 @@
+{
+  "name": "selkie-simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "混沌模擬器 —— 對 sim 服務持續發流量、排程注入故障、發告警給 Selkie",
+  "scripts": {
+    "start": "node index.mjs"
+  }
+}

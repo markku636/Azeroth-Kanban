@@ -1,0 +1,4 @@
+# 確保 shell script 一律使用 LF 換行。
+# Windows 上 git core.autocrlf 可能把 .sh 轉成 CRLF，導致 Docker 容器內
+# /bin/sh 執行 entrypoint.sh 時報 "set: illegal option -"。
+*.sh text eol=lf

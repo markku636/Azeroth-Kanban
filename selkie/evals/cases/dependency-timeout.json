@@ -1,0 +1,12 @@
+{
+  "incidentId": "INC-1025",
+  "name": "payments-api 因下游 bank-gateway 逾時而失敗",
+  "description": "下游 bank-gateway 部署 v3.4.0(PR #219,連線池上限由 200 調為 8)後,payments-api 大量 SocketTimeoutException 與付款失敗。",
+  "expected": {
+    "severity": ["SEV1", "SEV2"],
+    "rootCauseKeywords": ["bank-gateway", "219", "連線池", "timeout"],
+    "culpritService": "bank-gateway",
+    "culpritDeploy": "v3.4.0",
+    "shouldRecommendRollback": true
+  }
+}
