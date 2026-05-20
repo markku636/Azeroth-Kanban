@@ -1,9 +1,12 @@
 // ─── 公司端（Admin Portal）路由 ───
 export const adminRoutes = {
   login: '/login',
-  dashboard: '/kanban',
+  dashboard: '/incidents',
   me: '/me',
-  kanban: '/kanban',
+  incidents: '/incidents',
+  monitors: '/monitors',
+  notificationChannels: '/notification-channels',
+  maintenanceWindows: '/maintenance-windows',
   roles: { list: '/roles' },
   userRoles: { list: '/user-roles' },
   auditLogs: '/audit-logs',

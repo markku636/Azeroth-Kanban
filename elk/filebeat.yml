@@ -1,0 +1,41 @@
+# Filebeat —— 收集 sim-service 容器的結構化 JSON 日誌,送進 Elasticsearch。
+# 只收 sim-* 容器(Selkie 要調查的模擬微服務);其餘容器日誌丟棄,
+# 讓 selkie-logs-* 索引維持乾淨、只含結構化的微服務日誌。
+
+filebeat.inputs:
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+
+processors:
+  # 補上 container.name / container.image 等 metadata（drop_event 的判斷依據）
+  - add_docker_metadata:
+      host: 'unix:///var/run/docker.sock'
+  # 只保留 sim-* 微服務的日誌
+  - drop_event:
+      when:
+        not:
+          regexp:
+            container.name: '^sim-'
+  # sim-service 的 JSON 日誌 → 解析成 service / level / msg / status / durationMs 等頂層欄位
+  - decode_json_fields:
+      fields: ['message']
+      target: ''
+      overwrite_keys: true
+      add_error_key: false
+      max_depth: 2
+
+# 索引到 selkie-logs-*（Selkie 真實後端 query_logs / query_metrics 查此索引）
+output.elasticsearch:
+  hosts: ['http://elasticsearch:9200']
+  index: 'selkie-logs-%{+yyyy.MM.dd}'
+
+setup.template.name: 'selkie-logs'
+setup.template.pattern: 'selkie-logs-*'
+# 不安裝 filebeat 的 ECS 索引範本 —— 改由 ES 動態 mapping。
+# 原因:ECS 範本把 service 對應成「物件」,與 sim-service 的 service 字串欄位衝突
+#       (ES 回 status=400、事件被丟棄);且該範本內含 data_stream 設定。停用後即正常。
+setup.template.enabled: false
+setup.ilm.enabled: false
+
+logging.level: warning

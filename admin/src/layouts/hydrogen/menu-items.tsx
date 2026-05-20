@@ -6,7 +6,8 @@ import {
   PiShieldWarningDuotone,
   PiUserGearDuotone,
   PiClipboardTextDuotone,
-  PiKanbanDuotone,
+  PiWarningOctagonDuotone,
+  PiPulseDuotone,
 } from "react-icons/pi";
 
 export interface MenuItem {
@@ -25,12 +26,20 @@ export const menuItems: MenuItem[] = [
     icon: <PiUserCircleDuotone />,
   },
 
-  // ── Kanban ──
+  // ── Selkie 事故 ──
   {
-    name: "admin.menu.kanban",
-    href: routes.kanban,
-    icon: <PiKanbanDuotone />,
-    requiredPermission: PERMISSIONS.KANBAN_VIEW,
+    name: "Selkie 事故",
+    href: routes.incidents,
+    icon: <PiWarningOctagonDuotone />,
+    requiredPermission: PERMISSIONS.INCIDENTS_VIEW,
+  },
+
+  // ── 主動監控 ──
+  {
+    name: "主動監控",
+    href: routes.monitors,
+    icon: <PiPulseDuotone />,
+    requiredPermission: PERMISSIONS.MONITORS_VIEW,
   },
 
   // ── RBAC ──

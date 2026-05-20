@@ -1,3 +1,38 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  Selkie —— 擬真 oncall 事故調查環境(docker compose)
+# ═══════════════════════════════════════════════════════════════════════
+# 12 個服務:
+#   基礎       postgres / keycloak / admin(Selkie app)
+#   ELK        elasticsearch / kibana / filebeat
+#   模擬微服務  sim-checkout / sim-payments / sim-cart / sim-orders / sim-inventory
+#   驅動        simulator(產生流量 + 排程注入故障 + 發告警)
+#
+# 事故流程(全真實):simulator 對某個 sim 服務注入故障(記憶體洩漏 / 5xx /
+# 變慢 / cpu 飽和 / crash)→ 服務產生真實錯誤日誌 → filebeat 收集進
+# Elasticsearch → simulator 同時 POST 告警到 admin 的 Selkie webhook →
+# Selkie 自動建立事故並查「真實的 ES」做 triage。
+#
+# ⚠️ 資源:ELK + 5 個 Next 實例 + 既有 3 容器較吃記憶體;ES heap 已限縮至
+#         512m,建議 Docker Desktop 配置 ≥ 6GB 記憶體。
+
+# ─── 5 個 sim-service 共用設定(同一映像,以 SERVICE_NAME 區分)───
+# 映像只由 sim-checkout 建置一次(image: selkie-sim-service:local),其餘 4 個共用,
+# 避免多個服務並行 build 同一 image tag 而衝突。
+x-sim-service: &sim-service
+  image: selkie-sim-service:local
+  restart: unless-stopped
+  expose:
+    - "3000"
+  healthcheck:
+    test:
+      - CMD
+      - node
+      - -e
+      - "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+    interval: 15s
+    timeout: 5s
+    retries: 5
+    start_period: 30s
 
 services:
   # ─── PostgreSQL 資料庫 ───
@@ -50,7 +85,66 @@ services:
       retries: 10
       start_period: 30s
 
-  # ─── 後台管理 (Next.js Admin) ───
+  # ─── Elasticsearch —— 日誌儲存(Selkie 真實後端查詢的對象)───
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: selkie-elasticsearch
+    restart: unless-stopped
+    environment:
+      node.name: selkie-es
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.ml.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      # heap 限縮以控管記憶體用量
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  # ─── Kibana —— 人類瀏覽 / 對照真實日誌的 UI ───
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: selkie-kibana
+    restart: unless-stopped
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5601/api/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
+
+  # ─── Filebeat —— 收集所有容器 stdout → Elasticsearch（索引 selkie-logs-*）───
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.15.3
+    container_name: selkie-filebeat
+    restart: unless-stopped
+    user: root
+    # -strict.perms=false：bind-mount 進來的 filebeat.yml 權限不符 filebeat 預設要求
+    command: ["filebeat", "-e", "-strict.perms=false"]
+    volumes:
+      - ./elk/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  # ─── 後台管理 (Next.js Admin) —— Selkie 事故調查 app ───
   admin:
     build:
       context: .
@@ -76,6 +170,22 @@ services:
       POSTGRES_PORT: "5432"
       # 啟動時自動跑 seed（idempotent / upsert）；想跳過設為 false
       SEED_ON_START: ${SEED_ON_START:-true}
+      # ─── Selkie agent — Gemini on Vertex AI ───
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-}
+      GOOGLE_CLOUD_LOCATION: ${GOOGLE_CLOUD_LOCATION:-global}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
+      GEMINI_MODEL_FAST: ${GEMINI_MODEL_FAST:-gemini-2.5-flash-lite}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/service-account.json
+      # 每個模型的並發呼叫上限；低配額專案維持 1（序列化呼叫,避免 429）
+      GEMINI_MAX_CONCURRENCY: ${GEMINI_MAX_CONCURRENCY:-1}
+      # ─── Selkie 工具後端 —— real:查真實的 Elasticsearch ───
+      TOOL_BACKEND: real
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      # ─── 告警 webhook 共用密鑰（須與 simulator 一致）───
+      SELKIE_WEBHOOK_SECRET: ${SELKIE_WEBHOOK_SECRET:-selkie-dev-secret}
+    # Selkie 呼叫 Vertex AI 用的 GCP service account 金鑰（掛載為唯讀）。
+    volumes:
+      - ./service-account.json:/app/service-account.json:ro
     ports:
       - "3010:3000"
     extra_hosts:
@@ -85,9 +195,84 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "require('http').get('http://localhost:3000/login',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 90s
+
+  # ─── 模擬微服務 ×5（同一 Next.js 映像，以 SERVICE_NAME 區分）───
+  # 各服務 ↔ 故障模式對齊 selkie env-metadata，讓 deploy-correlator 找得到合理肇因。
+  sim-checkout:
+    <<: *sim-service
+    # 唯一帶 build 的 sim 服務 —— 建置出 selkie-sim-service:local 供 5 個實例共用
+    build:
+      context: ./sim-service
+    container_name: sim-checkout
+    environment:
+      SERVICE_NAME: checkout-api
+
+  sim-payments:
+    <<: *sim-service
+    container_name: sim-payments
+    environment:
+      SERVICE_NAME: payments-api
+
+  sim-cart:
+    <<: *sim-service
+    container_name: sim-cart
+    environment:
+      SERVICE_NAME: cart-service
+
+  sim-orders:
+    <<: *sim-service
+    container_name: sim-orders
+    environment:
+      SERVICE_NAME: order-service
+
+  sim-inventory:
+    <<: *sim-service
+    container_name: sim-inventory
+    environment:
+      SERVICE_NAME: inventory-service
+
+  # ─── 混沌驅動器 —— 產生流量 + 排程注入故障 + 發告警 ───
+  simulator:
+    build:
+      context: ./simulator
+    image: selkie-simulator:local
+    container_name: selkie-simulator
+    restart: unless-stopped
+    environment:
+      ADMIN_URL: http://admin:3000
+      SELKIE_WEBHOOK_SECRET: ${SELKIE_WEBHOOK_SECRET:-selkie-dev-secret}
+      # 故障排程節奏（毫秒）可在此覆寫；預設見 simulator/index.mjs
+      # STARTUP_DELAY_MS / ALERT_DELAY_MS / FAILURE_DURATION_MS / GAP_MS
+    depends_on:
+      admin:
+        condition: service_healthy
+      sim-checkout:
+        condition: service_started
+      sim-payments:
+        condition: service_started
+      sim-cart:
+        condition: service_started
+      sim-orders:
+        condition: service_started
+      sim-inventory:
+        condition: service_started
 
 volumes:
   postgres_data:
     driver: local
   keycloak_data:
+    driver: local
+  es_data:
     driver: local
