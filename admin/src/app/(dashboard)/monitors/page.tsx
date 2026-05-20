@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   PiPlusBold,
   PiPulseDuotone,
-  PiTagDuotone,
   PiPlugsConnectedDuotone,
 } from 'react-icons/pi';
 import toast from 'react-hot-toast';
 
 import { PERMISSIONS } from '@/config/permissions';
-import StatusBadge, { type StatusType } from '@/components/status-badge';
 import { useHasPermission } from '@/hooks/use-permissions';
+import { MonitorsKumaView } from '@/components/monitors/MonitorsKumaView';
 
 interface MonitorRow {
   id: string;
@@ -32,14 +31,7 @@ interface MonitorRow {
   openIncidentId: string | null;
 }
 
-const STATE_COLOR: Record<string, StatusType> = {
-  UP: 'success',
-  DOWN: 'error',
-  PENDING: 'pending',
-  PAUSED: 'free',
-  MAINTENANCE: 'info',
-};
-
+// 篩選下拉選單用,STATE_COLOR / SEV_COLOR 已搬到 MonitorsKumaView 內部。
 const STATE_LABEL: Record<string, string> = {
   UP: 'UP',
   DOWN: 'DOWN',
@@ -54,13 +46,6 @@ const KIND_LABEL: Record<string, string> = {
   KEYWORD: '關鍵字',
   PUSH: '心跳',
   LOG: '日誌',
-};
-
-const SEV_COLOR: Record<string, StatusType> = {
-  SEV1: 'error',
-  SEV2: 'warning',
-  SEV3: 'info',
-  SEV4: 'free',
 };
 
 export default function MonitorsPage() {
@@ -115,17 +100,6 @@ export default function MonitorsPage() {
       }),
     [monitors, kindFilter, stateFilter, search],
   );
-
-  const grouped = useMemo(() => {
-    const map = new Map<string, MonitorRow[]>();
-    for (const m of filtered) {
-      const key = m.groupName ?? '未分組';
-      const arr = map.get(key) ?? [];
-      arr.push(m);
-      map.set(key, arr);
-    }
-    return Array.from(map.entries());
-  }, [filtered]);
 
   return (
     <div className="p-6">
@@ -186,96 +160,12 @@ export default function MonitorsPage() {
         <div className="ml-auto text-xs text-gray-400">{filtered.length} / {monitors.length} 個監控</div>
       </div>
 
-      {loading ? (
-        <div className="rounded-lg border border-gray-200 bg-gray-0 p-8 text-center shadow dark:bg-gray-100">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-r-transparent" />
-          <p className="mt-4 text-sm text-gray-500">載入中...</p>
-        </div>
-      ) : grouped.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-gray-0 p-8 text-center text-sm text-gray-500 shadow dark:bg-gray-100">
-          {monitors.length === 0 ? '尚未設定任何監控。點右上角「新增監控」開始。' : '沒有符合篩選的監控。'}
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {grouped.map(([group, rows]) => (
-            <div key={group}>
-              <h2 className="mb-2 text-xs font-semibold uppercase text-gray-400">{group}</h2>
-              <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-0 shadow dark:bg-gray-100">
-                <table className="w-full text-sm">
-                  <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500 dark:bg-gray-200/30">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">狀態</th>
-                      <th className="px-4 py-2 font-medium">名稱</th>
-                      <th className="px-4 py-2 font-medium">類型</th>
-                      <th className="px-4 py-2 font-medium">服務 / 目標</th>
-                      <th className="px-4 py-2 font-medium">嚴重度</th>
-                      <th className="px-4 py-2 font-medium">間隔</th>
-                      <th className="px-4 py-2 font-medium">最後檢查</th>
-                      <th className="px-4 py-2 font-medium">標籤</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((m) => (
-                      <tr
-                        key={m.id}
-                        onClick={() => router.push(`/monitors/${m.id}`)}
-                        className="cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-200/20"
-                      >
-                        <td className="px-4 py-2">
-                          <StatusBadge
-                            status={STATE_COLOR[m.state] ?? 'info'}
-                            label={STATE_LABEL[m.state] ?? m.state}
-                            size="sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2 font-medium text-gray-900">
-                          {m.name}
-                          {!m.enabled && <span className="ml-2 text-xs text-gray-400">(停用)</span>}
-                        </td>
-                        <td className="px-4 py-2 text-gray-600">{KIND_LABEL[m.kind] ?? m.kind}</td>
-                        <td className="px-4 py-2 font-mono text-xs text-gray-700">
-                          {m.service ?? m.url ?? '-'}
-                        </td>
-                        <td className="px-4 py-2">
-                          <StatusBadge
-                            status={SEV_COLOR[m.severity] ?? 'info'}
-                            label={m.severity}
-                            size="sm"
-                          />
-                        </td>
-                        <td className="px-4 py-2 text-gray-600">{m.intervalSeconds}s</td>
-                        <td className="px-4 py-2 text-xs text-gray-500">
-                          {m.lastCheckedAt
-                            ? new Date(m.lastCheckedAt).toLocaleString('zh-TW')
-                            : '尚未檢查'}
-                          {m.lastLatencyMs != null && (
-                            <span className="ml-2 text-gray-400">{m.lastLatencyMs}ms</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2">
-                          {m.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {m.tags.slice(0, 3).map((t) => (
-                                <span
-                                  key={t}
-                                  className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                                >
-                                  <PiTagDuotone className="h-3 w-3" />
-                                  {t}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <MonitorsKumaView
+        monitors={filtered}
+        loading={loading}
+        onMonitorClick={(id) => router.push(`/monitors/${id}`)}
+      />
+
 
       {createOpen && (
         <CreateMonitorModal
