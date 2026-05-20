@@ -54,3 +54,6 @@ google-credentials.json
 *-credentials.json
 service-account*.json
 .next
+
+# ─── selkie (@azeroth/selkie) build artifacts ───
+selkie/dist/
