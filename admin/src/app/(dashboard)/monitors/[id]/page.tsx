@@ -16,6 +16,8 @@ import toast from 'react-hot-toast';
 import { PERMISSIONS } from '@/config/permissions';
 import StatusBadge, { type StatusType } from '@/components/status-badge';
 import { useHasPermission } from '@/hooks/use-permissions';
+import { HeartbeatBar } from '@/components/monitors/HeartbeatBar';
+import { PingChart } from '@/components/monitors/PingChart';
 
 interface MonitorCheck {
   id: string;
@@ -69,6 +71,21 @@ interface MonitorDetail {
   recentChecks: MonitorCheck[];
 }
 
+/** /api/v1/monitors/[id]/stats 的回傳:後端算好的 24h/7d/30d uptime 與 avg/p95 latency。 */
+interface MonitorStats {
+  uptime: { '24h': number | null; '7d': number | null; '30d': number | null };
+  latency: { avgMs: number | null; p95Ms: number | null };
+  recentChecks: Array<{
+    id: string;
+    result: string;
+    magnitude: number | null;
+    latencyMs: number | null;
+    detail: string | null;
+    checkedAt: string;
+  }>;
+  totalChecks: number;
+}
+
 const STATE_COLOR: Record<string, StatusType> = {
   UP: 'success',
   DOWN: 'error',
@@ -92,6 +109,7 @@ export default function MonitorDetailPage() {
   const canDelete = useHasPermission(PERMISSIONS.MONITORS_DELETE);
 
   const [monitor, setMonitor] = useState<MonitorDetail | null>(null);
+  const [stats, setStats] = useState<MonitorStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -111,11 +129,25 @@ export default function MonitorDetailPage() {
     }
   }, [id]);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/v1/monitors/${id}/stats`);
+      const json = await res.json();
+      if (json.success) setStats(json.data as MonitorStats);
+    } catch {
+      // 靜默失敗 —— heartbeat 區會 fallback 到 monitor.recentChecks
+    }
+  }, [id]);
+
   useEffect(() => {
     void fetchMonitor();
-    const timer = setInterval(fetchMonitor, 15_000);
+    void fetchStats();
+    const timer = setInterval(() => {
+      void fetchMonitor();
+      void fetchStats();
+    }, 15_000);
     return () => clearInterval(timer);
-  }, [fetchMonitor]);
+  }, [fetchMonitor, fetchStats]);
 
   const toggleEnabled = async () => {
     if (!monitor) return;
@@ -206,8 +238,14 @@ export default function MonitorDetailPage() {
     );
   }
 
-  // 計算 uptime stats(從 recentChecks)
-  const stats = computeStats(monitor.recentChecks);
+  // stats 來自後端 /api/v1/monitors/[id]/stats,沒抓到就 fallback 用 monitor.recentChecks
+  const heartbeatChecks = stats?.recentChecks ?? monitor.recentChecks.map((c) => ({
+    id: c.id,
+    result: c.result,
+    latencyMs: c.latencyMs,
+    detail: c.detail,
+    checkedAt: c.checkedAt,
+  }));
 
   return (
     <div className="p-6">
@@ -280,43 +318,31 @@ export default function MonitorDetailPage() {
           </div>
         </div>
 
-        {/* 統計卡 */}
-        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatCard label="近 50 筆 Uptime" value={`${stats.uptimePct.toFixed(0)}%`} />
-          <StatCard label="平均延遲" value={stats.avgLatency != null ? `${stats.avgLatency.toFixed(0)}ms` : '-'} />
-          <StatCard label="P95 延遲" value={stats.p95Latency != null ? `${stats.p95Latency.toFixed(0)}ms` : '-'} />
+        {/* 統計卡 —— 用後端 /stats 端點的 24h/7d/30d uptime + avg/p95 latency */}
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-6">
+          <StatCard label="24h Uptime" value={formatPct(stats?.uptime['24h'])} />
+          <StatCard label="7d Uptime" value={formatPct(stats?.uptime['7d'])} />
+          <StatCard label="30d Uptime" value={formatPct(stats?.uptime['30d'])} />
+          <StatCard label="平均延遲" value={formatMs(stats?.latency.avgMs)} />
+          <StatCard label="P95 延遲" value={formatMs(stats?.latency.p95Ms)} />
           <StatCard label="連續失敗" value={String(monitor.consecutiveFailures)} />
         </div>
 
-        {/* Heartbeat bar */}
+        {/* Heartbeat bar + ping chart */}
         <div className="mb-6 rounded-lg border border-gray-200 bg-gray-0 p-4 shadow dark:bg-gray-100">
-          <h2 className="mb-2 text-sm font-semibold text-gray-900">最近 50 次檢查</h2>
-          {monitor.recentChecks.length === 0 ? (
-            <p className="text-xs text-gray-400">尚未檢查</p>
-          ) : (
-            <div className="flex gap-0.5">
-              {monitor.recentChecks
-                .slice()
-                .reverse()
-                .map((c) => (
-                  <div
-                    key={c.id}
-                    title={`${new Date(c.checkedAt).toLocaleTimeString('zh-TW')} - ${c.result}${c.detail ? ` (${c.detail})` : ''}`}
-                    className={`h-6 w-1.5 rounded ${
-                      c.result === 'OK'
-                        ? 'bg-emerald-500'
-                        : c.result === 'FAIL'
-                        ? 'bg-red-500'
-                        : c.result === 'MAINTENANCE'
-                        ? 'bg-blue-400'
-                        : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
-            </div>
-          )}
-          <div className="mt-2 text-xs text-gray-400">
-            最新 → 左 / 最舊 → 右(綠 OK,紅 FAIL,藍 維護,灰 略過)
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">最近 50 次檢查</h2>
+            <span className="text-xs text-gray-400">
+              綠 OK · 紅 FAIL · 琥珀 維護 · 灰 略過
+            </span>
+          </div>
+          <HeartbeatBar
+            checks={heartbeatChecks}
+            size="lg"
+            fallbackLastResult={monitor.lastResult}
+          />
+          <div className="mt-4">
+            <PingChart checks={heartbeatChecks} size="lg" gradientId={`pingGrad-${id}`} />
           </div>
         </div>
 
@@ -487,14 +513,12 @@ function Item({ label, full, children }: { label: string; full?: boolean; childr
   );
 }
 
-function computeStats(checks: MonitorCheck[]): { uptimePct: number; avgLatency: number | null; p95Latency: number | null } {
-  if (checks.length === 0) return { uptimePct: 100, avgLatency: null, p95Latency: null };
-  const okOrMaintenance = checks.filter((c) => c.result === 'OK' || c.result === 'MAINTENANCE').length;
-  const uptimePct = (okOrMaintenance / checks.length) * 100;
-  const latencies = checks.map((c) => c.latencyMs).filter((x): x is number => typeof x === 'number');
-  if (latencies.length === 0) return { uptimePct, avgLatency: null, p95Latency: null };
-  const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-  const sorted = [...latencies].sort((a, b) => a - b);
-  const p95 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
-  return { uptimePct, avgLatency: avg, p95Latency: p95 };
+function formatPct(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return `${v.toFixed(2)}%`;
+}
+
+function formatMs(v: number | null | undefined): string {
+  if (v == null) return '—';
+  return `${Math.round(v)} ms`;
 }

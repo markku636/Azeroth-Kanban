@@ -28,9 +28,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PiPulseDuotone, PiTagDuotone } from "react-icons/pi";
-import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from "recharts";
 
 import StatusBadge, { type StatusType } from "@/components/status-badge";
+
+import { HeartbeatBar } from "./HeartbeatBar";
+import { PingChart } from "./PingChart";
 
 /** 由 page.tsx 傳進來的 monitor 列表項(對齊 /api/v1/monitors 的回傳)。 */
 export interface MonitorRow {
@@ -300,132 +302,4 @@ function formatMs(v: number | null | undefined): string {
   return `${v} ms`;
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// HeartbeatBar ── 50 格直條
-// ────────────────────────────────────────────────────────────────────────────
-
-const SLOTS = 50;
-
-function HeartbeatBar({
-  checks,
-  fallbackLastResult,
-}: {
-  checks: Array<{ result: string; latencyMs: number | null; detail: string | null; checkedAt: string }>;
-  fallbackLastResult: string | null;
-}) {
-  // recentChecks 是「desc」(新→舊),要倒成「舊→新」才符合視覺上「左舊右新」
-  const ordered = [...checks].reverse();
-  const tail = ordered.slice(-SLOTS);
-  const padding = SLOTS - tail.length;
-
-  // 沒抓到 stats 的退路:用 lastResult 畫一格
-  if (tail.length === 0 && fallbackLastResult) {
-    return (
-      <div className="flex h-7 items-end gap-[2px]">
-        {Array.from({ length: SLOTS - 1 }).map((_, i) => (
-          <span key={i} className="h-7 w-1.5 rounded-sm bg-gray-200" />
-        ))}
-        <span
-          className={`h-7 w-1.5 animate-pulse rounded-sm ${resultColor(fallbackLastResult)}`}
-          title={fallbackLastResult}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-7 items-end gap-[2px] overflow-hidden">
-      {Array.from({ length: padding }).map((_, i) => (
-        <span key={`p-${i}`} className="h-7 w-1.5 rounded-sm bg-gray-200" />
-      ))}
-      {tail.map((c, i) => {
-        const isLast = i === tail.length - 1;
-        const title = `${new Date(c.checkedAt).toLocaleString("zh-TW")} · ${c.latencyMs ?? "-"}ms · ${c.detail ?? c.result}`;
-        return (
-          <span
-            key={c.checkedAt + i}
-            title={title}
-            className={`h-7 w-1.5 rounded-sm ${resultColor(c.result)} ${isLast ? "animate-pulse" : ""}`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function resultColor(result: string): string {
-  switch (result) {
-    case "OK":
-      return "bg-emerald-500";
-    case "FAIL":
-      return "bg-rose-500";
-    case "MAINTENANCE":
-      return "bg-amber-400";
-    case "SKIPPED":
-      return "bg-gray-300";
-    default:
-      return "bg-gray-200";
-  }
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// PingChart ── 用 Recharts 畫近 50 次回應時間
-// ────────────────────────────────────────────────────────────────────────────
-
-function PingChart({
-  checks,
-}: {
-  checks: Array<{ result: string; latencyMs: number | null; checkedAt: string }>;
-}) {
-  const ordered = [...checks].reverse();
-  const data = ordered.slice(-50).map((c, i) => ({
-    i,
-    ms: c.result === "OK" ? c.latencyMs ?? 0 : 0,
-    result: c.result,
-    timestamp: c.checkedAt,
-  }));
-
-  if (data.length < 2) return <div className="h-12 w-full" />;
-
-  return (
-    <div className="h-12 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="kumaPingGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2563eb" stopOpacity={0.4} />
-              <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <YAxis hide domain={[0, "dataMax + 20"]} />
-          <Tooltip
-            cursor={{ stroke: "#94a3b8", strokeWidth: 1 }}
-            contentStyle={{
-              background: "white",
-              border: "1px solid #e2e8f0",
-              borderRadius: 6,
-              fontSize: 11,
-              padding: "4px 8px",
-            }}
-            labelFormatter={() => ""}
-            formatter={(value, _name, p) => {
-              const pt = p?.payload as { result: string; timestamp: string } | undefined;
-              return [
-                `${value} ms · ${pt?.result ?? ""}`,
-                pt?.timestamp ? new Date(pt.timestamp).toLocaleTimeString("zh-TW") : "",
-              ];
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="ms"
-            stroke="#2563eb"
-            strokeWidth={1.5}
-            fill="url(#kumaPingGrad)"
-            isAnimationActive={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+// HeartbeatBar 與 PingChart 已抽到 ./HeartbeatBar、./PingChart,讓 detail 頁也能用。
