@@ -8,6 +8,8 @@ import {
   PiClipboardTextDuotone,
   PiWarningOctagonDuotone,
   PiPulseDuotone,
+  PiBellRingingDuotone,
+  PiClockCountdownDuotone,
 } from "react-icons/pi";
 
 export interface MenuItem {
@@ -40,6 +42,18 @@ export const menuItems: MenuItem[] = [
     href: routes.monitors,
     icon: <PiPulseDuotone />,
     requiredPermission: PERMISSIONS.MONITORS_VIEW,
+  },
+  {
+    name: "通知通道",
+    href: routes.notificationChannels,
+    icon: <PiBellRingingDuotone />,
+    requiredPermission: PERMISSIONS.NOTIFICATION_CHANNELS_VIEW,
+  },
+  {
+    name: "維護視窗",
+    href: routes.maintenanceWindows,
+    icon: <PiClockCountdownDuotone />,
+    requiredPermission: PERMISSIONS.MAINTENANCE_WINDOWS_VIEW,
   },
 
   // ── RBAC ──

@@ -319,9 +319,76 @@ function CreateMonitorModal({ onClose, onCreated }: CreateProps) {
     tags: '',
   });
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const update = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  /** 把 form state 組成送給 API 的 payload(create + test draft 共用)。 */
+  const buildPayload = (): Record<string, unknown> => {
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(),
+      kind: form.kind,
+      intervalSeconds: Number(form.intervalSeconds),
+      severity: form.severity,
+      failureThreshold: Number(form.failureThreshold),
+      autoTriage: form.autoTriage,
+      tags: form.tags
+        .split(/[,;\s]+/)
+        .map((t) => t.trim())
+        .filter(Boolean),
+    };
+    if (form.service.trim()) payload.service = form.service.trim();
+    if (form.kind === 'HTTP' || form.kind === 'KEYWORD') {
+      payload.url = form.url.trim();
+      if (form.bodyKeywordInclude.trim()) payload.bodyKeywordInclude = form.bodyKeywordInclude.trim();
+    }
+    if (form.kind === 'TCP') {
+      payload.tcpHost = form.tcpHost.trim();
+      payload.tcpPort = Number(form.tcpPort);
+    }
+    if (form.kind === 'PUSH') {
+      payload.pushTimeoutSeconds = Number(form.pushTimeoutSeconds);
+    }
+    if (form.kind === 'LOG') {
+      payload.logMode = form.logMode;
+      payload.logWindowMinutes = Number(form.logWindowMinutes);
+      if (form.logMode === 'ERROR_RATE') payload.errorRateThreshold = Number(form.errorRateThreshold);
+      if (form.logMode === 'ERROR_COUNT') payload.errorCountThreshold = Number(form.errorCountThreshold);
+      if (form.logMode === 'LATENCY_P99') payload.latencyP99Threshold = Number(form.latencyP99Threshold);
+      if (form.logMode === 'KEYWORD') payload.logKeyword = form.logKeyword.trim();
+    }
+    return payload;
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    try {
+      const res = await fetch('/api/v1/monitors/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildPayload()),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        toast.error(json.message ?? '測試失敗');
+        return;
+      }
+      const r = json.data as { result: string; detail?: string | null; latencyMs?: number | null };
+      const tag = r.result === 'OK' ? '✓' : r.result === 'FAIL' ? '✗' : '○';
+      const latency = r.latencyMs != null ? ` (${r.latencyMs}ms)` : '';
+      const detail = r.detail ? ` — ${r.detail}` : '';
+      if (r.result === 'OK') {
+        toast.success(`${tag} ${r.result}${latency}`);
+      } else {
+        toast.error(`${tag} ${r.result}${latency}${detail}`);
+      }
+    } catch {
+      toast.error('測試失敗');
+    } finally {
+      setTesting(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) {
@@ -330,42 +397,10 @@ function CreateMonitorModal({ onClose, onCreated }: CreateProps) {
     }
     setSaving(true);
     try {
-      const payload: Record<string, unknown> = {
-        name: form.name.trim(),
-        kind: form.kind,
-        intervalSeconds: Number(form.intervalSeconds),
-        severity: form.severity,
-        failureThreshold: Number(form.failureThreshold),
-        autoTriage: form.autoTriage,
-        tags: form.tags
-          .split(/[,;\s]+/)
-          .map((t) => t.trim())
-          .filter(Boolean),
-      };
-      if (form.service.trim()) payload.service = form.service.trim();
-      if (form.kind === 'HTTP' || form.kind === 'KEYWORD') {
-        payload.url = form.url.trim();
-        if (form.bodyKeywordInclude.trim()) payload.bodyKeywordInclude = form.bodyKeywordInclude.trim();
-      }
-      if (form.kind === 'TCP') {
-        payload.tcpHost = form.tcpHost.trim();
-        payload.tcpPort = Number(form.tcpPort);
-      }
-      if (form.kind === 'PUSH') {
-        payload.pushTimeoutSeconds = Number(form.pushTimeoutSeconds);
-      }
-      if (form.kind === 'LOG') {
-        payload.logMode = form.logMode;
-        payload.logWindowMinutes = Number(form.logWindowMinutes);
-        if (form.logMode === 'ERROR_RATE') payload.errorRateThreshold = Number(form.errorRateThreshold);
-        if (form.logMode === 'ERROR_COUNT') payload.errorCountThreshold = Number(form.errorCountThreshold);
-        if (form.logMode === 'LATENCY_P99') payload.latencyP99Threshold = Number(form.latencyP99Threshold);
-        if (form.logMode === 'KEYWORD') payload.logKeyword = form.logKeyword.trim();
-      }
       const res = await fetch('/api/v1/monitors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(buildPayload()),
       });
       const json = await res.json();
       if (json.success) {
@@ -537,13 +572,23 @@ function CreateMonitorModal({ onClose, onCreated }: CreateProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-3">
-          <button onClick={onClose} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
-            取消
+        <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-5 py-3">
+          <button
+            onClick={() => void handleTest()}
+            disabled={testing || saving}
+            className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+            title="不存 DB,直接跑一次看看結果"
+          >
+            {testing ? '測試中...' : '測試一次'}
           </button>
-          <button onClick={() => void handleSubmit()} disabled={saving} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {saving ? '建立中...' : '建立'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+              取消
+            </button>
+            <button onClick={() => void handleSubmit()} disabled={saving} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+              {saving ? '建立中...' : '建立'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

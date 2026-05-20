@@ -95,6 +95,58 @@ export async function runOnce(monitorId: string): Promise<CheckResult | null> {
   return result;
 }
 
+/**
+ * 跑一次「草稿設定」測試 —— 不寫 DB、不過閘門、不開事故。
+ * 用於前端「測試一次」按鈕,在儲存前先驗證設定是否正確。
+ */
+export async function runDraft(input: Record<string, unknown>): Promise<CheckResult> {
+  const kind = String(input.kind ?? '').toUpperCase();
+  if (!['HTTP', 'TCP', 'KEYWORD', 'PUSH', 'LOG'].includes(kind)) {
+    return { result: 'FAIL', detail: `kind 必須為 HTTP/TCP/KEYWORD/PUSH/LOG,收到:${input.kind}` };
+  }
+  // 用合理預設值組合一個 in-memory Monitor 物件(只填 runCheck 會用到的欄位)
+  const spec = {
+    id: 'draft',
+    name: typeof input.name === 'string' ? input.name : 'draft',
+    kind: kind as Monitor['kind'],
+    url: typeof input.url === 'string' ? input.url : null,
+    httpMethod: typeof input.httpMethod === 'string' ? input.httpMethod : 'GET',
+    httpHeaders: input.httpHeaders ?? null,
+    httpBody: typeof input.httpBody === 'string' ? input.httpBody : null,
+    expectedStatusLow: Number(input.expectedStatusLow ?? 200),
+    expectedStatusHigh: Number(input.expectedStatusHigh ?? 299),
+    bodyKeywordInclude: typeof input.bodyKeywordInclude === 'string' ? input.bodyKeywordInclude : null,
+    bodyKeywordExclude: typeof input.bodyKeywordExclude === 'string' ? input.bodyKeywordExclude : null,
+    timeoutMs: Number(input.timeoutMs ?? 5000),
+    tcpHost: typeof input.tcpHost === 'string' ? input.tcpHost : null,
+    tcpPort: input.tcpPort != null ? Number(input.tcpPort) : null,
+    pushTimeoutSeconds: Number(input.pushTimeoutSeconds ?? 600),
+    lastPushAt: input.lastPushAt instanceof Date ? input.lastPushAt : null,
+    service: typeof input.service === 'string' ? input.service : null,
+    logMode: typeof input.logMode === 'string' ? (input.logMode as Monitor['logMode']) : null,
+    logWindowMinutes: Number(input.logWindowMinutes ?? 5),
+    logLevel: typeof input.logLevel === 'string' ? input.logLevel : 'ERROR',
+    errorRateThreshold: input.errorRateThreshold != null ? Number(input.errorRateThreshold) : null,
+    errorCountThreshold: input.errorCountThreshold != null ? Number(input.errorCountThreshold) : null,
+    latencyP99Threshold: input.latencyP99Threshold != null ? Number(input.latencyP99Threshold) : null,
+    logKeyword: typeof input.logKeyword === 'string' ? input.logKeyword : null,
+  } as unknown as Monitor;
+  try {
+    return await runCheck(spec);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { result: 'FAIL', detail: `runCheck 異常:${msg.slice(0, 200)}` };
+  }
+}
+
+/** 手動觸發一次 PUSH 心跳(由 /api/v1/monitors/[id]/push 呼叫;只更新 lastPushAt)。 */
+export async function recordPushHeartbeat(monitorId: string): Promise<void> {
+  await prisma.monitor.update({
+    where: { id: monitorId },
+    data: { lastPushAt: new Date() },
+  });
+}
+
 async function runCheckWithGates(monitor: MonitorWithChannels): Promise<CheckResult> {
   if (await isInMaintenance(monitor)) {
     const r: CheckResult = { result: 'SKIPPED', detail: 'in maintenance window' };

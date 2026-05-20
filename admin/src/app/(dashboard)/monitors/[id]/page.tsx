@@ -9,6 +9,7 @@ import {
   PiTrashBold,
   PiPulseDuotone,
   PiWarningOctagonDuotone,
+  PiLightningBold,
 } from 'react-icons/pi';
 import toast from 'react-hot-toast';
 
@@ -158,6 +159,32 @@ export default function MonitorDetailPage() {
     }
   };
 
+  const handleRunNow = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/v1/monitors/${id}/check`, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        const r = json.data as { result: string; detail?: string | null; latencyMs?: number | null };
+        const tag = r.result === 'OK' ? '✓' : r.result === 'FAIL' ? '✗' : '○';
+        const detail = r.detail ? ` — ${r.detail}` : '';
+        const latency = r.latencyMs != null ? ` (${r.latencyMs}ms)` : '';
+        if (r.result === 'OK') {
+          toast.success(`${tag} ${r.result}${latency}`);
+        } else {
+          toast.error(`${tag} ${r.result}${latency}${detail}`);
+        }
+        void fetchMonitor();
+      } else {
+        toast.error(json.message ?? '執行失敗');
+      }
+    } catch {
+      toast.error('執行失敗');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -219,6 +246,17 @@ export default function MonitorDetailPage() {
             )}
           </div>
           <div className="flex shrink-0 gap-2">
+            {canEdit && (
+              <button
+                onClick={() => void handleRunNow()}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+                title="立即執行一次檢查"
+              >
+                <PiLightningBold className="h-3.5 w-3.5" />
+                立即執行
+              </button>
+            )}
             {canEdit && (
               <button
                 onClick={() => void toggleEnabled()}
