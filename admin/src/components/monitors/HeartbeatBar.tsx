@@ -11,8 +11,10 @@
 interface HeartbeatCheck {
   id?: string;
   result: string;
-  latencyMs: number | null;
-  detail: string | null;
+  /** 公開 status page 不傳此欄,故 optional */
+  latencyMs?: number | null;
+  /** 公開 status page 不傳此欄(避免外洩內部錯誤訊息),故 optional */
+  detail?: string | null;
   checkedAt: string;
 }
 
