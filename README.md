@@ -1,47 +1,44 @@
-# Azeroth Kanban
+# Stock Deep Agent
 
-個人 Kanban 看板系統（4 欄式 + 拖拉 + RBAC + i18n）
-
-## 實作過程記錄
-https://github.com/markku636/Azeroth-Kanban/blob/main/thinking-roadmap/index.md
+台股 AI 機器人：股票資料層 + 技術分析 + Deep Agent / LLM 編排 + 背景 Job（BullMQ worker）+ 警報引擎 + LINE Bot 推播，建構於基本登入與 RBAC 骨架之上。
 
 ## 本地運行
 1. docker compose up -d
 2. 訪問 http://localhost:3010/
 
-## 佈署到自己家的K8S，需要開機才訪問的到
-https://azeroth-kanban.markkulab.net/admin/kanban 
-
-
 ## 功能總覽
-- **四欄看板**：待處理 / 進行中 / 待驗收 / 已完成
-- **卡片 CRUD**：頁面頂端 inline 表單新增、Modal 編輯（含 emoji 狀態下拉）、卡片 hover 浮現編輯 / 刪除 icon
-- **拖拉同步**：跨欄與欄內排序，後端 sortOrder 演算法（整數 + 中位數 + normalize）
+- **股票資料層**：watchlist、日 K 快取、買賣訊號、研究報告、背景 Job 執行記錄
+- **技術分析 + Deep Agent**：worker 端跑指標計算與 **Claude** LLM 編排（單一 LLM 供應商，原 Gemini Vertex 已收斂移除），產出訊號與每日研究報告
+- **進階投資策略指標**：趨勢動能（DMI/ADX、%R、CCI、OBV、BIAS、SAR、背離）、三大法人連買 streak、估值河流圖（PER/PBR/殖利率位階）、5 因子多策略可調權重評分（綜合 / 價值 / 動能 / 籌碼 / 存股）、10 策略選股器
+- **警報引擎**：價格突破 / RSI 超買超賣 / 法人連買 / 估值便宜 / 背離 等條件，達標自動推播（當日去重）
+- **LINE Bot**：webhook 接收訂閱 + 主動推播（訊號 / 警報）
+- **後台 Console**：`/stock-bot/console` 模擬、手動觸發、排程管理
+- **關注清單獨立頁**：`/stock-bot/watchlist` 排序 / 篩選 + 一鍵全部分析 / 研究 + KD 紅綠燈結論 + 目標 / 停損價到價提醒（複用 Alert 引擎，零 schema 異動）
 - **RBAC 權限**：admin / user / viewer 三角色，Role-Permission 可在 UI 即時調整
-- **跨使用者隔離**：每個使用者只能看 / 改自己的卡片（admin 也是）
 - **i18n**：zh-TW / en 雙語，含 API 錯誤碼翻譯（`ApiErrorCode` 雙碼制）
-- **RWD**：< lg 看板改水平捲動 + snap、Modal 手機版 bottom-sheet、TouchSensor 長按啟動拖拉
 - **稽核**：登入紀錄與操作紀錄頁可查
 - **一鍵啟動**：`docker compose up -d` 同時起 postgres + admin（自動 migrate + seed）
+
+> 模組設計細節見 [`docs/stock-bot-README.md`](./docs/stock-bot-README.md) 與 `docs/specs/` 各份 Spec。
 
 ## 技術選型
 
 | 項目 | 選用 | 理由 |
 | --- | --- | --- |
 | 語言 | TypeScript 5.8（strict mode） | 全面型別安全 |
-| 前端 | Next.js 15 App Router + React 19 | SSR + RSC，單一專案前後端 |
+| 前端 | Next.js 16 App Router + React 19 | SSR + RSC，單一專案前後端 |
 | 樣式 | Tailwind CSS 3 + RizzUI 1.0 | 快速刻 UI、設計一致性 |
 | 深色模式 | next-themes | 系統偏好偵測 + 切換持久化 |
 | 後端 | Next.js Route Handlers | 單一 runtime 維護 |
+| 背景 Job | BullMQ worker（`worker/`） | 抓 K 線、技術分析、報告生成、警報檢查 |
 | 資料庫 | PostgreSQL 16 | Docker 啟動即可 |
 | ORM | Prisma 6 | 型別安全、migration / seed 內建 |
 | 認證 | NextAuth v5 + bcryptjs | Credentials provider 主流程；保留 Keycloak provider 供未來擴充 |
 | 表單 | react-hook-form + Zod | 受控表單 + schema 驗證 |
 | 狀態管理 | Jotai | 原子化 store、低樣板 |
 | 表格 | TanStack Table v8 + rc-table | 角色 / 稽核 / 登入紀錄列表 |
-| 拖拉 | @dnd-kit (core / sortable / utilities) | React 19 相容、Pointer / Touch / Keyboard 三 sensor |
 | Toast | react-hot-toast | 輕量、簡單 API |
-| i18n | 自製 useTranslation hook + JSON 字典 | 支援巢狀 key + `{{var}}` 插值，無 next-intl 重構成本 |
+| i18n | 自製 useTranslation hook + JSON 字典 | 支援巢狀 key + `{{var}}` 插值 |
 | 部署 | Docker Compose（一鍵）+ Helm chart（K8s） | 本機與正式環境皆覆蓋 |
 
 ## 安裝與啟動
@@ -60,7 +57,7 @@ docker compose logs admin -f      # 看到 [entrypoint] seed: ✅ success 即可
 容器啟動時會自動：
 1. 等 postgres healthy
 2. `prisma migrate deploy` 套用 schema
-3. `prisma db seed` 建立 3 個角色 + 14 個權限 + role-permission 矩陣 + 3 預設帳號（idempotent，多次啟動安全）
+3. `prisma db seed` 建立角色 + 權限 + role-permission 矩陣 + 預設帳號（idempotent，多次啟動安全）
 4. 啟動 Next.js
 
 ### B. 本機 dev
@@ -91,19 +88,22 @@ npm run dev
 
 | Email | 密碼 | Role | 可做什麼 |
 | --- | --- | --- | --- |
-| `admin@example.com` | `Admin@1234` | admin | 全部 14 個權限（Kanban + 角色 / 權限 / 稽核管理） |
-| `user@example.com` | `User@1234` | user | Kanban 看板 CRUD（自己的卡片） |
-| `viewer@example.com` | `Viewer@1234` | viewer | Kanban 看板唯讀（只能看自己的卡片） |
-
-> 三個角色的 Kanban 視圖一律以 `ownerId = session.userId` 過濾，admin 也只看得到自己的卡片。跨使用者管理需求不在面試作業範圍內。
+| `admin@example.com` | `Admin@1234` | admin | 全部權限（股票機器人 + 角色 / 權限 / 稽核管理） |
+| `user@example.com` | `User@1234` | user | 管理關注股、檢視訊號 / 研究報告 |
+| `viewer@example.com` | `Viewer@1234` | viewer | 檢視訊號 / 研究報告（唯讀） |
 
 ## 主要頁面
 
 | 路徑 | 內容 |
 | --- | --- |
 | `/login` | 帳密登入頁 |
-| `/` | Dashboard 入口（登入後自動導向 `/kanban`） |
-| `/kanban` | Kanban 看板（4 欄 + 拖拉 + inline 新增 + 編輯 Modal） |
+| `/` | 入口（登入後自動導向 `/stock-bot/console`） |
+| `/stock-bot/console` | 股票機器人後台 console（K 線 / 模擬對話 / 關注 / 訊號 / 報告 / 警報） |
+| `/stock-bot/watchlist` | 關注清單獨立頁（排序 / 篩選 / 一鍵全部分析研究 / KD 紅綠燈 / 目標停損價） |
+| `/stock-bot/screener` | 選股器 / 飆股雷達（10 策略 + 可切評分策略） |
+| `/stock-bot/market` | 大盤 / 類股 + 國際盤 + AI 盤勢報告 |
+| `/stock-bot/monitor` | Worker / Job 監控、排程編輯、立即執行、執行紀錄（`STOCK_BOT_ADMIN`） |
+| `/stock-bot/glossary`、`/stock-bot/about` | 名詞速查字典、資料來源說明 |
 | `/me` | 個人資訊 |
 | `/roles` | 角色管理 + Role-Permission 勾選 Modal（admin 限定） |
 | `/user-roles` | 使用者-角色指派（admin 限定） |
@@ -117,48 +117,38 @@ npm run dev
 │   └── src/
 │       ├── api-response.ts          # ApiResult / ApiResponse
 │       ├── api-error-code.ts        # 結構化錯誤碼字典
+│       ├── stock-types.ts           # 股票相關共用型別
 │       └── index.ts                 # barrel export
-├── admin/                           # Next.js 15 後台
+├── admin/                           # Next.js 16 後台
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── admin/
-│   │   │   │   ├── login/
-│   │   │   │   └── (dashboard)/
-│   │   │   │       ├── kanban/      # ← Kanban 頁（page.tsx + _components / _lib）
-│   │   │   │       ├── me/
-│   │   │   │       ├── roles/
-│   │   │   │       ├── user-roles/
-│   │   │   │       ├── audit-logs/
-│   │   │   │       └── login-records/
+│   │   │   ├── login/
+│   │   │   ├── (dashboard)/
+│   │   │   │   ├── stock-bot/       # ← 股票機器人 console
+│   │   │   │   ├── me/ roles/ user-roles/ audit-logs/ login-records/
 │   │   │   └── api/v1/
-│   │   │       ├── kanban/cards/    # ← Kanban CRUD + move API
+│   │   │       ├── stock/           # ← 股票 API（watchlist / signals / alerts …）
+│   │   │       ├── webhooks/        # ← LINE webhook
 │   │   │       └── admin/           # users / roles / permissions / me / audit-logs / login-records
 │   │   ├── auth.ts                  # NextAuth 設定
 │   │   ├── middleware.ts            # 路由守衛（NextAuth）
 │   │   ├── lib/
-│   │   │   ├── api-client.ts        # 前端 fetch 封裝
-│   │   │   ├── api-response.ts      # ApiResult helpers
-│   │   │   ├── kanban-service.ts    # sortOrder 演算法、ownerId 過濾
+│   │   │   ├── stock-service.ts     # 股票三層 service
+│   │   │   ├── stock-queue.ts       # BullMQ 佇列封裝
+│   │   │   ├── line-reply.ts        # LINE 回覆 / 推播
 │   │   │   ├── permission-service.ts
 │   │   │   ├── audit-log-service.ts
-│   │   │   ├── translate-api-error.ts
-│   │   │   ├── validators.ts        # Zod schemas
 │   │   │   ├── with-permission.ts   # API 權限裝飾器
 │   │   │   └── prisma.ts
-│   │   ├── components/              # 共用 UI 元件 + icons
-│   │   ├── layouts/hydrogen/        # Admin Portal Layout
-│   │   ├── hooks/                   # use-media / use-window-scroll …
-│   │   ├── utils/                   # class-names / hex-to-rgb …
-│   │   ├── config/
-│   │   ├── types/
-│   │   └── locales/                 # zh-TW.json / en.json
-│   ├── Dockerfile
-│   └── entrypoint.sh                # 等 DB → migrate → seed → start Next.js
+│   │   ├── components/ layouts/hydrogen/ hooks/ config/ locales/
+│   │   ├── Dockerfile
+│   │   └── entrypoint.sh            # 等 DB → migrate → seed → start Next.js
+├── worker/                          # BullMQ worker（抓 K 線 / 分析 / 報告 / 警報）
 ├── prisma/
-│   ├── schema.prisma                # Member / Role / Permission / RolePermission / KanbanCard / AuditLog / LoginRecord
+│   ├── schema.prisma                # Member / Role / Permission / 股票相關資料表
 │   ├── migrations/                  # 已 checked in 的 migration SQL
-│   └── seed.ts                      # 3 roles + 14 permissions + matrix + 3 members
-├── helm/                            # Kubernetes Helm chart（Chart.yaml / values.yaml / templates）
+│   └── seed.ts                      # roles + permissions + matrix + members
+├── helm/                            # Kubernetes Helm chart
 ├── keycloak/                        # （optional）Keycloak realm export，預設不啟用
 ├── docs/                            # PRD / Plan / Spec / Bug / Log / Knowledge
 ├── .claude/                         # Claude Code commands / agents / hooks / rules / skills
@@ -198,33 +188,14 @@ npx -y snyk@latest auth        # 一次性，會開瀏覽器登入 / 貼 API tok
 npm run security:deps          # 跑第一次掃看結果
 ```
 
-### 首次設定
-
-1. 註冊 Snyk 帳號（免費 plan 每月 200 tests，足夠小型專案）：https://app.snyk.io
-2. 取得 API token：https://app.snyk.io/account → Auth Token
-3. 本機認證（一次性，token 會存到 `~/.config/configstore/snyk.json`）：
-
-```bash
-npx -y snyk@latest auth
-```
-
 ### 常用指令
 
 ```bash
-# 掃 npm 依賴漏洞（最常用，high+critical 才報）
-npm run security:deps
-
-# 掃 docker-compose.yml 設定風險（IaC）
-npm run security:iac
-
-# 掃 base image CVE（postgres + keycloak）
-npm run security:container
-
-# 三類一起跑
-npm run security:all
-
-# 輸出 JSON 報告到 .tmp/snyk-report.json
-npm run security:report
+npm run security:deps          # 掃 npm 依賴漏洞（high+critical）
+npm run security:iac           # 掃 docker-compose.yml 設定風險（IaC）
+npm run security:container     # 掃 base image CVE
+npm run security:all           # 三類一起跑
+npm run security:report        # 輸出 JSON 報告到 .tmp/snyk-report.json
 ```
 
 ### 何時該跑
@@ -234,79 +205,24 @@ npm run security:report
 - 上版前快速 check
 - 收到 GitHub Dependabot alert 時交叉驗證
 
-### 客製 severity threshold
-
-預設只看 `high` 以上。要看全部漏洞：
-
-```bash
-npx -y snyk@latest test --all-projects --severity-threshold=low
-```
-
 > 補充：`npm audit` 是 npm 內建工具，可作為 Snyk 的快速替代（無需 token、僅掃 npm 依賴）。
-
-## QA 自動驗收（`/qa-kanban`）
-
-本專案內建一個 Claude Code subagent — `qa-kanban`，由 [.claude/agents/qa-kanban.md](.claude/agents/qa-kanban.md) 定義，會用 [chrome-devtools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) 開實際瀏覽器跑端對端 UI 驗收，依 PRD 的 AC 逐條驗、產出帶截圖的 Markdown 報告。
-
-### 觸發方式
-
-在 Claude Code 對話中輸入：
-
-```
-/qa-kanban smoke              # 1 分鐘 smoke（T1 登入 + 看板顯示）
-/qa-kanban all                # 完整跑 7 個 tier（約 10–15 分鐘）
-/qa-kanban tier=2,3           # 只驗 CRUD 與拖拉
-/qa-kanban AC 4.3             # 只驗單條 AC（除錯用）
-```
-
-### Tier 對照（共 7 組）
-
-| Tier | 主題 | 涵蓋 PRD AC |
-| --- | --- | --- |
-| T1 | Smoke：登入 + 看板顯示 | US-6 AC 6.1–6.2、US-2 AC 2.1–2.2 |
-| T2 | 卡片 CRUD | US-1、US-3、US-5 |
-| T3 | 拖拉（跨欄、同欄、optimistic UI、KeyboardSensor） | US-4 AC 4.1–4.7 |
-| T4 | RBAC + ownership 隔離（admin / user / viewer） | PRD § 3.2、AC 6.3 |
-| T5 | 輸入驗證 + `ApiErrorCode` 翻譯 | AC 1.2 / AC 3.x / AC 10.5 |
-| T6 | i18n 多語系（zh-TW ↔ en） | US-10 AC 10.1–10.5 |
-| T7 | RWD 響應式（1280 / 768 / 375 三斷點截圖） | US-7 AC 7.1–7.5 |
-
-### 前置條件
-
-- 應用必須**已在 `http://localhost:3010` 跑**（`docker compose up -d` 即可）
-- `.mcp.json` 已配置 chrome-devtools MCP（專案內建）
-- subagent 連不到服務會立即寫一份「服務未啟動」報告後結束，不會自動啟動 docker
-
-### 產出位置
-
-- 報告：`.tmp/qa-reports/{YYYYMMDD-HHmm}/report.md`（增量寫入，避免中途失敗丟失進度）
-- 截圖：`.tmp/qa-reports/{YYYYMMDD-HHmm}/screenshots/T{n}-{ac}-{step}.png`
-- 失敗證據檔名以 `-FAIL` 結尾，方便快速定位
-
-> `.tmp/` 已在 `.gitignore`，不會污染 git 工作樹。
-
-### 安全邊界
-
-subagent 的工具白名單嚴格限定 chrome-devtools MCP + Read / Write / Edit / Bash，**禁止修改任何 `admin/` / `prisma/` / `common/` 下的業務程式碼**；Bash 也只用於 `curl` 探活與 `mkdir` 建報告資料夾。設計細節見 [.claude/agents/qa-kanban.md](.claude/agents/qa-kanban.md) 與 [.claude/commands/qa-kanban.md](.claude/commands/qa-kanban.md)。
 
 ## 環境變數
 
 完整清單見 `.env.example`。最常調整的：
 
-| Key | 預設 | 說明 |
-| --- | --- | --- |
-| `DATABASE_URL` | postgres://kanban:.../kanban | postgres 連線字串 |
-| `AUTH_SECRET` | 必須改 | NextAuth session 加密金鑰，至少 32 字 |
-| `AUTH_ALLOW_CREDENTIALS` | `true` | 是否啟用 Credentials provider |
-| `NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED` | `false` | 登入頁是否顯示 Keycloak 按鈕（要顯示需配合 `AUTH_KEYCLOAK_*` 三個 env） |
-| `SEED_ON_START` | `true` | docker entrypoint 是否每次啟動時跑 seed（upsert，安全） |
+| Key | 說明 |
+| --- | --- |
+| `DATABASE_URL` | postgres 連線字串 |
+| `AUTH_SECRET` | NextAuth session 加密金鑰，至少 32 字（必須改） |
+| `AUTH_ALLOW_CREDENTIALS` | 是否啟用 Credentials provider |
+| `NEXT_PUBLIC_AUTH_KEYCLOAK_ENABLED` | 登入頁是否顯示 Keycloak 按鈕 |
+| `SEED_ON_START` | docker entrypoint 是否每次啟動時跑 seed（upsert，安全） |
+| `REDIS_URL` | BullMQ 佇列連線（worker） |
+| `FINMIND_TOKEN` | FinMind 股票資料 API token（缺則降級為有限免費額度） |
+| `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` | Claude LLM 認證（研究報告 / 問答 / 盤勢報告；缺則優雅降級為純資料型報告） |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Bot 憑證 |
 
 ## AI 協作紀錄
 
-本專案完整經歷「Write-doc-before-Code」流程：
-
-- **PRD**：`docs/requirements/completed/20260423-001-kanban-board.md`（v0.4，已透過 chrome-devtools MCP 從 demo 影片擷取 12 張幀對齊 UX）
-- **Plan**：`docs/plans/doing/20260423-001-kanban-board.md`（系統分析、架構圖、ER 圖、WBS、4 份 Spec 拆解）
-- **Spec A–D**：依序開發 Keycloak / DB / docker → Kanban core → RWD / 觸控 → i18n 錯誤碼翻譯，皆有完整 AI 協作紀錄與決策記錄
-
-詳細歷程見 [`docs/`](./docs/) 目錄。
+本專案採「Write-doc-before-Code」流程，PRD / Plan / Spec / Bug / Log / Knowledge 完整保存於 [`docs/`](./docs/) 目錄。

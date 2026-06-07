@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { routes } from "@/config/routes";
+import Link from 'next/link';
+import { routes } from '@/config/routes';
 
 export default function NotFound() {
   return (
@@ -9,7 +9,7 @@ export default function NotFound() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
-            alt="Azeroth Kanban"
+            alt="Stock Deep Agent"
             className="mx-auto mb-6 h-20 w-auto opacity-90"
           />
 
@@ -17,9 +17,7 @@ export default function NotFound() {
             404
           </p>
 
-          <h1 className="mt-4 text-xl font-bold text-gray-900">
-            找不到這個頁面
-          </h1>
+          <h1 className="mt-4 text-xl font-bold text-gray-900">找不到這個頁面</h1>
           <p className="mt-2 text-sm text-gray-600">
             這個網址可能已搬家或從未存在。
             <br />
@@ -34,9 +32,7 @@ export default function NotFound() {
           </Link>
         </div>
 
-        <p className="mt-6 text-center text-xs text-gray-400">
-          Azeroth Kanban
-        </p>
+        <p className="mt-6 text-center text-xs text-gray-400">Stock Deep Agent</p>
       </div>
     </div>
   );

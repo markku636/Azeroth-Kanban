@@ -1,3 +1,3 @@
-"use client";
+'use client';
 
-export { default as useMedia } from "react-use/lib/useMedia";
+export { default as useMedia } from 'react-use/lib/useMedia';

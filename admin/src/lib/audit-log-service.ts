@@ -5,7 +5,7 @@
 
 import { prisma } from '@/lib/prisma';
 
-export type AuditEntityType = 'Role' | 'Member' | 'RolePermission' | 'KanbanCard';
+export type AuditEntityType = 'Role' | 'Member' | 'RolePermission';
 export type AuditAction = 'create' | 'update' | 'delete' | 'move';
 
 export interface CreateAuditLogParams {
@@ -21,7 +21,17 @@ export interface CreateAuditLogParams {
 }
 
 export async function createAuditLog(params: CreateAuditLogParams): Promise<void> {
-  const { actorId, actorEmail, actorName, entityType, entityId, action, oldValue, newValue, ipAddress } = params;
+  const {
+    actorId,
+    actorEmail,
+    actorName,
+    entityType,
+    entityId,
+    action,
+    oldValue,
+    newValue,
+    ipAddress,
+  } = params;
   try {
     await prisma.auditLog.create({
       data: {
@@ -37,12 +47,19 @@ export async function createAuditLog(params: CreateAuditLogParams): Promise<void
       },
     });
   } catch (e) {
-    console.error(`[audit-log-service] 寫入操作記錄失敗 entityType=${entityType} entityId=${entityId} action=${action}`, e);
+    console.error(
+      `[audit-log-service] 寫入操作記錄失敗 entityType=${entityType} entityId=${entityId} action=${action}`,
+      e,
+    );
   }
 }
 
-export function getIpFromRequest(request: { headers: { get: (key: string) => string | null } }): string | undefined {
+export function getIpFromRequest(request: {
+  headers: { get: (key: string) => string | null };
+}): string | undefined {
   const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {return forwarded.split(',')[0].trim();}
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
   return request.headers.get('x-real-ip') ?? undefined;
 }

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { Provider } from "jotai";
-import { siteConfig } from "@/config/site.config";
-import { ThemeProvider as NextThemeProvider } from "next-themes";
+import { Provider } from 'jotai';
+import { siteConfig } from '@/config/site.config';
+import { ThemeProvider as NextThemeProvider } from 'next-themes';
 
 export function ThemeProvider({ children }: React.PropsWithChildren<{}>) {
   return (

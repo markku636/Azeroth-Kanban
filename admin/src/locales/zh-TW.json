@@ -115,7 +115,7 @@
     "clawedBack": "已扣回"
   },
   "login": {
-    "title": "看板系統",
+    "title": "股票 AI 機器人",
     "adminSubtitle": "",
     "adminFormTitle": "管理員登入",
     "agentTitle": "推廣者入口",
@@ -154,7 +154,17 @@
     "menu": {
       "dashboard": "儀表板",
       "myAccount": "我的帳戶",
-      "kanban": "Kanban 看板",
+      "stockBot": "股票 AI 機器人",
+      "stockConsole": "機器人 Console",
+      "stockWatchlist": "關注清單",
+      "stockScreener": "選股器 / 飆股雷達",
+      "stockMarket": "大盤 / 類股",
+      "stockBacktest": "策略回測",
+      "backtestSingle": "單筆回測",
+      "backtestCompare": "策略比較",
+      "stockMonitor": "機器人監控",
+      "stockGlossary": "名詞速查",
+      "stockAbout": "資料來源",
       "audit": "稽核紀錄",
       "agentFeatures": "推廣者功能",
       "agentList": "推廣者列表",
@@ -601,34 +611,6 @@
       "updatePermissionsFailed": "更新權限失敗",
       "requiredFields": "角色代碼與名稱為必填",
       "system": "系統角色"
-    },
-    "kanban": {
-      "title": "Kanban 看板管理系統",
-      "description": "拖拉卡片，輕鬆管理任務進度",
-      "addCard": "新增卡片",
-      "newCardPlaceholder": "輸入卡片標題後按 Enter 或點選新增",
-      "newCardDescriptionPlaceholder": "新增說明（選填）",
-      "emptyColumn": "（空）",
-      "cardTitle": "卡片標題",
-      "cardDescription": "卡片描述",
-      "cardStatus": "狀態",
-      "saveChanges": "儲存變更",
-      "editCardTitle": "編輯卡片",
-      "deleteConfirm": "確定要刪除卡片「{{title}}」？",
-      "loadFailed": "載入看板失敗",
-      "createSuccess": "卡片已新增至「{{status}}」!",
-      "createFailed": "建立卡片失敗",
-      "updateSuccess": "卡片已更新",
-      "updateFailed": "更新卡片失敗",
-      "deleteSuccess": "卡片已刪除",
-      "deleteFailed": "刪除卡片失敗",
-      "moveSuccess": "卡片已移動至「{{status}}」!",
-      "moveFailed": "移動卡片失敗",
-      "statusTodo": "待處理",
-      "statusInProgress": "進行中",
-      "statusInReview": "待驗收",
-      "statusDone": "已完成",
-      "ownerYou": "我"
     },
     "userRoles": {
       "title": "使用者角色",
@@ -1225,14 +1207,6 @@
       "required": "{{field}} 為必填",
       "max_length": "{{field}} 長度超過上限 {{max}}",
       "invalid": "{{field}} 格式不正確"
-    },
-    "kanban": {
-      "card_not_found": "找不到此卡片",
-      "forbidden_not_owner": "只能操作自己的卡片",
-      "invalid_status": "卡片狀態無效",
-      "title_required": "請輸入卡片標題",
-      "title_too_long": "標題長度不可超過 120 字",
-      "description_too_long": "描述長度不可超過 2000 字"
     },
     "role_permissions": {
       "role_not_found": "找不到角色",

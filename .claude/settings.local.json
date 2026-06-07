@@ -2,7 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(*)",
-      "mcp__*",
       "Read(**/*.mjs)",
       "Edit(**/*.mjs)",
       "Write(**/*.mjs)",
@@ -13,7 +12,8 @@
       "Write(docs/**/*.md)",
       "Edit(docs/**/*.md)",
       "Bash(mv \"e:/e/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/.tmp/qa-reports/20260426-2126/screenshots/\"*.png \"e:/VisualStudioProject/IBuyPower.Apps/IBuypower.GIT/kanban/.tmp/qa-reports/20260426-2126/screenshots/\")",
-      "Bash(rm -rf \"e:/e\")"
+      "Bash(rm -rf \"e:/e\")",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"name = 'node.exe'\" | Select-Object ProcessId, CreationDate, @{n='Cmd';e={ $_.CommandLine.Substring\\(0, [Math]::Min\\(120, $_.CommandLine.Length\\)\\) }} | Format-Table -AutoSize -Wrap)"
     ],
     "additionalDirectories": [
       "E:\\VisualStudioProject\\IBuyPower.Apps\\IBuypower.GIT\\kanban\\.claude"

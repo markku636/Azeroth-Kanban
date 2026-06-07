@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 
 const ROLES = [
   { name: 'admin',  displayName: '系統管理員', description: '擁有所有功能與管理權限',                   isSystem: true },
-  { name: 'user',   displayName: '一般使用者', description: '可使用 Kanban 看板（CRUD 自己的卡片）',     isSystem: true },
-  { name: 'viewer', displayName: '檢視者',     description: '僅可檢視自己的看板（唯讀）',                 isSystem: true },
+  { name: 'user',   displayName: '一般使用者', description: '可管理關注股並檢視訊號 / 研究報告',         isSystem: true },
+  { name: 'viewer', displayName: '檢視者',     description: '僅可檢視訊號 / 研究報告（唯讀）',           isSystem: true },
 ] as const;
 
 const PERMISSIONS = [
@@ -21,23 +21,20 @@ const PERMISSIONS = [
   // ─── 稽核 ───
   { code: 'audit_logs.view',     groupCode: 'AUDIT',           groupName: '稽核',         name: '檢視稽核紀錄',   description: '檢視稽核紀錄' },
   { code: 'login_records.view',  groupCode: 'AUDIT',           groupName: '稽核',         name: '檢視登入紀錄',   description: '檢視登入紀錄' },
-  // ─── Kanban ───
-  { code: 'kanban.view',         groupCode: 'KANBAN',          groupName: '看板',         name: '檢視看板',       description: '進入 Kanban 並檢視自己的卡片' },
-  { code: 'kanban.create',       groupCode: 'KANBAN',          groupName: '看板',         name: '新增卡片',       description: '建立新卡片' },
-  { code: 'kanban.edit',         groupCode: 'KANBAN',          groupName: '看板',         name: '編輯卡片',       description: '編輯卡片（含拖拉改狀態 / 排序）' },
-  { code: 'kanban.delete',       groupCode: 'KANBAN',          groupName: '看板',         name: '刪除卡片',       description: '刪除卡片' },
-  { code: 'kanban.view_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '檢視所有卡片',   description: '檢視所有使用者建立的卡片（含 owner 資訊）' },
-  { code: 'kanban.edit_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '編輯所有卡片',   description: '編輯任何使用者的卡片（含拖拉改狀態 / 排序）' },
-  { code: 'kanban.delete_all',   groupCode: 'KANBAN',          groupName: '看板',         name: '刪除所有卡片',   description: '刪除任何使用者的卡片' },
   // ─── 角色權限管理 ───
   { code: 'role_permissions.view', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '檢視角色權限',   description: '檢視 Role-Permission 指派' },
   { code: 'role_permissions.edit', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '編輯角色權限',   description: '在 UI 指派 Role 持有的 permissions' },
+  // ─── 股票 AI 機器人 ───
+  { code: 'stock.watch_manage', groupCode: 'STOCK', groupName: '股票機器人', name: '管理關注股',   description: '新增 / 移除 watchlist 與排程' },
+  { code: 'stock.signal_view',  groupCode: 'STOCK', groupName: '股票機器人', name: '檢視訊號',     description: '檢視買賣訊號與技術分析' },
+  { code: 'stock.report_view',  groupCode: 'STOCK', groupName: '股票機器人', name: '檢視研究報告', description: '檢視每日個股研究報告' },
+  { code: 'stock.bot_admin',    groupCode: 'STOCK', groupName: '股票機器人', name: '機器人管理',   description: '後台 console 模擬、手動觸發、排程管理' },
 ] as const;
 
 const ROLE_PERMISSION_MATRIX: Record<string, readonly string[]> = {
   admin: PERMISSIONS.map((p) => p.code),
-  user: ['kanban.view', 'kanban.create', 'kanban.edit', 'kanban.delete'],
-  viewer: ['kanban.view'],
+  user: ['stock.watch_manage', 'stock.signal_view', 'stock.report_view'],
+  viewer: ['stock.signal_view', 'stock.report_view'],
 };
 
 const DEFAULT_MEMBERS = [

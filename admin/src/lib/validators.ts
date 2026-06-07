@@ -1,2 +1,2 @@
-// Zod 輸入驗證（後續 Kanban 功能可在此新增 schema）
+// Zod 輸入驗證（可在此新增各模組的 schema）
 export {};

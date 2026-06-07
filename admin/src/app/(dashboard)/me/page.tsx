@@ -52,7 +52,7 @@ export default function MePage() {
   if (!data) {
     return (
       <div className="p-6">
-        <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-8 text-center">
+        <div className="rounded-lg border border-gray-200 bg-gray-0 p-8 text-center shadow dark:bg-gray-100">
           <p className="text-gray-500">載入失敗</p>
         </div>
       </div>
@@ -67,8 +67,8 @@ export default function MePage() {
           <p className="mt-1 text-sm text-gray-500">目前登入者的基本資料</p>
         </div>
 
-        <div className="rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200 p-6">
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+        <div className="rounded-lg border border-gray-200 bg-gray-0 p-6 shadow dark:bg-gray-100">
+          <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
             <div>
               <dt className="text-gray-500">姓名</dt>
               <dd className="mt-1 font-medium text-gray-900">{data.name}</dd>
@@ -83,9 +83,7 @@ export default function MePage() {
             </div>
             <div>
               <dt className="text-gray-500">狀態</dt>
-              <dd className="mt-1 font-medium text-gray-900">
-                {data.isActive ? '啟用' : '停用'}
-              </dd>
+              <dd className="mt-1 font-medium text-gray-900">{data.isActive ? '啟用' : '停用'}</dd>
             </div>
             <div>
               <dt className="text-gray-500">建立時間</dt>

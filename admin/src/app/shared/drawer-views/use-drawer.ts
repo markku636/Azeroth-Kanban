@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { atom, useAtom } from "jotai";
+import { atom, useAtom } from 'jotai';
 
-export type DrawerPlacements = "left" | "right" | "top" | "bottom";
+export type DrawerPlacements = 'left' | 'right' | 'top' | 'bottom';
 
 type DrawerTypes = {
   view: React.ReactNode;
@@ -14,8 +14,8 @@ type DrawerTypes = {
 const drawerAtom = atom<DrawerTypes>({
   isOpen: false,
   view: null,
-  placement: "right",
-  containerClassName: "",
+  placement: 'right',
+  containerClassName: '',
 });
 
 export function useDrawer() {

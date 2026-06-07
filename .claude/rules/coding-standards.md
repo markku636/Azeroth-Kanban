@@ -335,7 +335,7 @@ AI 在產出任何程式碼前，**必須**先讀取並遵守專案根目錄下�
 
 | 工具 | 設定檔 | 優先級 |
 | --- | --- | --- |
-| ESLint | [`admin/.eslintrc.json`](../../admin/.eslintrc.json) | 專案規則 > 個人偏好 |
+| ESLint | [`admin/eslint.config.mjs`](../../admin/eslint.config.mjs)（ESLint 9 flat config，取代已失效的舊 `.eslintrc.json`） | 專案規則 > 個人偏好 |
 | Prettier | [`admin/.prettierrc`](../../admin/.prettierrc) | 專案規則 > 個人偏好 |
 
 - 若使用者未來新增 `eslint.config.{js,mjs,ts}` 或 `prettier.config.{js,mjs,ts}`，AI 應優先讀取新版設定檔
@@ -366,7 +366,7 @@ AI 在產出任何程式碼前，**必須**先讀取並遵守專案根目錄下�
 
 ### 15.3 ESLint 必須遵守的關鍵規則
 
-依據 `admin/.eslintrc.json`，AI 產出程式碼必須避免下列違規（節錄硬性規則，非完整列表，完整以設定檔為準）：
+依據 `admin/eslint.config.mjs`，AI 產出程式碼必須避免下列違規（節錄硬性規則，非完整列表，完整以設定檔為準）：
 
 - **變數宣告**：禁止 `var`；可不被重新賦值的變數必須用 `const`（含解構：解構中只要有一個成員可為 const 就要用 const）
 - **嚴格相等**：`eqeqeq` — 必須 `===` / `!==`（與 §二 重複，雙重保險）

@@ -36,13 +36,9 @@ export const selectClassNames: ClassNamesConfig<any, any, GroupBase<any>> = {
   input: () => 'text-gray-900 text-sm',
   valueContainer: () => 'px-2 py-1 gap-1',
   indicatorsContainer: () => 'px-1',
-  clearIndicator: () =>
-    'text-gray-400 hover:text-gray-600 cursor-pointer p-1',
-  dropdownIndicator: () =>
-    'text-gray-400 hover:text-gray-600 cursor-pointer p-1',
+  clearIndicator: () => 'text-gray-400 hover:text-gray-600 cursor-pointer p-1',
+  dropdownIndicator: () => 'text-gray-400 hover:text-gray-600 cursor-pointer p-1',
   indicatorSeparator: () => 'bg-gray-200 my-2',
-  noOptionsMessage: () =>
-    'text-sm text-gray-400 px-4 py-3 text-center',
-  loadingMessage: () =>
-    'text-sm text-gray-400 px-4 py-3 text-center',
+  noOptionsMessage: () => 'text-sm text-gray-400 px-4 py-3 text-center',
+  loadingMessage: () => 'text-sm text-gray-400 px-4 py-3 text-center',
 };

@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import cn from "@/utils/class-names";
-import { useIsMounted } from "@/hooks/use-is-mounted";
-import { useWindowScroll } from "@/hooks/use-window-scroll";
+import cn from '@/utils/class-names';
+import { useIsMounted } from '@/hooks/use-is-mounted';
+import { useWindowScroll } from '@/hooks/use-window-scroll';
 
 type StickyHeaderProps = {
   className?: string;
@@ -19,8 +19,8 @@ export default function StickyHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 flex items-center bg-gray-0/95 p-4 md:px-5 lg:px-6 dark:bg-gray-50/95",
-        ((isMounted && windowScroll.y) as number) > offset ? "card-shadow" : "",
+        'sticky top-0 flex items-center bg-gray-0/95 p-4 md:px-5 lg:px-6 dark:bg-gray-50/95',
+        ((isMounted && windowScroll.y) as number) > offset ? 'card-shadow' : '',
         className,
       )}
     >

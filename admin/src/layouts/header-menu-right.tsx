@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
-import { usePathname } from "next/navigation";
-import { Badge, ActionIcon } from "rizzui";
-import MessagesDropdown from "@/layouts/messages-dropdown";
-import NotificationDropdown from "@/layouts/notification-dropdown";
-import ProfileMenu from "@/layouts/profile-menu";
-import RingBellSolidIcon from "@/components/icons/ring-bell-solid";
-import ChatSolidIcon from "@/components/icons/chat-solid";
-import { PiSunDuotone, PiMoonDuotone } from "react-icons/pi";
-import LanguageSwitcher from "@/components/language-switcher";
+import { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
+import { usePathname } from 'next/navigation';
+import { Badge, ActionIcon } from 'rizzui';
+import MessagesDropdown from '@/layouts/messages-dropdown';
+import NotificationDropdown from '@/layouts/notification-dropdown';
+import ProfileMenu from '@/layouts/profile-menu';
+import RingBellSolidIcon from '@/components/icons/ring-bell-solid';
+import ChatSolidIcon from '@/components/icons/chat-solid';
+import { PiSunDuotone, PiMoonDuotone } from 'react-icons/pi';
+import LanguageSwitcher from '@/components/language-switcher';
 
 export default function HeaderMenuRight() {
   const { theme, setTheme } = useTheme();
@@ -23,7 +23,7 @@ export default function HeaderMenuRight() {
   }, []);
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -72,7 +72,7 @@ export default function HeaderMenuRight() {
       >
         {!mounted ? (
           <span className="h-[18px] w-[18px]" />
-        ) : theme === "dark" ? (
+        ) : theme === 'dark' ? (
           <PiSunDuotone className="h-[18px] w-auto text-yellow-500" />
         ) : (
           <PiMoonDuotone className="h-[18px] w-auto" />

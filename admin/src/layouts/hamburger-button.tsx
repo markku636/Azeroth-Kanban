@@ -1,12 +1,9 @@
-"use client";
+'use client';
 
-import {
-  DrawerPlacements,
-  useDrawer,
-} from "@/app/shared/drawer-views/use-drawer";
-import { ActionIcon } from "rizzui";
-import cn from "@/utils/class-names";
-import { ReactNode } from "react";
+import { DrawerPlacements, useDrawer } from '@/app/shared/drawer-views/use-drawer';
+import { ActionIcon } from 'rizzui';
+import cn from '@/utils/class-names';
+import { ReactNode } from 'react';
 
 interface Props {
   view: ReactNode;
@@ -17,8 +14,8 @@ interface Props {
 
 export default function HamburgerButton({
   view,
-  placement = "left",
-  containerClassName = "max-w-[320px]",
+  placement = 'left',
+  containerClassName = 'max-w-[320px]',
   className,
 }: Props) {
   const { openDrawer } = useDrawer();
@@ -26,7 +23,7 @@ export default function HamburgerButton({
     <ActionIcon
       aria-label="Open Sidebar Menu"
       variant="text"
-      className={cn("me-3 h-auto w-auto p-0 sm:me-4 xl:hidden", className)}
+      className={cn('me-3 h-auto w-auto p-0 sm:me-4 xl:hidden', className)}
       onClick={() =>
         openDrawer({
           view,

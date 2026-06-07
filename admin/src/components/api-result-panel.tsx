@@ -26,16 +26,12 @@ const statusStyles: Record<StatusType, string> = {
 };
 
 export function StatusAlert({ message, type, visible, className }: StatusAlertProps) {
-  if (!visible) {return null;}
+  if (!visible) {
+    return null;
+  }
 
   return (
-    <div
-      className={cn(
-        'rounded-lg border px-4 py-3 text-sm',
-        statusStyles[type],
-        className
-      )}
-    >
+    <div className={cn('rounded-lg border px-4 py-3 text-sm', statusStyles[type], className)}>
       {message}
     </div>
   );
@@ -60,18 +56,15 @@ export default function ApiResultPanel({
   details,
   className,
 }: ApiResultPanelProps) {
-  if (!visible) {return null;}
+  if (!visible) {
+    return null;
+  }
 
   const formattedDetails =
     typeof details === 'object' ? JSON.stringify(details, null, 2) : String(details || '');
 
   return (
-    <div
-      className={cn(
-        'mt-4 rounded-lg border border-gray-200 bg-gray-50 p-5',
-        className
-      )}
-    >
+    <div className={cn('mt-4 rounded-lg border border-gray-200 bg-gray-50 p-5', className)}>
       {/* 結果標題 */}
       <div className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
         API 回應結果
@@ -81,7 +74,7 @@ export default function ApiResultPanel({
       <div
         className={cn(
           'text-lg font-bold',
-          isSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+          isSuccess ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
         )}
       >
         {title}
@@ -92,8 +85,8 @@ export default function ApiResultPanel({
         <pre
           className={cn(
             'mt-3 max-h-64 overflow-auto rounded-lg border border-gray-300 p-3',
-            'bg-gray-0 dark:bg-gray-100 text-xs text-gray-800',
-            'font-mono leading-relaxed'
+            'bg-gray-0 text-xs text-gray-800 dark:bg-gray-100',
+            'font-mono leading-relaxed',
           )}
         >
           {formattedDetails}

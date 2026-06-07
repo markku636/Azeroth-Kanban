@@ -25,7 +25,12 @@ const typeConfig: Record<
   info: {
     icon: (
       <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
       </svg>
     ),
     iconBg: 'bg-blue-100 dark:bg-blue-900/50',
@@ -34,7 +39,12 @@ const typeConfig: Record<
   warning: {
     icon: (
       <svg className="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+        />
       </svg>
     ),
     iconBg: 'bg-amber-100 dark:bg-amber-900/50',
@@ -43,7 +53,12 @@ const typeConfig: Record<
   danger: {
     icon: (
       <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+        />
       </svg>
     ),
     iconBg: 'bg-red-100 dark:bg-red-900/50',
@@ -86,7 +101,7 @@ export default function ConfirmDialog({
           <div
             className={cn(
               'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full',
-              config.iconBg
+              config.iconBg,
             )}
           >
             {config.icon}
@@ -94,12 +109,8 @@ export default function ConfirmDialog({
 
           {/* Content */}
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {title}
-            </h3>
-            <p className="mt-2 text-sm text-gray-600">
-              {message}
-            </p>
+            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <p className="mt-2 text-sm text-gray-600">{message}</p>
           </div>
         </div>
 
@@ -108,7 +119,7 @@ export default function ConfirmDialog({
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-0 dark:bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="rounded-lg border border-gray-300 bg-gray-0 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:bg-gray-100"
           >
             {cancelLabel}
           </button>
@@ -116,8 +127,8 @@ export default function ConfirmDialog({
             onClick={handleConfirm}
             disabled={loading}
             className={cn(
-              'px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 transition-colors',
-              config.confirmBtnClass
+              'rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50',
+              config.confirmBtnClass,
             )}
           >
             {loading ? '處理中...' : confirmLabel}

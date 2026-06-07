@@ -1,13 +1,6 @@
-export default function CloudTaskIcon({
-  ...props
-}: React.SVGProps<SVGSVGElement>) {
+export default function CloudTaskIcon({ ...props }: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="none"
-      {...props}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" {...props}>
       <path
         fill="fill-current opacity-40"
         d="m16 17.143-1.666-.952v1.806a.333.333 0 0 0 .166.29l1.5.857v-2Z"

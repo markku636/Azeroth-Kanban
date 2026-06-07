@@ -16,9 +16,7 @@ interface FormSectionProps {
 export function FormSection({ title, children, className }: FormSectionProps) {
   return (
     <div className={cn('border-b border-gray-200 pb-6 last:border-b-0', className)}>
-      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
-        {title}
-      </h3>
+      <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">{title}</h3>
       <div className="space-y-4">{children}</div>
     </div>
   );
@@ -45,12 +43,8 @@ export function FormField({ label, required, hint, error, children, className }:
         {required && <span className="ml-1 text-red-500">*</span>}
       </label>
       {children}
-      {hint && (
-        <p className="mt-1 text-xs text-gray-500">{hint}</p>
-      )}
-      {error && (
-        <p className="mt-1 text-xs text-red-500">{error}</p>
-      )}
+      {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
+      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );
 }
@@ -71,7 +65,7 @@ export function FormRow({ children, columns = 2, className }: FormRowProps) {
       className={cn(
         'grid gap-4',
         columns === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-3',
-        className
+        className,
       )}
     >
       {children}
@@ -93,13 +87,11 @@ export function FormInput({ error, className, ...props }: FormInputProps) {
       {...props}
       className={cn(
         'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-        'bg-gray-0 dark:bg-gray-100 text-gray-900 placeholder-gray-500',
+        'bg-gray-0 text-gray-900 placeholder-gray-500 dark:bg-gray-100',
         'focus:outline-none focus:ring-2 focus:ring-blue-500',
-        error
-          ? 'border-red-500'
-          : 'border-gray-300',
+        error ? 'border-red-500' : 'border-gray-300',
         props.disabled && 'cursor-not-allowed opacity-50',
-        className
+        className,
       )}
     />
   );
@@ -120,13 +112,11 @@ export function FormSelect({ options, error, className, ...props }: FormSelectPr
       {...props}
       className={cn(
         'w-full rounded-lg border px-3 py-2 text-sm transition-colors',
-        'bg-gray-0 dark:bg-gray-100 text-gray-900',
+        'bg-gray-0 text-gray-900 dark:bg-gray-100',
         'focus:outline-none focus:ring-2 focus:ring-blue-500',
-        error
-          ? 'border-red-500'
-          : 'border-gray-300',
+        error ? 'border-red-500' : 'border-gray-300',
         props.disabled && 'cursor-not-allowed opacity-50',
-        className
+        className,
       )}
     >
       {options.map((opt) => (
@@ -177,9 +167,7 @@ export function InputWithUnit({ unit, error, className, ...props }: InputWithUni
   return (
     <div className="flex items-center gap-2">
       <FormInput error={error} className={className} {...props} />
-      <span className="whitespace-nowrap text-sm text-gray-500">
-        {unit}
-      </span>
+      <span className="whitespace-nowrap text-sm text-gray-500">{unit}</span>
     </div>
   );
 }
@@ -215,16 +203,14 @@ export default function FormCard({
   return (
     <div
       className={cn(
-        'rounded-lg border border-gray-200 bg-gray-0 dark:bg-gray-100 shadow-sm',
-        className
+        'rounded-lg border border-gray-200 bg-gray-0 shadow-sm dark:bg-gray-100',
+        className,
       )}
     >
       {/* 標題區 */}
       <div className="border-b border-gray-200 px-6 py-4">
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        {description && (
-          <p className="mt-1 text-sm text-gray-500">{description}</p>
-        )}
+        {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
       </div>
 
       {/* 表單區 */}
@@ -240,7 +226,7 @@ export default function FormCard({
               className={cn(
                 'w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors',
                 'bg-blue-600 hover:bg-blue-700',
-                'disabled:cursor-not-allowed disabled:opacity-50'
+                'disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
               {loading ? '處理中...' : submitLabel}

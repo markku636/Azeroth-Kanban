@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 
 interface PermissionsState {
   permissions: string[];
@@ -16,11 +16,7 @@ let cacheExpiresAt = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 function isCacheValid(rolesKey: string): boolean {
-  return (
-    cachedPermissions !== null &&
-    cacheRolesKey === rolesKey &&
-    Date.now() < cacheExpiresAt
-  );
+  return cachedPermissions !== null && cacheRolesKey === rolesKey && Date.now() < cacheExpiresAt;
 }
 
 /**
@@ -34,10 +30,12 @@ export function usePermissions(): PermissionsState {
   });
 
   const roles = session?.user?.roles ?? [];
-  const rolesKey = [...roles].sort().join(",");
+  const rolesKey = [...roles].sort().join(',');
 
   useEffect(() => {
-    if (status === "loading") {return;}
+    if (status === 'loading') {
+      return;
+    }
     if (!session?.user || !roles.length) {
       setState({ permissions: [], isLoading: false });
       return;
@@ -53,8 +51,10 @@ export function usePermissions(): PermissionsState {
 
     async function fetchPermissions() {
       try {
-        const res = await fetch("/api/v1/admin/user/permissions");
-        if (!res.ok) {throw new Error("Failed to fetch permissions");}
+        const res = await fetch('/api/v1/admin/user/permissions');
+        if (!res.ok) {
+          throw new Error('Failed to fetch permissions');
+        }
         const json = await res.json();
         const perms: string[] = json.data ?? [];
 

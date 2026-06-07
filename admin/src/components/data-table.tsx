@@ -91,11 +91,14 @@ export default function DataTable<T>({
 
   // Selection helpers
   const allKeys = data.map((item) => keyExtractor(item));
-  const isAllSelected = selectable && allKeys.length > 0 && allKeys.every((k) => selectedKeys?.has(k));
+  const isAllSelected =
+    selectable && allKeys.length > 0 && allKeys.every((k) => selectedKeys?.has(k));
   const isSomeSelected = selectable && allKeys.some((k) => selectedKeys?.has(k));
 
   const toggleAll = () => {
-    if (!onSelectionChange) {return;}
+    if (!onSelectionChange) {
+      return;
+    }
     if (isAllSelected) {
       // Deselect all current page items
       const next = new Set(selectedKeys);
@@ -110,7 +113,9 @@ export default function DataTable<T>({
   };
 
   const toggleOne = (key: string | number) => {
-    if (!onSelectionChange) {return;}
+    if (!onSelectionChange) {
+      return;
+    }
     const next = new Set(selectedKeys);
     if (next.has(key)) {
       next.delete(key);
@@ -141,37 +146,42 @@ export default function DataTable<T>({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg bg-gray-0 dark:bg-gray-100 shadow border border-gray-200',
-        className
+        'overflow-hidden rounded-lg border border-gray-200 bg-gray-0 shadow dark:bg-gray-100',
+        className,
       )}
     >
       {/* Search Bar */}
       {onSearch && (
-        <div className="px-4 py-3 border-b border-gray-200">
+        <div className="border-b border-gray-200 px-4 py-3">
           <div className="flex gap-2">
-            <div className="relative flex-1 max-w-md">
+            <div className="relative max-w-md flex-1">
               <input
                 type="text"
                 value={localSearchValue}
                 onChange={(e) => setLocalSearchValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={resolvedSearchPlaceholder}
-                className="w-full rounded-lg border border-gray-300 bg-gray-0 dark:bg-gray-100 px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-gray-0 px-4 py-2 pr-10 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-100"
               />
               {localSearchValue && (
                 <button
                   onClick={clearSearch}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               )}
             </div>
             <button
               onClick={handleSearch}
-              className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 transition-colors"
+              className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-300"
             >
               {t('common.search')}
             </button>
@@ -190,7 +200,11 @@ export default function DataTable<T>({
                     type="checkbox"
                     title={t('common.selectAll')}
                     checked={isAllSelected}
-                    ref={(el) => { if (el) {el.indeterminate = !isAllSelected && isSomeSelected;} }}
+                    ref={(el) => {
+                      if (el) {
+                        el.indeterminate = !isAllSelected && isSomeSelected;
+                      }
+                    }}
                     onChange={toggleAll}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -201,7 +215,7 @@ export default function DataTable<T>({
                   key={column.key}
                   className={cn(
                     'px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-600',
-                    getAlignClass(column.align)
+                    getAlignClass(column.align),
                   )}
                   style={{ width: column.width }}
                 >
@@ -240,10 +254,10 @@ export default function DataTable<T>({
                     key={itemKey}
                     onClick={() => onRowClick?.(item)}
                     className={cn(
-                      'bg-gray-0 dark:bg-gray-100 transition-colors',
+                      'bg-gray-0 transition-colors dark:bg-gray-100',
                       onRowClick && 'cursor-pointer hover:bg-gray-50',
                       selectable && selectedKeys?.has(itemKey) && 'bg-blue-50 dark:bg-blue-900/20',
-                      getRowClassName(item, index)
+                      getRowClassName(item, index),
                     )}
                   >
                     {selectable && (
@@ -263,12 +277,12 @@ export default function DataTable<T>({
                         key={column.key}
                         className={cn(
                           'whitespace-nowrap px-4 py-3 text-sm text-gray-900',
-                          getAlignClass(column.align)
+                          getAlignClass(column.align),
                         )}
                       >
                         {column.render
                           ? column.render(item, index)
-                          : (item as Record<string, unknown>)[column.key] as ReactNode}
+                          : ((item as Record<string, unknown>)[column.key] as ReactNode)}
                       </td>
                     ))}
                   </tr>

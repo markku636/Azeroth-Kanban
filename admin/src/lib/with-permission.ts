@@ -10,7 +10,7 @@ import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 
 type RouteHandler = (
   request: NextRequest,
-  context: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> },
 ) => Promise<Response>;
 
 /**

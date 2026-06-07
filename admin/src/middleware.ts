@@ -1,8 +1,8 @@
-import { auth } from "@/auth";
-import { NextResponse, type NextRequest } from "next/server";
+import { auth } from '@/auth';
+import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = new Set<string>(["/login"]);
-const POST_LOGIN_PATH = "/kanban";
+const PUBLIC_PATHS = new Set<string>(['/login']);
+const POST_LOGIN_PATH = '/stock-bot/console';
 
 export default auth((req: NextRequest & { auth: { user?: unknown } | null }) => {
   const { pathname } = req.nextUrl;
@@ -18,8 +18,8 @@ export default auth((req: NextRequest & { auth: { user?: unknown } | null }) => 
 
   // ── 其他路徑：未登入導向 /login 並帶上 callbackUrl ──
   if (!isAuthenticated) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    const loginUrl = new URL('/login', req.url);
+    loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -28,6 +28,6 @@ export default auth((req: NextRequest & { auth: { user?: unknown } | null }) => 
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/v1|_next|favicon\\.ico|images|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)).*)",
+    '/((?!api/auth|api/v1|_next|favicon\\.ico|images|.*\\.(?:png|jpg|jpeg|gif|svg|ico|webp)).*)',
   ],
 };

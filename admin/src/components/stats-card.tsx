@@ -28,26 +28,17 @@ export default function StatsCard({
   return (
     <div
       className={cn(
-        'rounded-lg bg-gray-0 dark:bg-gray-100 p-4 shadow border border-gray-200',
-        className
+        'rounded-lg border border-gray-200 bg-gray-0 p-4 shadow dark:bg-gray-100',
+        className,
       )}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-sm text-gray-500">{title}</p>
-          <p
-            className={cn(
-              'mt-1 text-2xl font-bold text-gray-900',
-              valueClassName
-            )}
-          >
+          <p className={cn('mt-1 text-2xl font-bold text-gray-900', valueClassName)}>
             {typeof value === 'number' ? value.toLocaleString() : value}
           </p>
-          {description && (
-            <p className="mt-1 text-xs text-gray-500">
-              {description}
-            </p>
-          )}
+          {description && <p className="mt-1 text-xs text-gray-500">{description}</p>}
           {trend && (
             <div className="mt-2 flex items-center gap-1">
               {trend.isPositive ? (
@@ -82,7 +73,7 @@ export default function StatsCard({
               <span
                 className={cn(
                   'text-xs font-medium',
-                  trend.isPositive ? 'text-green-600' : 'text-red-600'
+                  trend.isPositive ? 'text-green-600' : 'text-red-600',
                 )}
               >
                 {trend.value}%
@@ -114,9 +105,5 @@ export function StatsGrid({ children, columns = 4, className }: StatsGridProps) 
     4: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4',
   };
 
-  return (
-    <div className={cn('grid gap-4', gridCols[columns], className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn('grid gap-4', gridCols[columns], className)}>{children}</div>;
 }

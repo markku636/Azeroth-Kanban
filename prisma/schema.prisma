@@ -1,4 +1,4 @@
-// Prisma schema — Kanban 面試作業版（基本登入 + RBAC）
+// Prisma schema — 股票 AI 機器人（基本登入 + RBAC + 股票模組）
 
 generator client {
   provider = "prisma-client-js"
@@ -21,34 +21,12 @@ model Member {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  kanbanCards  KanbanCard[]
+  watchlist       Watchlist[]
+  lineSubscribers LineSubscriber[]
+  alerts          Alert[]
 
   @@index([isActive])
   @@map("members")
-}
-
-// ─── Kanban 卡片 ───
-enum CardStatus {
-  TODO
-  IN_PROGRESS
-  IN_REVIEW
-  DONE
-}
-
-model KanbanCard {
-  id          String     @id @default(cuid())
-  title       String     @db.VarChar(120)
-  description String?    @db.VarChar(2000)
-  status      CardStatus @default(TODO)
-  sortOrder   Int        @map("sort_order")
-  ownerId     String     @map("owner_id")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-
-  owner Member @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  @@index([ownerId, status, sortOrder], name: "idx_owner_status_order")
-  @@map("kanban_card")
 }
 
 // ─── 角色 ───
@@ -130,4 +108,398 @@ model LoginRecord {
   @@index([status])
   @@index([createdAt])
   @@map("login_records")
+}
+
+// ─────────────────────────────────────────────────────────
+//  股票 AI 機器人
+// ─────────────────────────────────────────────────────────
+
+enum SignalAction {
+  BUY
+  SELL
+  HOLD
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+// ─── 關注股票清單 ───
+model Watchlist {
+  id        String   @id @default(cuid())
+  memberId  String   @map("member_id")
+  symbol    String
+  name      String?
+  tags      String[] @default([])
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, symbol])
+  @@index([isActive])
+  @@map("watchlist")
+}
+
+// ─── 日 K 快取 ───
+model StockDailyPrice {
+  id        String   @id @default(cuid())
+  symbol    String
+  tradeDate DateTime @map("trade_date") @db.Date
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+  volume    BigInt
+  source    String   @default("finmind")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, tradeDate])
+  @@index([symbol, tradeDate])
+  @@map("stock_daily_price")
+}
+
+// ─── 三大法人逐日買賣超（外資 / 投信 / 自營 / 合計，張） ───
+model StockInstitutional {
+  id         String   @id @default(cuid())
+  symbol     String
+  tradeDate  DateTime @map("trade_date") @db.Date
+  foreignNet Int      @map("foreign_net")
+  trustNet   Int      @map("trust_net")
+  dealerNet  Int      @map("dealer_net")
+  totalNet   Int      @map("total_net")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, tradeDate])
+  @@index([symbol, tradeDate])
+  @@map("stock_institutional")
+}
+
+// ─── 逐日估值（PER / PBR / 殖利率歷史，供估值河流圖） ───
+model StockValuationDaily {
+  id            String   @id @default(cuid())
+  symbol        String
+  tradeDate     DateTime @map("trade_date") @db.Date
+  close         Float?
+  per           Float?
+  pbr           Float?
+  dividendYield Float?   @map("dividend_yield")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, tradeDate])
+  @@index([symbol, tradeDate])
+  @@map("stock_valuation_daily")
+}
+
+// ─── 買賣訊號 ───
+model AnalysisSignal {
+  id         String       @id @default(cuid())
+  symbol     String
+  tradeDate  DateTime     @map("trade_date") @db.Date
+  action     SignalAction @default(HOLD)
+  entryZone  String?      @map("entry_zone")
+  stopLoss   Float?       @map("stop_loss")
+  takeProfit Float?       @map("take_profit")
+  timingNote String?      @map("timing_note") @db.Text
+  confidence Float        @default(0)
+  rationale  String?      @db.Text
+  patterns   Json?
+  indicators Json?
+  score       Int?        @map("score")
+  scoreDetail Json?       @map("score_detail")
+  /// 三大法人連續買賣超天數（正=連買、負=連賣），供選股器查詢（WP-B）
+  institutionalStreak Int? @map("institutional_streak")
+  /// 估值位階字串 cheap/fair/expensive/unknown，供選股器查詢（WP-C）
+  valuationZone String?    @map("valuation_zone")
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  @@unique([symbol, tradeDate])
+  @@index([symbol, createdAt])
+  @@map("analysis_signal")
+}
+
+// ─── 研究報告 ───
+model ResearchReport {
+  id         String   @id @default(cuid())
+  symbol     String
+  reportDate DateTime @map("report_date") @db.Date
+  title      String
+  summary    String   @db.Text
+  body       String   @db.Text
+  sources    Json?
+  sentiment  String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, reportDate])
+  @@index([symbol, createdAt])
+  @@map("research_report")
+}
+
+// ─── 大盤 AI 盤勢解讀報告（每日一篇） ───
+model MarketReport {
+  id         String   @id @default(cuid())
+  reportDate DateTime @unique @map("report_date") @db.Date
+  title      String
+  summary    String   @db.Text
+  body       String   @db.Text
+  /// 'bullish' | 'neutral' | 'bearish'
+  sentiment  String?
+  /// true = 降級資料摘要版（未經 AI 深度研判）
+  degraded   Boolean  @default(false)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("market_report")
+}
+
+// ─── 背景 Job 執行記錄(對應 BullMQ) ───
+model AnalysisRun {
+  id        String    @id @default(cuid())
+  type      String
+  jobId     String?   @map("job_id")
+  symbol    String?
+  status    RunStatus @default(PENDING)
+  input     Json?
+  output    Json?
+  error     String?   @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([type, status])
+  @@index([symbol, createdAt])
+  @@map("analysis_run")
+}
+
+// ─── 策略回測（單一個股，多策略可插拔） ───
+model BacktestRun {
+  id        String @id @default(cuid())
+  symbol    String
+  strategy  String @default("kd") // 策略 id：kd / ma / macd / rsi / bollinger
+  params    Json // 策略參數 + 共用參數（停損停利 / 本金 / 費率）
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  status    String @default("pending") // pending / running / done / failed
+
+  // 結果摘要（done 才有值，供列表快速顯示）
+  initialCapital Float? @map("initial_capital")
+  finalCapital   Float? @map("final_capital")
+  totalReturnPct Float? @map("total_return_pct")
+  annualizedPct  Float? @map("annualized_pct")
+  winRate        Float? @map("win_rate")
+  totalTrades    Int?   @map("total_trades")
+  maxDrawdownPct Float? @map("max_drawdown_pct")
+  profitFactor   Float? @map("profit_factor")
+  buyHoldPct     Float? @map("buy_hold_pct") // 買進持有 benchmark
+
+  stats       Json? // sharpe / 波動度 / avgWin / avgLoss / 平均持有天數
+  equityCurve Json? @map("equity_curve") // [{ date, equity }]
+  trades      Json? // 交易明細陣列
+  error       String? @db.Text
+  jobId       String? @map("job_id")
+
+  // 比較批次關聯（單筆回測為 null；屬於某次比較的子回測填 batchId）
+  batchId       String?        @map("batch_id")
+  batch         BacktestBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  engineVersion Int?           @map("engine_version") // 引擎/指標版本，供未來辨識舊結果
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([symbol, createdAt])
+  @@index([batchId])
+  @@index([strategy, createdAt])
+  @@map("backtest_run")
+}
+
+// ─── 策略比較批次（一檔股票一次跑多策略） ───
+model BacktestBatch {
+  id        String   @id @default(cuid())
+  symbol    String
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  common    Json // 共用參數（本金 / 費率 / 停損停利）
+  entries   Json // [{ strategyId, params, label }]（2..8 筆）
+  status    String @default("pending") // pending / running / done / partial / failed
+
+  // 結果（done/partial 才有值）
+  globalStartDate String? @map("global_start_date") // 對齊後實際起算日（最長暖身對齊）
+  buyHoldPct      Float?  @map("buy_hold_pct") // 單一共用買進持有報酬
+  buyHoldCurve    Json?   @map("buy_hold_curve") // 單一共用買進持有權益曲線
+  championRunId   String? @map("champion_run_id") // 冠軍子回測 id（快照）
+  paramsHash      String? @map("params_hash") // 未來去重 / 快取
+  engineVersion   Int?    @map("engine_version")
+  createdById     String? @map("created_by_id") // 稽核：誰發起
+
+  error     String?  @db.Text
+  jobId     String?  @map("job_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  runs BacktestRun[]
+
+  @@index([symbol, createdAt])
+  @@map("backtest_batch")
+}
+
+// ─── 價格/指標警報 ───
+enum AlertType {
+  PRICE_ABOVE
+  PRICE_BELOW
+  RSI_ABOVE
+  RSI_BELOW
+  MARGIN_DROP
+  FOREIGN_RATIO_UP
+  ADX_TREND_START
+  BIAS_EXTREME_HIGH
+  BIAS_EXTREME_LOW
+  DIVERGENCE_BULLISH
+  DIVERGENCE_BEARISH
+  INSTITUTIONAL_STREAK
+  VALUATION_CHEAP
+  VALUATION_EXPENSIVE
+}
+
+// ─── 排程設定（使用者覆寫 BullMQ Job Scheduler 的時間 / 啟用） ───
+model ScheduleConfig {
+  key       String   @id
+  pattern   String
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("schedule_config")
+}
+
+// ─── 排程層級執行紀錄（每個排程每次執行一筆，區分排程 / 手動觸發） ───
+model ScheduleRun {
+  id         String    @id @default(cuid())
+  key        String
+  trigger    String    @default("schedule") // schedule / manual / command
+  status     RunStatus @default(RUNNING)
+  result     String?   @db.Text // 人類可讀結果摘要
+  error      String?   @db.Text
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@index([key, startedAt])
+  @@map("schedule_run")
+}
+
+// ─── 大盤 / 類股輪動（每日一筆） ───
+model MarketDaily {
+  date           DateTime @id
+  taiexOpen      Float?   @map("taiex_open")
+  taiexHigh      Float?   @map("taiex_high")
+  taiexLow       Float?   @map("taiex_low")
+  taiexClose     Float?   @map("taiex_close")
+  taiexChangePct Float?   @map("taiex_change_pct")
+  advancers      Int?
+  decliners      Int?
+  unchanged      Int?
+  /// 類股強弱：[{ name, changePct }] 依漲跌% 降冪
+  sectors        Json?
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("market_daily")
+}
+
+// ─── 國際盤 / 期貨夜盤（每日一筆：美股四大指數 + 台指期夜盤盤後籌碼） ───
+model GlobalMarketDaily {
+  date                DateTime @id
+  /// 美股指數：[{ symbol, name, close, changePct, changePoint, asOf }]（^DJI/^GSPC/^IXIC/^SOX）
+  usIndices           Json?    @map("us_indices")
+  /// 台指期夜盤（近月）收盤
+  txfNightClose       Float?   @map("txf_night_close")
+  /// 夜盤漲跌%（vs 日盤結算）
+  txfNightChangePct   Float?   @map("txf_night_change_pct")
+  /// 夜盤漲跌點（vs 日盤結算）
+  txfNightChangePoint Float?   @map("txf_night_change_point")
+  /// 期現價差(基差) = 夜盤收盤 − 最新加權指數收盤
+  txfBasis            Float?   @map("txf_basis")
+  /// 三大法人台指期未平倉：{ date, foreign, trust, dealer }（各含 netOi/longOi/shortOi）
+  futChips            Json?    @map("fut_chips")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("global_market_daily")
+}
+
+// ─── 股票基本資料（代號 → 名稱 / 產業） ───
+model StockInfo {
+  symbol    String   @id
+  name      String
+  industry  String?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("stock_info")
+}
+
+// ─── 基本面（月營收 / EPS / 估值） ───
+model StockFundamental {
+  id            String   @id @default(cuid())
+  symbol        String
+  revenuePeriod String?  @map("revenue_period")
+  revenue       BigInt?
+  revenueYoy    Float?   @map("revenue_yoy")
+  revenueMom    Float?   @map("revenue_mom")
+  eps           Float?
+  per           Float?
+  pbr           Float?
+  dividendYield Float?   @map("dividend_yield")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol])
+  @@map("stock_fundamental")
+}
+
+// ─── 籌碼面（融資券 + 外資持股） ───
+model StockChip {
+  id            String   @id @default(cuid())
+  symbol        String
+  tradeDate     DateTime @map("trade_date") @db.Date
+  marginBalance Int      @map("margin_balance")
+  shortBalance  Int      @map("short_balance")
+  foreignRatio  Float?   @map("foreign_ratio")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([symbol, tradeDate])
+  @@index([symbol, tradeDate])
+  @@map("stock_chip")
+}
+
+model Alert {
+  id              String    @id @default(cuid())
+  memberId        String    @map("member_id")
+  symbol          String
+  type            AlertType
+  threshold       Float
+  isActive        Boolean   @default(true) @map("is_active")
+  lastTriggeredAt DateTime? @map("last_triggered_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([symbol, isActive])
+  @@index([memberId])
+  @@map("alert")
+}
+
+// ─── LINE 訂閱者 ───
+model LineSubscriber {
+  id         String   @id @default(cuid())
+  lineUserId String   @unique @map("line_user_id")
+  memberId   String?  @map("member_id")
+  displayName String? @map("display_name")
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  member Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+
+  @@index([isActive])
+  @@map("line_subscriber")
 }

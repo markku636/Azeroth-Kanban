@@ -66,9 +66,9 @@ COPY --from=builder /app/prisma ./prisma
 # 注意：必須在 standalone COPY 之後執行，否則 standalone 的 server.js 會覆蓋這些檔案。
 COPY --from=builder /app/node_modules ./node_modules
 
-# Entrypoint script
+# Entrypoint script（Windows clone 可能帶 CRLF，busybox sh 不吃 → 去除 \r）
 COPY --from=builder --chown=nextjs:nodejs /app/admin/entrypoint.sh ./admin/entrypoint.sh
-RUN chmod +x ./admin/entrypoint.sh
+RUN sed -i 's/\r$//' ./admin/entrypoint.sh && chmod +x ./admin/entrypoint.sh
 
 USER nextjs
 

@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-import {
-  ApiResponse as BaseApiResponse,
-  ApiReturnCode,
-  ApiResult,
-} from '@azeroth/common';
+import { ApiResponse as BaseApiResponse, ApiReturnCode, ApiResult } from '@azeroth/common';
 
 export { ApiReturnCode };
 export type { ApiResult };
@@ -46,7 +42,7 @@ export class ApiResponse extends BaseApiResponse {
     code: ApiReturnCode,
     message: string,
     errorCode?: string,
-    errorParams?: Record<string, unknown>
+    errorParams?: Record<string, unknown>,
   ): NextResponse<ApiResult> {
     return this.json(this.error(code, message, errorCode, errorParams));
   }

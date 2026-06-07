@@ -5,6 +5,9 @@
 **/out/
 **/coverage/
 
+# Next.js auto-generated（每次 build 重新產生，不可手改）
+next-env.d.ts
+
 # Dependencies
 **/node_modules/
 

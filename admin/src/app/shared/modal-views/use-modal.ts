@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { atom, useAtom } from "jotai";
-import { ModalSize } from "rizzui";
+import { atom, useAtom } from 'jotai';
+import { ModalSize } from 'rizzui';
 
 type ModalTypes = {
   view: React.ReactNode;
@@ -14,7 +14,7 @@ const modalAtom = atom<ModalTypes>({
   isOpen: false,
   view: null,
   customSize: 320,
-  size: "sm",
+  size: 'sm',
 });
 
 export function useModal() {

@@ -1,41 +1,45 @@
-"use client";
+'use client';
 
-import { signIn } from "next-auth/react";
-import { Suspense, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Title, Text } from "rizzui";
-import { useTranslation } from "@/hooks/use-translation";
-import LanguageSwitcher from "@/components/language-switcher";
-import { routes } from "@/config/routes";
+import { signIn } from 'next-auth/react';
+import { Suspense, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Title, Text } from 'rizzui';
+import { useTranslation } from '@/hooks/use-translation';
+import LanguageSwitcher from '@/components/language-switcher';
+import { routes } from '@/config/routes';
 
 function resolveCallbackUrl(raw: string | null): string {
-  if (!raw) {return routes.kanban;}
+  if (!raw) {
+    return routes.dashboard;
+  }
   // 僅允許站內相對路徑，避免 open redirect
-  if (!raw.startsWith("/") || raw.startsWith("//")) {return routes.kanban;}
+  if (!raw.startsWith('/') || raw.startsWith('//')) {
+    return routes.dashboard;
+  }
   return raw;
 }
 
 const QUICK_FILL_PRESETS = [
   {
-    role: "Admin",
-    username: "admin@example.com",
-    password: "Admin@1234",
+    role: 'Admin',
+    username: 'admin@example.com',
+    password: 'Admin@1234',
     btnClass:
-      "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50",
+      'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-700 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50',
   },
   {
-    role: "User",
-    username: "user@example.com",
-    password: "User@1234",
+    role: 'User',
+    username: 'user@example.com',
+    password: 'User@1234',
     btnClass:
-      "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50",
+      'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:hover:bg-emerald-900/50',
   },
   {
-    role: "Viewer",
-    username: "viewer@example.com",
-    password: "Viewer@1234",
+    role: 'Viewer',
+    username: 'viewer@example.com',
+    password: 'Viewer@1234',
     btnClass:
-      "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50",
+      'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50',
   },
 ] as const;
 
@@ -44,44 +48,44 @@ function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = useMemo(
-    () => resolveCallbackUrl(searchParams.get("callbackUrl")),
+    () => resolveCallbackUrl(searchParams.get('callbackUrl')),
     [searchParams],
   );
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const [credLoading, setCredLoading] = useState(false);
 
   const fillCredentials = (u: string, p: string) => {
     setUsername(u);
     setPassword(p);
-    setError("");
+    setError('');
   };
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setError(t("login.errorEmpty"));
+      setError(t('login.errorEmpty'));
       return;
     }
-    setError("");
+    setError('');
     setCredLoading(true);
     try {
-      const result = await signIn("credentials", {
+      const result = await signIn('credentials', {
         username: username.trim(),
         password: password.trim(),
         redirect: false,
         callbackUrl,
       });
       if (result?.error) {
-        setError(t("login.errorInvalid"));
+        setError(t('login.errorInvalid'));
       } else if (result?.ok) {
         router.push(callbackUrl);
         router.refresh();
       }
     } catch {
-      setError(t("login.errorGeneral"));
+      setError(t('login.errorGeneral'));
     } finally {
       setCredLoading(false);
     }
@@ -96,16 +100,14 @@ function AdminLoginForm() {
               <LanguageSwitcher />
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt={t("login.title")} className="mx-auto mb-3 h-28 w-auto" />
+            <img src="/logo.png" alt={t('login.title')} className="mx-auto mb-3 h-28 w-auto" />
             <Title as="h1" className="text-xl font-bold text-gray-900">
-              {t("login.title")}
+              {t('login.title')}
             </Title>
           </div>
 
           <div className="mb-4">
-            <p className="mb-2 text-xs text-gray-500">
-              {t("login.quickFillTitle")}
-            </p>
+            <p className="mb-2 text-xs text-gray-500">{t('login.quickFillTitle')}</p>
             <div className="grid grid-cols-3 gap-2">
               {QUICK_FILL_PRESETS.map((preset) => (
                 <button
@@ -130,13 +132,13 @@ function AdminLoginForm() {
           <form onSubmit={handleCredentialsLogin} className="space-y-4">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-600">
-                {t("login.username")}
+                {t('login.username')}
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder={t("login.usernamePlaceholder")}
+                placeholder={t('login.usernamePlaceholder')}
                 autoComplete="username"
                 disabled={credLoading}
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 dark:border-gray-300 dark:bg-gray-200 dark:text-white dark:placeholder-gray-500"
@@ -144,13 +146,13 @@ function AdminLoginForm() {
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-600">
-                {t("login.password")}
+                {t('login.password')}
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={t("login.passwordPlaceholder")}
+                placeholder={t('login.passwordPlaceholder')}
                 autoComplete="current-password"
                 disabled={credLoading}
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 dark:border-gray-300 dark:bg-gray-200 dark:text-white dark:placeholder-gray-500"
@@ -164,17 +166,17 @@ function AdminLoginForm() {
               {credLoading ? (
                 <span className="inline-flex items-center justify-center gap-2">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  {t("login.loggingIn")}
+                  {t('login.loggingIn')}
                 </span>
               ) : (
-                t("login.submit")
+                t('login.submit')
               )}
             </button>
           </form>
         </div>
 
         <Text className="mt-6 text-center text-xs text-gray-400">
-          &copy; {new Date().getFullYear()} {t("login.copyright")}
+          &copy; {new Date().getFullYear()} {t('login.copyright')}
         </Text>
       </div>
     </div>

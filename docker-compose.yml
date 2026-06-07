@@ -10,11 +10,29 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kanban_secret}
       POSTGRES_DB: ${POSTGRES_DB:-kanban}
     ports:
-      - "5444:5432"
+      # host port 與 local 錯開（容器內固定 5432）
+      - "${POSTGRES_PORT_HOST:-5444}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kanban} -d ${POSTGRES_DB:-kanban}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis（BullMQ 佇列 / 排程後端） ───
+  redis:
+    image: redis:7-alpine
+    container_name: kanban-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      # host port 與 local 錯開（容器內固定 6379）
+      - "${REDIS_PORT_HOST:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,11 +51,13 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       KC_HEALTH_ENABLED: "true"
       KC_HTTP_ENABLED: "true"
-      KC_HOSTNAME: host.docker.internal
+      # KC 26 hostname v2：用完整 URL（含對外 host port），瀏覽器與 admin 容器走同一個 URL
+      KC_HOSTNAME: http://host.docker.internal:${KEYCLOAK_PORT_HOST:-8081}
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
     ports:
-      - "8080:8080"
+      # host port 與 local 錯開（容器內固定 8080）
+      - "${KEYCLOAK_PORT_HOST:-8081}:8080"
     volumes:
       - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
       - keycloak_data:/opt/keycloak/data
@@ -60,13 +80,13 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: "postgresql://${POSTGRES_USER:-kanban}:${POSTGRES_PASSWORD:-kanban_secret}@postgres:5432/${POSTGRES_DB:-kanban}?schema=public"
-      NEXTAUTH_URL: http://localhost:3010
+      NEXTAUTH_URL: http://localhost:${ADMIN_PORT_HOST:-3020}
       AUTH_SECRET: ${AUTH_SECRET:-please-change-me-to-a-32-byte-random-string}
       AUTH_TRUST_HOST: "true"
       # Keycloak — issuer 必須與 token iss claim 一致；admin 容器透過 host-gateway 可解析此 URL
       AUTH_KEYCLOAK_ID: ${AUTH_KEYCLOAK_ID:-kanban-admin}
       AUTH_KEYCLOAK_SECRET: ${AUTH_KEYCLOAK_SECRET:-kanban-admin-secret}
-      AUTH_KEYCLOAK_ISSUER: ${AUTH_KEYCLOAK_ISSUER:-http://host.docker.internal:8080/realms/kanban}
+      AUTH_KEYCLOAK_ISSUER: ${AUTH_KEYCLOAK_ISSUER:-http://host.docker.internal:${KEYCLOAK_PORT_HOST:-8081}/realms/kanban}
       # 帳密登入（Demo 主流程）
       AUTH_ALLOW_CREDENTIALS: ${AUTH_ALLOW_CREDENTIALS:-true}
       # Keycloak SSO 按鈕在登入頁是否顯示（預設關閉，避免被導去 Keycloak）
@@ -76,18 +96,56 @@ services:
       POSTGRES_PORT: "5432"
       # 啟動時自動跑 seed（idempotent / upsert）；想跳過設為 false
       SEED_ON_START: ${SEED_ON_START:-true}
+      # BullMQ producer 連線
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     ports:
-      - "3010:3000"
+      # host port 與 local 錯開（容器內固定 3000）
+      - "${ADMIN_PORT_HOST:-3020}:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       keycloak:
         condition: service_started
+
+  # ─── 股票機器人 Worker（BullMQ consumer + scheduler + Deep Agent） ───
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: kanban-stock-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-kanban}:${POSTGRES_PASSWORD:-kanban_secret}@postgres:5432/${POSTGRES_DB:-kanban}?schema=public"
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      # 台股資料
+      FINMIND_TOKEN: ${FINMIND_TOKEN:-}
+      # LLM — 只用 Claude Code CLI（容器內需有 claude CLI + 授權；headless 用下列任一）
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      PUSH_MIN_CONFIDENCE: ${PUSH_MIN_CONFIDENCE:-0.5}
+      # LINE 推播
+      LINE_CHANNEL_SECRET: ${LINE_CHANNEL_SECRET:-}
+      LINE_CHANNEL_ACCESS_TOKEN: ${LINE_CHANNEL_ACCESS_TOKEN:-}
+      PUBLIC_ASSET_BASE_URL: ${PUBLIC_ASSET_BASE_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
     driver: local
   keycloak_data:
+    driver: local
+  redis_data:
     driver: local

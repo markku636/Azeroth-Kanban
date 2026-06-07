@@ -24,30 +24,41 @@ type T = (key: string, params?: Record<string, string | number>) => string;
 export function tApiError<TData = unknown>(
   result: ApiEnvelope<TData>,
   t: T,
-  fallbackKey: string = 'errors.system.internal_error'
+  fallbackKey: string = 'errors.system.internal_error',
 ): string {
-  if (result.success) {return '';}
+  if (result.success) {
+    return '';
+  }
 
   if (result.errorCode) {
     const key = `errors.${result.errorCode}`;
     const params = sanitizeParams(result.errorParams);
     const translated = t(key, params);
     // useTranslation 找不到時回傳 key 本身；以此判斷是否真有翻譯
-    if (translated !== key) {return translated;}
+    if (translated !== key) {
+      return translated;
+    }
   }
 
-  if (result.message) {return result.message;}
+  if (result.message) {
+    return result.message;
+  }
   return t(fallbackKey);
 }
 
 function sanitizeParams(
-  raw: Record<string, unknown> | undefined
+  raw: Record<string, unknown> | undefined,
 ): Record<string, string | number> | undefined {
-  if (!raw) {return undefined;}
+  if (!raw) {
+    return undefined;
+  }
   const out: Record<string, string | number> = {};
   for (const [k, v] of Object.entries(raw)) {
-    if (typeof v === 'string' || typeof v === 'number') {out[k] = v;}
-    else if (v !== null && v !== undefined) {out[k] = String(v);}
+    if (typeof v === 'string' || typeof v === 'number') {
+      out[k] = v;
+    } else if (v !== null && v !== undefined) {
+      out[k] = String(v);
+    }
   }
   return Object.keys(out).length ? out : undefined;
 }

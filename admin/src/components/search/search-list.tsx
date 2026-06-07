@@ -1,27 +1,15 @@
-"use client";
+'use client';
 
-import { Fragment, useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import {
-  ActionIcon,
-  Empty,
-  SearchNotFoundIcon,
-  Button,
-  Title,
-  Input,
-  cn,
-} from "rizzui";
-import {
-  PiFileTextDuotone,
-  PiMagnifyingGlassBold,
-  PiXBold,
-} from "react-icons/pi";
-import { pageLinks } from "@/components/search/page-links.data";
-import { useTranslation } from "@/hooks/use-translation";
+import { Fragment, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { ActionIcon, Empty, SearchNotFoundIcon, Button, Title, Input, cn } from 'rizzui';
+import { PiFileTextDuotone, PiMagnifyingGlassBold, PiXBold } from 'react-icons/pi';
+import { pageLinks } from '@/components/search/page-links.data';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function SearchList({ onClose }: { onClose?: () => void }) {
   const inputRef = useRef(null);
-  const [searchText, setSearchText] = useState("");
+  const [searchText, setSearchText] = useState('');
   const { t } = useTranslation();
 
   let menuItemsFiltered = pageLinks;
@@ -41,7 +29,6 @@ export default function SearchList({ onClose }: { onClose?: () => void }) {
     return () => {
       inputRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -52,11 +39,9 @@ export default function SearchList({ onClose }: { onClose?: () => void }) {
           value={searchText}
           ref={inputRef}
           onChange={(e) => setSearchText(() => e.target.value)}
-          placeholder={t("search.inputPlaceholder")}
+          placeholder={t('search.inputPlaceholder')}
           className="flex-1"
-          prefix={
-            <PiMagnifyingGlassBold className="h-[18px] w-[18px] text-gray-600" />
-          }
+          prefix={<PiMagnifyingGlassBold className="h-[18px] w-[18px] text-gray-600" />}
           suffix={
             searchText && (
               <Button
@@ -65,10 +50,10 @@ export default function SearchList({ onClose }: { onClose?: () => void }) {
                 className="h-auto w-auto px-0"
                 onClick={(e) => {
                   e.preventDefault();
-                  setSearchText(() => "");
+                  setSearchText(() => '');
                 }}
               >
-                {t("search.clear")}
+                {t('search.clear')}
               </Button>
             )
           }
@@ -89,22 +74,19 @@ export default function SearchList({ onClose }: { onClose?: () => void }) {
             <Empty
               className="scale-75"
               image={<SearchNotFoundIcon />}
-              text={t("search.noResultFound")}
+              text={t('search.noResultFound')}
               textClassName="text-xl"
             />
           ) : (
-            <Title
-              as="h6"
-              className="mb-5 px-3 font-semibold dark:text-gray-700"
-            >
-              {t("search.quickPageLinks")}
+            <Title as="h6" className="mb-5 px-3 font-semibold dark:text-gray-700">
+              {t('search.quickPageLinks')}
             </Title>
           )}
         </>
 
         {menuItemsFiltered.map((item, index) => {
           return (
-            <Fragment key={item.name + "-" + index}>
+            <Fragment key={item.name + '-' + index}>
               {item?.href ? (
                 <Link
                   href={item?.href as string}
@@ -118,17 +100,15 @@ export default function SearchList({ onClose }: { onClose?: () => void }) {
                     <span className="font-medium text-gray-900 dark:text-gray-700">
                       {t(item.name)}
                     </span>
-                    <span className="text-gray-500">
-                      {item?.href as string}
-                    </span>
+                    <span className="text-gray-500">{item?.href as string}</span>
                   </span>
                 </Link>
               ) : (
                 <Title
                   as="h6"
                   className={cn(
-                    "mb-1 px-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-500",
-                    index !== 0 && "mt-6 4xl:mt-7",
+                    'mb-1 px-3 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-500',
+                    index !== 0 && 'mt-6 4xl:mt-7',
                   )}
                 >
                   {t(item.name)}

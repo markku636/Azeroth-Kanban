@@ -1,16 +1,18 @@
 {
-  "name": "azeroth-kanban",
+  "name": "stock-deep-agent",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
     "common",
-    "admin"
+    "admin",
+    "worker"
   ],
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
   },
   "scripts": {
     "dev": "npm run build --workspace=common && npm run dev --workspace=admin",
+    "dev:worker": "npm run dev --workspace=worker",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",

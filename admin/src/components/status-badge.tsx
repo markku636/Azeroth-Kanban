@@ -86,12 +86,7 @@ const sizeClasses = {
   lg: 'px-3 py-1.5 text-sm',
 };
 
-export default function StatusBadge({
-  status,
-  label,
-  className,
-  size = 'md',
-}: StatusBadgeProps) {
+export default function StatusBadge({ status, label, className, size = 'md' }: StatusBadgeProps) {
   const { t } = useTranslation();
   const config = statusConfig[status];
 
@@ -118,11 +113,10 @@ export default function StatusBadge({
         config.bg,
         config.text,
         sizeClasses[size],
-        className
+        className,
       )}
     >
       {label || statusLabels[status]}
     </span>
   );
 }
-

@@ -1,79 +1,79 @@
-"use client";
+'use client';
 
-import { ReactElement, RefObject, useState } from "react";
-import * as dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
-import { Popover, Title, Badge, Checkbox } from "rizzui";
-import TruckSolidIcon from "@/components/icons/truck-solid";
-import BrushSolidIcon from "@/components/icons/brush-solid";
-import CubeSolidIcon from "@/components/icons/cube-solid";
-import FileStackIcon from "@/components/icons/file-stack";
-import CloudTaskIcon from "@/components/icons/cloud-task";
-import ShoppingBagSolidIcon from "@/components/icons/shopping-bag-solid";
-import BulbSolidIcon from "@/components/icons/bulb-solid";
-import ParcelMapIcon from "@/components/icons/parcel-map";
-import Link from "next/link";
-import { useMedia } from "@/hooks/use-media";
-import SimpleBar from "@/components/ui/simplebar";
-import { PiCheck } from "react-icons/pi";
+import { ReactElement, RefObject, useState } from 'react';
+import * as dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import { Popover, Title, Badge, Checkbox } from 'rizzui';
+import TruckSolidIcon from '@/components/icons/truck-solid';
+import BrushSolidIcon from '@/components/icons/brush-solid';
+import CubeSolidIcon from '@/components/icons/cube-solid';
+import FileStackIcon from '@/components/icons/file-stack';
+import CloudTaskIcon from '@/components/icons/cloud-task';
+import ShoppingBagSolidIcon from '@/components/icons/shopping-bag-solid';
+import BulbSolidIcon from '@/components/icons/bulb-solid';
+import ParcelMapIcon from '@/components/icons/parcel-map';
+import Link from 'next/link';
+import { useMedia } from '@/hooks/use-media';
+import SimpleBar from '@/components/ui/simplebar';
+import { PiCheck } from 'react-icons/pi';
 
 dayjs.extend(relativeTime);
 
 const data = [
   {
     id: 1,
-    name: "Invitation for crafting engaging designs",
+    name: 'Invitation for crafting engaging designs',
     icon: <BrushSolidIcon />,
     unRead: true,
-    sendTime: "2023-06-01T09:35:31.820Z",
+    sendTime: '2023-06-01T09:35:31.820Z',
   },
   {
     id: 2,
-    name: "Isomorphic dashboard redesign",
+    name: 'Isomorphic dashboard redesign',
     icon: <CubeSolidIcon />,
     unRead: true,
-    sendTime: "2023-05-30T09:35:31.820Z",
+    sendTime: '2023-05-30T09:35:31.820Z',
   },
   {
     id: 3,
-    name: "3 New Incoming Project Files:",
+    name: '3 New Incoming Project Files:',
     icon: <FileStackIcon />,
     unRead: false,
-    sendTime: "2023-06-01T09:35:31.820Z",
+    sendTime: '2023-06-01T09:35:31.820Z',
   },
   {
     id: 4,
-    name: "Swornak purchased isomorphic",
+    name: 'Swornak purchased isomorphic',
     icon: <ShoppingBagSolidIcon />,
     unRead: false,
-    sendTime: "2023-05-21T09:35:31.820Z",
+    sendTime: '2023-05-21T09:35:31.820Z',
   },
   {
     id: 5,
-    name: "Task #45890 merged with #45890 in “Ads Pro Admin Dashboard project:",
+    name: 'Task #45890 merged with #45890 in “Ads Pro Admin Dashboard project:',
     icon: <CloudTaskIcon />,
     unRead: true,
-    sendTime: "2023-06-01T09:35:31.820Z",
+    sendTime: '2023-06-01T09:35:31.820Z',
   },
   {
     id: 6,
-    name: "3 new application design concepts added",
+    name: '3 new application design concepts added',
     icon: <BulbSolidIcon />,
     unRead: true,
-    sendTime: "2023-05-15T09:35:31.820Z",
+    sendTime: '2023-05-15T09:35:31.820Z',
   },
   {
     id: 7,
-    name: "Your order has been placed",
+    name: 'Your order has been placed',
     icon: <ParcelMapIcon />,
     unRead: false,
-    sendTime: "2023-05-16T09:35:31.820Z",
+    sendTime: '2023-05-16T09:35:31.820Z',
   },
   {
-    name: "Order has been shipped to #123221",
+    name: 'Order has been shipped to #123221',
     icon: <TruckSolidIcon />,
     unRead: false,
-    sendTime: "2023-05-01T09:35:31.820Z",
+    sendTime: '2023-05-01T09:35:31.820Z',
   },
 ];
 
@@ -100,10 +100,7 @@ function NotificationsList({
               </div>
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center">
                 <div className="w-full">
-                  <Title
-                    as="h6"
-                    className="mb-0.5 w-11/12 truncate text-sm font-semibold"
-                  >
+                  <Title as="h6" className="mb-0.5 w-11/12 truncate text-sm font-semibold">
                     {item.name}
                   </Title>
                   <span className="ms-auto whitespace-nowrap pe-8 text-xs text-gray-500">
@@ -113,12 +110,7 @@ function NotificationsList({
                 </div>
                 <div className="ms-auto flex-shrink-0">
                   {item.unRead ? (
-                    <Badge
-                      renderAsDot
-                      size="lg"
-                      color="primary"
-                      className="scale-90"
-                    />
+                    <Badge renderAsDot size="lg" color="primary" className="scale-90" />
                   ) : (
                     <span className="inline-block rounded-full bg-gray-100 p-0.5 dark:bg-gray-50">
                       <PiCheck className="h-auto w-[9px]" />
@@ -131,7 +123,7 @@ function NotificationsList({
         </div>
       </SimpleBar>
       <Link
-        href={"#"}
+        href={'#'}
         onClick={() => setIsOpen(false)}
         className="-me-6 block px-6 pb-0.5 pt-3 text-center hover:underline"
       >
@@ -141,19 +133,15 @@ function NotificationsList({
   );
 }
 
-export default function NotificationDropdown({
-  children,
-}: {
-  children: ReactElement;
-}) {
-  const isMobile = useMedia("(max-width: 480px)", false);
+export default function NotificationDropdown({ children }: { children: ReactElement }) {
+  const isMobile = useMedia('(max-width: 480px)', false);
   const [isOpen, setIsOpen] = useState(false);
   return (
     <Popover
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       shadow="sm"
-      placement={isMobile ? "bottom" : "bottom-end"}
+      placement={isMobile ? 'bottom' : 'bottom-end'}
     >
       <Popover.Trigger>{children}</Popover.Trigger>
       <Popover.Content className="z-[9999] px-0 pb-4 pe-6 pt-5 dark:bg-gray-100 [&>svg]:hidden sm:[&>svg]:inline-flex [&>svg]:dark:fill-gray-100">

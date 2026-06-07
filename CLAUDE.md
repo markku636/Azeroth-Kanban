@@ -1,12 +1,13 @@
-# Azeroth Kanban — Claude Code 指引
+# Stock Deep Agent — Claude Code 指引
 
 ## 專案概述
 
-**Azeroth 面試作業 — Kanban 看板網站**。目前狀態：已從原有業務系統清理出乾淨骨架，保留基本登入與 RBAC，後續將實作 Kanban 核心功能（4 欄狀態、卡片 CRUD、拖拉）。
+**台股 AI 機器人**。在基本登入與 RBAC 骨架上，建構股票資料層、技術分析、Deep Agent + LLM 編排、背景 Job（BullMQ worker）、警報引擎與 LINE Bot 推播。
 
-採用 **Monorepo** 結構，共兩個 workspace：
-- **common/** — 共用 `ApiResponse` / `ApiResult` 型別
-- **admin/** — Next.js 15 後台（登入、RBAC、稽核）
+採用 **Monorepo** 結構，共三個 workspace：
+- **common/** — 共用型別與純函式（`ApiResponse` / `ApiResult`、股票型別、`scoring-strategy`（多策略加權）、`valuation-bands`（估值河流帶））
+- **admin/** — Next.js 16 後台（登入、RBAC、稽核、股票機器人 console / 選股器 / 個股詳情頁）
+- **worker/** — BullMQ background worker（資料抓取、技術分析、Deep Agent 報告、警報、LINE 推播）
 
 ---
 
@@ -54,8 +55,14 @@ Iqt.Affiliation.System/
 ├── prisma/
 │   ├── schema.prisma                      ← 6 張表：Member / Role / Permission / RolePermission / AuditLog / LoginRecord
 │   └── seed.ts                            ← admin / manager / viewer 預設帳號
-├── docker-compose.yml                     ← postgres + admin
-└── package.json                           ← workspaces: [common, admin]
+├── worker/src/
+│   ├── jobs/                               ← BullMQ processors（analysis / research / digest / screen / market / global / market-report / line-push / qa）
+│   ├── ta/                                 ← 技術分析：indicators / signals / score(拆 scorers/*) / chipSignals / chart
+│   │   └── scorers/                        ← 五因子 per-factor scorers（chips / tech / fund / momentum / valuation）
+│   ├── data/                              ← 資料抓取：cache(日K) / chips / institutional / fundamentals / valuation / market / global-market / finmind
+│   └── alerts.ts                           ← 警報引擎
+├── docker-compose.yml                     ← postgres + redis + keycloak + admin + worker
+└── package.json                           ← workspaces: [common, admin, worker]
 ```
 
 ---
@@ -65,15 +72,16 @@ Iqt.Affiliation.System/
 | 項目 | 技術 |
 | --- | --- |
 | 語言 | TypeScript 5.8（strict mode） |
-| Admin 框架 | Next.js 15（App Router）、React 19 |
+| Admin 框架 | Next.js 16（App Router）、React 19 |
+| Worker | BullMQ + Redis、tsx 執行 TS |
+| 技術指標 | `technicalindicators`（SMA/EMA/RSI/MACD/Stochastic/Bollinger/ADX/WilliamsR/CCI/OBV/PSAR）+ 自實作背離偵測 |
+| 圖表 | TradingView `lightweight-charts`（K 線 / 估值河流圖） |
 | 資料庫 | PostgreSQL 16、Prisma 6 ORM |
 | 驗證 | NextAuth v5 Credentials + bcryptjs |
 | 樣式 | Tailwind CSS 3.4 + RizzUI 1.0 |
 | 表單驗證 | react-hook-form + Zod |
 | 狀態管理 | Jotai |
 | 套件管理 | npm workspaces |
-
-Kanban 實作時預計引入：`@dnd-kit/core`（拖拉）、`@dnd-kit/sortable`（欄內排序）。
 
 ---
 
@@ -115,7 +123,8 @@ Service 層回傳 `ApiResult<T>`，**不拋例外**；API route 直接轉發。
 ```bash
 # 開發
 npm run dev                  # 啟動 admin (port 3010)
-docker compose up -d postgres
+npm run dev:worker           # 啟動 BullMQ worker（需 postgres + redis）
+docker compose up -d postgres redis
 
 # Prisma
 npm run prisma:generate
@@ -137,22 +146,29 @@ npm run build
 | 服務 | Host Port | Container Port |
 | --- | --- | --- |
 | PostgreSQL 16 | 5444 | 5432 |
-| Admin (Next.js) | 3010 (dev 與 docker 一致) | 3000 |
+| Redis 7（BullMQ） | 6380 | 6379 |
+| Admin (Next.js) | 3010 (dev) / 3020 (docker) | 3000 |
+| Worker（BullMQ） | — | — |
 
 ---
 
-## 下一步：Kanban 功能實作
+## 功能模組：股票 AI 機器人
 
-面試作業 PDF 摘要：
-- 四欄位：待處理 / 進行中 / 待驗收 / 已完成
-- 卡片 CRUD：新增（預設狀態＝待處理）、編輯標題/描述/狀態
-- 拖拉：卡片跨欄移動，後端狀態同步更新
+- 資料層：`Watchlist` / `StockDailyPrice` / `AnalysisSignal` / `ResearchReport` / `AnalysisRun` / `Alert` / `LineSubscriber` / `StockChip` / `StockInstitutional`（三大法人）/ `StockFundamental` / `StockValuationDaily`（估值歷史）/ `MarketDaily` / `GlobalMarketDaily` / `StockInfo`
+- worker（BullMQ）：日 K 抓取、技術分析、Deep Agent 報告生成、警報檢查、大盤 / 國際盤、三大法人 / 估值歷史落庫
+- admin：`/stock-bot/console` 後台 console + 選股器 + 個股詳情頁 + 三層 service（`stock-service.ts` / `stock-queue.ts` / `screen-strategies.ts` 等）
+- LINE Bot：webhook 接收 + 主動推播（訊號 / 警報）
 
-預計新增：
-- `KanbanCard` Prisma model（id、title、description、status、sortOrder、createdAt、updatedAt）
-- `/kanban` 頁面
-- `/api/v1/kanban/cards` CRUD + 狀態更新 API
-- @dnd-kit 拖拉整合
+### 進階投資策略指標（多策略可調權重評分）
+
+- **5 因子評分**：籌碼 / 技術 / 基本面 / 趨勢動能 / 估值。worker 只算原始因子（`worker/src/ta/scorers/*` → `computeScoreDetail`，落庫 `AnalysisSignal.scoreDetail` v2，無 total）；admin **read-time 依策略 preset 套權重**（`common` `applyStrategy`，5 個 preset：綜合 / 價值 / 動能 / 籌碼 / 存股），切策略零重算、相容 v1 舊資料。
+- **趨勢動能指標**：DMI/ADX、威廉 %R、CCI、OBV、乖離率 BIAS、SAR、MACD/RSI/量價背離。
+- **籌碼進階**：三大法人連續買賣超 streak、籌碼集中度。
+- **估值河流圖**：PER/PBR/殖利率 3 年逐日序列 + 百分位 band + 估值位階（便宜 / 合理 / 昂貴）。
+- **策略選股**：宣告式 registry（`admin/src/lib/screen-strategies.ts`），10 策略（評分排行 / 飆股雷達 / 低估值 / 籌碼強 / 法人連買 / 月營收高成長 / 突破年線 / 高殖利率存股 / 均線多頭+量增 / GARP）。
+- **新手友善**：所有新指標皆有名詞字典（`admin/src/config/financial-glossary.ts`）+ 浮窗 + 紅綠燈結論。
+
+詳見 `docs/specs/doing/` 各份股票機器人 Spec（進階指標：`20260607-001`~`005`）。
 
 ---
 
@@ -208,15 +224,8 @@ PreToolUse Hook 會在 Edit/Write 程式碼檔前檢查是否有 🔵 狀態的 
 | `/create-spec` | 建立 Spec 文件（需求收集 → 查知識庫 → 分析影響 → 建 Spec → 等確認） |
 | `/sync-docs` | 掃描專案與 `.claude/` 設定，同步更新 `README.md` 與 `CLAUDE.md`（僅補缺漏、不覆蓋自訂內容） |
 | `/sync-skill` | 掃描程式碼與 commands/rules，同步更新 `.claude/skills/` 技能文件 |
-| `/qa-kanban` | 觸發 `qa-kanban` subagent 對 Kanban 看板跑端對端驗收（chrome-devtools MCP）；參數可選 `all` / `smoke` / `tier=N,M` / `AC X.Y` |
 
 > `_spec-convention.md` 為 convention 文件（非 slash 指令），由 `/create-spec` 引用。
-
-### Subagents（`.claude/agents/`）
-
-| Subagent | 用途 |
-| --- | --- |
-| `qa-kanban` | Kanban 看板的端對端 QA 驗收 agent；用 chrome-devtools MCP 依 PRD 的 AC 逐條跑、產出帶截圖的 Markdown 報告至 `.tmp/qa-reports/{YYYYMMDD-HHmm}/`。工具白名單只開 chrome-devtools MCP + Read/Write/Edit/Bash，禁止改業務程式碼。由 `/qa-kanban` 觸發。 |
 
 ### 常駐規則（`.claude/rules/`）
 

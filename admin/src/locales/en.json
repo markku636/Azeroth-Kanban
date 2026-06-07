@@ -113,7 +113,7 @@
     "clawedBack": "Clawed Back"
   },
   "login": {
-    "title": "Kanban Board",
+    "title": "Stock AI Bot",
     "adminSubtitle": "",
     "adminFormTitle": "Admin Sign In",
     "agentTitle": "Agent Portal",
@@ -152,7 +152,17 @@
     "menu": {
       "dashboard": "Dashboard",
       "myAccount": "My Account",
-      "kanban": "Kanban Board",
+      "stockBot": "Stock AI Bot",
+      "stockConsole": "Bot Console",
+      "stockWatchlist": "Watchlist",
+      "stockScreener": "Screener / Radar",
+      "stockMarket": "Market / Sectors",
+      "stockBacktest": "Backtest",
+      "backtestSingle": "Single Backtest",
+      "backtestCompare": "Strategy Comparison",
+      "stockMonitor": "Bot Monitor",
+      "stockGlossary": "Glossary",
+      "stockAbout": "Data Sources",
       "audit": "Audit",
       "agentFeatures": "Agent Features",
       "agentList": "Agent List",
@@ -588,34 +598,6 @@
       "updatePermissionsFailed": "Failed to update permissions",
       "requiredFields": "Role code and name are required",
       "system": "System Role"
-    },
-    "kanban": {
-      "title": "Kanban Board Management System",
-      "description": "Drag cards to easily manage task progress",
-      "addCard": "Add Card",
-      "newCardPlaceholder": "Enter card title and press Enter or click Add",
-      "newCardDescriptionPlaceholder": "Add description (optional)",
-      "emptyColumn": "(empty)",
-      "cardTitle": "Title",
-      "cardDescription": "Description",
-      "cardStatus": "Status",
-      "saveChanges": "Save Changes",
-      "editCardTitle": "Edit Card",
-      "deleteConfirm": "Delete card \"{{title}}\"?",
-      "loadFailed": "Failed to load board",
-      "createSuccess": "Card added to \"{{status}}\"!",
-      "createFailed": "Failed to create card",
-      "updateSuccess": "Card updated",
-      "updateFailed": "Failed to update card",
-      "deleteSuccess": "Card deleted",
-      "deleteFailed": "Failed to delete card",
-      "moveSuccess": "Moved to \"{{status}}\"!",
-      "moveFailed": "Failed to move card",
-      "statusTodo": "Todo",
-      "statusInProgress": "In Progress",
-      "statusInReview": "In Review",
-      "statusDone": "Done",
-      "ownerYou": "You"
     },
     "userRoles": {
       "title": "User Roles",
@@ -1212,14 +1194,6 @@
       "required": "{{field}} is required",
       "max_length": "{{field}} exceeds maximum length {{max}}",
       "invalid": "{{field}} is invalid"
-    },
-    "kanban": {
-      "card_not_found": "Card not found",
-      "forbidden_not_owner": "You can only manage your own cards",
-      "invalid_status": "Invalid card status",
-      "title_required": "Card title is required",
-      "title_too_long": "Title cannot exceed 120 characters",
-      "description_too_long": "Description cannot exceed 2000 characters"
     },
     "role_permissions": {
       "role_not_found": "Role not found",

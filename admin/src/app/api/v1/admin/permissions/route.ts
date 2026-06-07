@@ -12,22 +12,32 @@ export const GET = withPermission(PERMISSIONS.ROLE_PERMISSIONS_VIEW, async () =>
   });
 
   // 按群組分組
-  const grouped = permissions.reduce((acc, perm) => {
-    if (!acc[perm.groupCode]) {
-      acc[perm.groupCode] = {
-        groupCode: perm.groupCode,
-        groupName: perm.groupName,
-        permissions: [],
-      };
-    }
-    acc[perm.groupCode].permissions.push({
-      id: perm.id,
-      code: perm.code,
-      name: perm.name,
-      description: perm.description,
-    });
-    return acc;
-  }, {} as Record<string, { groupCode: string; groupName: string; permissions: { id: string; code: string; name: string; description: string | null }[] }>);
+  const grouped = permissions.reduce(
+    (acc, perm) => {
+      if (!acc[perm.groupCode]) {
+        acc[perm.groupCode] = {
+          groupCode: perm.groupCode,
+          groupName: perm.groupName,
+          permissions: [],
+        };
+      }
+      acc[perm.groupCode].permissions.push({
+        id: perm.id,
+        code: perm.code,
+        name: perm.name,
+        description: perm.description,
+      });
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        groupCode: string;
+        groupName: string;
+        permissions: { id: string; code: string; name: string; description: string | null }[];
+      }
+    >,
+  );
 
   return ApiResponse.ok(Object.values(grouped), '取得權限列表成功');
 });

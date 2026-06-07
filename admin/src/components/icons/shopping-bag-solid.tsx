@@ -1,13 +1,6 @@
-export default function ShoppingBagSolidIcon({
-  ...props
-}: React.SVGProps<SVGSVGElement>) {
+export default function ShoppingBagSolidIcon({ ...props }: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="none"
-      {...props}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" {...props}>
       <path
         fill="currentColor"
         d="M3.187 4.316a.227.227 0 0 0-.227.207l-1.364 15a.23.23 0 0 0 .228.248H12.48l1.405-15.455H3.187ZM5.998 3.346a2.917 2.917 0 0 1 3.62-2.58 3.369 3.369 0 0 0-1.525 2.539l-.05.557h.455l.048-.516a2.93 2.93 0 0 1 1.64-2.378 2.93 2.93 0 0 1 1.65 2.894h.457a3.385 3.385 0 0 0-6.747-.557l-.05.557h.454l.048-.516Z"
