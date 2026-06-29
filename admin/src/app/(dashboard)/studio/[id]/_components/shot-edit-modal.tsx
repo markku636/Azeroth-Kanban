@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Input, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiXBold, PiUploadSimpleBold, PiImageSquareBold, PiFilmReelBold, PiPlayFill, PiSparkleFill, PiSpeakerHighBold } from 'react-icons/pi';
+import { PiXBold, PiUploadSimpleBold, PiImageSquareBold, PiFilmReelBold, PiPlayFill, PiSparkleFill, PiSpeakerHighBold, PiWarningCircleBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { useConfirm } from '@/hooks/use-confirm';
 import { RefineModal } from './refine-modal';
@@ -482,6 +482,12 @@ export function ShotEditModal({
               placeholder="這句會用來配音，並作為字幕"
               textareaClassName="ring-0"
             />
+            {tts.trim().length > 45 && (
+              <p className="mt-1 flex items-start gap-1 text-xs text-amber-600 dark:text-amber-400">
+                <PiWarningCircleBold className="mt-0.5 h-3.5 w-3.5 flex-none" />
+                這句約 {Math.round(tts.trim().length / 5)} 秒，單鏡偏長容易拖沓 — 短影音建議精簡，或拆成兩鏡。
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">動態分支</label>
