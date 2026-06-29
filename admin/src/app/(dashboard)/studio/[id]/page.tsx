@@ -222,6 +222,7 @@ export default function StoryboardPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const esRef = useRef<EventSource | null>(null);
+  const baseTitleRef = useRef<string>(''); // 背景分頁完成提醒：暫存原始分頁標題
   // 讓「同一排」（各幕中相同序位）的分鏡卡高度一致：量出每排最高的卡，套成該排各卡的 min-height。
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
@@ -347,6 +348,22 @@ export default function StoryboardPage() {
     return () => { stopped = true; clearInterval(t); };
   }, [generatingNow, projectId]);
 
+  // 背景分頁完成提醒：生成常要數分鐘，使用者多半切到別的分頁。完成／失敗時用分頁標題閃示
+  // （免通知權限、不擾民），回到本分頁即自動還原。
+  useEffect(() => {
+    const restore = () => {
+      if (!document.hidden && baseTitleRef.current) { document.title = baseTitleRef.current; baseTitleRef.current = ''; }
+    };
+    document.addEventListener('visibilitychange', restore);
+    window.addEventListener('focus', restore);
+    return () => { document.removeEventListener('visibilitychange', restore); window.removeEventListener('focus', restore); };
+  }, []);
+  const flashTitle = useCallback((msg: string) => {
+    if (typeof document === 'undefined' || !document.hidden) return; // 只在背景分頁時閃示
+    if (!baseTitleRef.current) baseTitleRef.current = document.title;
+    document.title = msg;
+  }, []);
+
   useEffect(() => {
     const es = new EventSource(`/api/v1/studio/projects/${projectId}/events`);
     esRef.current = es;
@@ -355,16 +372,16 @@ export default function StoryboardPage() {
       try { e = JSON.parse(ev.data); } catch { return; }
       if (e.shotId) setShotProg((p) => ({ ...p, [e.shotId as string]: { stage: e.stage, pct: e.pct, status: e.status } }));
       if (e.stage === 'plan') setOverall('規劃中…');
-      else if (e.stage === 'keyframes-done') { setOverall('圖片已生成 ✅，檢視後可生成影片'); setGen('idle'); toast.success('關鍵幀已生成 🖼'); void load(); }
+      else if (e.stage === 'keyframes-done') { setOverall('圖片已生成 ✅，檢視後可生成影片'); setGen('idle'); toast.success('關鍵幀已生成 🖼'); flashTitle('✅ 圖片已生成 — 影片工作室'); void load(); }
       else if (e.stage === 'assemble') { setOverall('合成成片…'); setGen('generating'); }
-      else if (e.stage === 'scene-done') { setOverall('本幕影片完成 ✅'); setGen('idle'); toast.success('本幕影片完成 🎬'); void load(); }
-      else if (e.stage === 'done') { setOverall('完成 ✅'); setGen('done'); setFinalReady(true); toast.success('成片完成 🎬'); void load(); }
-      else if (e.stage === 'error') { setOverall('錯誤：' + (e.message ?? '')); setGen('error'); toast.error('生成失敗：' + (e.message ?? '請查看 worker log')); }
+      else if (e.stage === 'scene-done') { setOverall('本幕影片完成 ✅'); setGen('idle'); toast.success('本幕影片完成 🎬'); flashTitle('✅ 本幕完成 — 影片工作室'); void load(); }
+      else if (e.stage === 'done') { setOverall('完成 ✅'); setGen('done'); setFinalReady(true); toast.success('成片完成 🎬'); flashTitle('🎬 成片完成 — 影片工作室'); void load(); }
+      else if (e.stage === 'error') { setOverall('錯誤：' + (e.message ?? '')); setGen('error'); toast.error('生成失敗：' + (e.message ?? '請查看 worker log')); flashTitle('❌ 生成失敗 — 影片工作室'); }
       else if (e.shotId) setGen('generating');
     };
     es.onerror = () => { /* auto-reconnect */ };
     return () => { es.close(); esRef.current = null; };
-  }, [projectId, load]);
+  }, [projectId, load, flashTitle]);
 
   // 量測每一「排」(各幕中相同 index 的卡) 的最高卡，並套成該排所有卡的 min-height。
   const measureRows = useCallback(() => {
