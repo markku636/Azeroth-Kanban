@@ -248,6 +248,23 @@ export default function StoryPage() {
       <section className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
         <h2 className="mb-1 text-sm font-semibold text-gray-700">字幕樣式（成片旁白字幕外觀）</h2>
         <p className="mb-3 text-xs text-gray-400">套用於生成影片時燒進畫面的旁白字幕；喜劇大字幕／反轉字幕另有專屬樣式不受影響。改後需重新「② 生成影片」套用。</p>
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+          <span className="flex-none">快速套用</span>
+          {([
+            ['迷因大黃', { fontSize: 64, color: '#FFE000', position: 'bottom' }],
+            ['經典白字', { fontSize: 42, color: '#FFFFFF', position: 'bottom' }],
+            ['置中大字', { fontSize: 56, color: '#FFFFFF', position: 'center' }],
+          ] as const).map(([label, preset]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => saveSub({ ...preset })}
+              className="rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-white dark:border-gray-300 dark:hover:bg-gray-200"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">字級（px）</label>
