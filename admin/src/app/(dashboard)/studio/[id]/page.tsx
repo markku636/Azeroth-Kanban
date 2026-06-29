@@ -575,6 +575,14 @@ export default function StoryboardPage() {
         if (!ok) return;
       }
     }
+    if (kind === 'keyframes' && data) {
+      // 批次生圖也擋缺畫面描述的鏡（對齊整片 R86）：空 visual 會生出隨機亂圖；上傳當圖的鏡不受影響。
+      const noDesc = data.scenes.flatMap((s) => s.shots).filter((sh) => selectedIds.has(sh.id) && !sh.visual?.trim() && sh.keyframeMode !== 'upload').length;
+      if (noDesc > 0) {
+        const ok = await confirm({ title: '有分鏡缺畫面描述', message: `選取的分鏡有 ${noDesc} 個沒有畫面描述（visual），生成的圖會比較隨機、不準。建議先補描述。要仍然繼續嗎？`, confirmLabel: '仍要生成' });
+        if (!ok) return;
+      }
+    }
     lastGenRef.current = null; // 批次後會清掉選取 → 無法乾淨重試，故不提供（避免錯誤橫幅誤觸到上一個全片動作）
     setShotProg({}); setGenTotal(ids.length); setGen(kind === 'keyframes' ? 'running' : 'generating'); setOverall(`批次${kind === 'keyframes' ? '生圖' : '生片'} ${ids.length} 鏡…`);
     try {
