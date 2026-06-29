@@ -11,11 +11,12 @@ const { privateKey } = generateKeyPairSync('rsa', {
 });
 
 const ENV_KEYS = ['GOOGLE_VERTEX_PROJECT', 'GOOGLE_VERTEX_CREDENTIALS', 'GOOGLE_APPLICATION_CREDENTIALS', 'GOOGLE_VERTEX_LOCATION', 'GOOGLE_VERTEX_MODEL'] as const;
+type GenResp = { ok?: boolean; status?: number; body?: any };
 let saved: Record<string, string | undefined>;
-let genQueue: Array<{ ok?: boolean; status?: number; body?: any }>;
+let genQueue: GenResp[];
 let lastGenBody: any;
 
-function candidate(text: string, finishReason = 'STOP') {
+function candidate(text: string, finishReason = 'STOP'): GenResp {
   return { body: { candidates: [{ finishReason, content: { parts: [{ text }] } }] } };
 }
 
