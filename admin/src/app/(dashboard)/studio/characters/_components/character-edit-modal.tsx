@@ -146,9 +146,13 @@ export function CharacterEditModal({
 
   const upload = async (files: File[]) => {
     if (!id || files.length === 0) return;
+    // 先擋大小（伺服器上限 20MB／張）→ 略過超大圖、其餘照傳，不必整批等到伺服器才退。
+    const ok = files.filter((f) => f.size <= 20 * 1024 * 1024);
+    if (ok.length < files.length) toast.error(`${files.length - ok.length} 張圖超過 20MB，已略過`);
+    if (ok.length === 0) return;
     setBusy(true);
     try {
-      for (const f of files) {
+      for (const f of ok) {
         const fd = new FormData(); fd.append('file', f); if (setPrimary) fd.append('primary', '1');
         const res = await fetch(`/api/v1/studio/characters/${id}/reference`, { method: 'POST', body: fd });
         const j = await res.json().catch(() => ({}));
