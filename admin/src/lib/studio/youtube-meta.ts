@@ -25,7 +25,10 @@ const YT_SYSTEM = `你是 YouTube Shorts／抖音短影音的成長操盤手，�
 只回傳 JSON 物件（不要 markdown、不要多餘文字），格式：
 {"title":"...","thumbnailText":"...","description":"...","hashtags":["#..."],"pinnedComment":"..."}`;
 
-const MAX_SHOTS = 30; // 餵給模型的分鏡內容上限
+// 餵給模型的分鏡內容上限。超過時取「前 HEAD + 後 TAIL」鏡，讓描述同時涵蓋鉤子與結尾／CTA，
+// 而不是只看前半段（否則長片的 description 會漏掉收尾，傷 YouTube 點閱與完播）。
+const HEAD_SHOTS = 20;
+const TAIL_SHOTS = 10;
 
 function normalizeMeta(raw: Record<string, unknown>): YouTubeMeta {
   const s = (k: string) => String(raw[k] ?? '').trim();
@@ -55,12 +58,15 @@ export async function generateYouTubeMeta(projectId: string): Promise<YouTubeMet
     buildStoryContext(projectId),
   ]);
 
-  const shots = await prisma.shot.findMany({
-    where: { projectId },
-    orderBy: { sortOrder: 'asc' },
-    select: { shotNo: true, tts: true, caption: true, punchline: true },
-    take: MAX_SHOTS,
-  });
+  const shotSelect = { shotNo: true, tts: true, caption: true, punchline: true } as const;
+  const total = await prisma.shot.count({ where: { projectId } });
+  const elided = total > HEAD_SHOTS + TAIL_SHOTS;
+  const shots = elided
+    ? [
+        ...(await prisma.shot.findMany({ where: { projectId }, orderBy: { sortOrder: 'asc' }, select: shotSelect, take: HEAD_SHOTS })),
+        ...(await prisma.shot.findMany({ where: { projectId }, orderBy: { sortOrder: 'desc' }, select: shotSelect, take: TAIL_SHOTS })).reverse(),
+      ]
+    : await prisma.shot.findMany({ where: { projectId }, orderBy: { sortOrder: 'asc' }, select: shotSelect });
 
   const lines: string[] = [];
   if (story.preamble) lines.push(story.preamble, '');
@@ -71,11 +77,12 @@ export async function generateYouTubeMeta(projectId: string): Promise<YouTubeMet
   if (project?.tone) lines.push(`調性：${project.tone}`);
   if (project?.targetAudience) lines.push(`目標觀眾：${project.targetAudience}`);
   if (shots.length) {
-    lines.push('', '影片內容（依分鏡順序的旁白／字幕／吐槽爆點）：');
-    for (const sh of shots) {
+    lines.push('', `影片內容（依分鏡順序的旁白／字幕／吐槽爆點${elided ? `；全片共 ${total} 鏡，以下為開頭與結尾段` : ''}）：`);
+    shots.forEach((sh, i) => {
+      if (elided && i === HEAD_SHOTS) lines.push('…（中段省略）…');
       const parts = [sh.caption, sh.tts, sh.punchline].map((p) => (p ?? '').trim()).filter(Boolean);
       if (parts.length) lines.push(`#${sh.shotNo} ${parts.join(' / ').slice(0, 140)}`);
-    }
+    });
   }
   lines.push('', '請依上述內容產生這支影片的 YouTube 上架包裝。');
 
