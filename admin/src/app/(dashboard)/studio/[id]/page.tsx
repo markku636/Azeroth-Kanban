@@ -729,6 +729,11 @@ export default function StoryboardPage() {
   // 場景級：只生成並「單獨」合成這一幕的影片（不動到整支成片）。
   const genSceneRender = async (scene: SceneDto) => {
     if (scene.shots.length === 0) { toast('此幕尚無分鏡'); return; }
+    const missing = scene.shots.filter((sh) => !sh.keyframePath).length;
+    if (missing > 0) {
+      const ok = await confirm({ title: '尚有分鏡未生圖', message: `本幕有 ${missing} 個分鏡還沒有關鍵幀，直接生片可能沒有畫面。建議先生圖。要繼續嗎？`, confirmLabel: '仍要生成' });
+      if (!ok) return;
+    }
     lastGenRef.current = () => void genSceneRender(scene);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setGen('generating'); setOverall(`生成「${scene.title}」影片…`);
