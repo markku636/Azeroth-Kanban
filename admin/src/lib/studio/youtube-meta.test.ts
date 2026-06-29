@@ -61,3 +61,19 @@ describe('generateYouTubeMeta 長片取樣 (R74)', () => {
     expect(captured).toContain('#8 ');
   });
 });
+
+describe('generateYouTubeMeta 輸出正規化', () => {
+  it('hashtags 自動補 # 並上限 8 個；title 去頭尾空白', async () => {
+    vi.mocked(prisma.shot.count as any).mockResolvedValue(3);
+    vi.mocked(prisma.shot.findMany as any).mockResolvedValue([{ shotNo: 1, tts: 't', caption: null, punchline: null }]);
+    vi.mocked(complete as any).mockResolvedValue(JSON.stringify({
+      title: '  吸睛標題  ', thumbnailText: 'x', description: 'd',
+      hashtags: ['a', '#b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
+      pinnedComment: 'p',
+    }));
+    const meta = await generateYouTubeMeta('proj1');
+    expect(meta.hashtags.length).toBeLessThanOrEqual(8);
+    expect(meta.hashtags.every((h) => h.startsWith('#'))).toBe(true);
+    expect(meta.title).toBe('吸睛標題');
+  });
+});
