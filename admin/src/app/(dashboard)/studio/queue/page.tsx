@@ -66,6 +66,7 @@ export default function StudioQueuePage() {
   const [auto, setAuto] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set()); // 正在取消中的 jobId
+  const [vram, setVram] = useState<number | null>(null); // ComfyUI 可用顯存 GB（/health 已算出但別處沒用）
   const confirm = useConfirm();
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const seq = useRef(0); // 防止較慢的舊請求覆蓋較新的（輪詢重疊時的倒退閃爍）
@@ -138,6 +139,21 @@ export default function StudioQueuePage() {
       if (timer.current) clearInterval(timer.current);
     };
   }, [auto, load]);
+
+  // GPU 可用顯存：用 /health（探 ComfyUI /system_stats）較慢輪詢，避免 3s timeout 堆在 2s 主輪詢上。
+  useEffect(() => {
+    let stop = false;
+    const probe = async () => {
+      try {
+        const r = await fetch('/api/v1/studio/health', { cache: 'no-store' });
+        const j = await r.json().catch(() => ({}));
+        if (!stop) setVram(typeof j?.data?.comfyui?.vramFreeGB === 'number' ? j.data.comfyui.vramFreeGB : null);
+      } catch { /* 顯存顯示是錦上添花，失敗忽略 */ }
+    };
+    void probe();
+    const t = setInterval(() => { if (!document.hidden) void probe(); }, 8000);
+    return () => { stop = true; clearInterval(t); };
+  }, []);
 
   // 同時用清單與計數判定，避免兩者在 job 轉移瞬間不一致造成的閃爍
   const idle = data && data.active.length === 0 && data.counts.active === 0;
@@ -294,6 +310,7 @@ export default function StudioQueuePage() {
               <span>已完成 {data.counts.completed}</span>
               <span>失敗 {data.counts.failed}</span>
               {data.comfy && <span>· ComfyUI：跑 {data.comfy.running} / 排 {data.comfy.pending}</span>}
+              {vram != null && <span>· 顯存 {vram} GB 可用</span>}
             </section>
           )}
         </div>
