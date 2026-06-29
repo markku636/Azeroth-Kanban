@@ -73,6 +73,10 @@ export function ShotEditModal({
   type WandField = 'visual' | 'tts' | 'caption' | 'punchline';
   const [wandBusy, setWandBusy] = useState<WandField | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false); // 旁白試聽中
+  // 試聽（旁白／音效）共用一個 audio，播新的前先停舊的；關閉 modal 時也停止。
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const stopPreview = () => { const a = previewAudioRef.current; if (a) { a.pause(); previewAudioRef.current = null; } };
+  useEffect(() => () => stopPreview(), []);
   // 角色指派（指派後 speaker/FaceID 連動，由後端 assignCharacterToShot 處理）
   const [characterId, setCharacterId] = useState(shot?.characterId ?? '');
   const [projectChars, setProjectChars] = useState<ProjectCharLite[]>([]);
@@ -217,8 +221,10 @@ export function ShotEditModal({
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '試聽失敗'); }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+      stopPreview();
       const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
+      previewAudioRef.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); if (previewAudioRef.current === audio) previewAudioRef.current = null; };
       audio.onerror = () => URL.revokeObjectURL(url);
       await audio.play();
     } catch (e) {
@@ -519,7 +525,7 @@ export function ShotEditModal({
                   {sfx !== 'none' && (
                     <button
                       type="button"
-                      onClick={() => { const a = new Audio(`/api/v1/studio/sfx/${sfx}`); a.play().catch(() => toast.error('音效試聽失敗')); }}
+                      onClick={() => { stopPreview(); const a = new Audio(`/api/v1/studio/sfx/${sfx}`); previewAudioRef.current = a; a.play().catch(() => toast.error('音效試聽失敗')); }}
                       title="試聽這個音效"
                       className="flex items-center gap-1 rounded-md border border-amber-300 px-2 py-0.5 text-xs font-medium text-amber-700 transition-colors hover:border-amber-400 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/20"
                     >
