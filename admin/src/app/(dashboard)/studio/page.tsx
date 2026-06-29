@@ -190,6 +190,7 @@ export default function StudioProjectsPage() {
         <div className="flex items-center gap-2">
           {(projects.length > 4 || q) && (
             <Input
+              aria-label="搜尋專案"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="搜尋專案…"
