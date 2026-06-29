@@ -519,7 +519,7 @@ export class Compositor {
    */
   async cardClip(o: {
     out: string; width?: number; height?: number; fps?: number; dur?: number;
-    bgImage?: string; bigText?: string; smallText?: string; fontfile?: string;
+    bgImage?: string; bigText?: string; smallText?: string; fontfile?: string; audio?: string;
   }): Promise<string> {
     const W = o.width ?? 720, H = o.height ?? 1280, fps = o.fps ?? 30, dur = o.dur ?? 2.6;
     const s = capScale(H);
@@ -556,9 +556,17 @@ export class Compositor {
       args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", `color=black:s=${W}x${H}:r=${fps}`);
       bg = `[0:v]setsar=1`;
     }
-    args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
-    const vf = [bg, ...draws, fade].join(",") + "[v]";
-    args.push("-filter_complex", vf, "-map", "[v]", "-map", "1:a", "-c:a", "aac", "-b:a", "160k",
+    // optional scored bed: swell the music in/out with the card; else a silent stereo bed
+    let amap = "1:a", aFc = "";
+    if (o.audio) {
+      args.push("-i", o.audio);
+      aFc = `;[1:a]afade=t=in:d=0.6,afade=t=out:st=${fadeOut.toFixed(2)}:d=0.6,apad=whole_dur=${dur.toFixed(3)}[a]`;
+      amap = "[a]";
+    } else {
+      args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
+    }
+    const vf = [bg, ...draws, fade].join(",") + "[v]" + aFc;
+    args.push("-filter_complex", vf, "-map", "[v]", "-map", amap, "-c:a", "aac", "-b:a", "160k",
       ...VIDEO_ARGS, "-r", String(fps), "-t", dur.toFixed(3), o.out);
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }

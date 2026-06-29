@@ -463,10 +463,14 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   await comp.mixBgm({ video: videoOut, bgm, out: mixOut, bgmGain: project?.bgmGain ?? 0.15 });
   if (titleOn && project) {
     const { cw, ch } = await projectDims(projectId);
+    // generate a longer pad (its swell/env are tuned for long beds) and let cardClip trim to the card —
+    // the opening seconds are the natural build-up, which suits a title swell.
+    const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95 }));
     const titleClip = join(outDir, 'title.mp4');
-    await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8 });
+    await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8, audio: titlePad });
+    const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8 }));
     const endClip = join(outDir, 'end.mp4');
-    await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: '完', dur: 2.4 });
+    await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: '完', dur: 2.4, audio: endPad });
     await comp.stitch({ clips: [titleClip, mixOut, endClip], out: final, fades: [0.6, 0.6], transitions: ['fadeblack', 'fadeblack'] });
   }
   return final;
