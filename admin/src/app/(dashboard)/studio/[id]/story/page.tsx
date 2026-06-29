@@ -31,6 +31,7 @@ export default function StoryPage() {
   const [library, setLibrary] = useState<CharacterLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickId, setPickId] = useState('');
+  const [pickRole, setPickRole] = useState('');
   const [sub, setSub] = useState<{ fontSize: number; color: string; position: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom' });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
@@ -154,10 +155,10 @@ export default function StoryPage() {
     if (!characterId) return;
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/characters`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ characterId }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ characterId, roleInStory: pickRole.trim() || undefined }),
       });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '加入失敗'); }
-      setPickId('');
+      setPickId(''); setPickRole('');
       toast.success('角色已加入專案');
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : '加入失敗'); }
@@ -335,6 +336,14 @@ export default function StoryPage() {
             <option value="">＋ 從角色庫加入角色…</option>
             {attachable.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
+          <input
+            value={pickRole}
+            onChange={(e) => setPickRole(e.target.value)}
+            placeholder="定位（選填，如 主角／反派）"
+            title="此角色在本故事的定位；會帶入 AI 生成脈絡，提升一致性"
+            maxLength={120}
+            className="w-40 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50"
+          />
           <button
             type="button"
             onClick={() => void attachChar(pickId)}
