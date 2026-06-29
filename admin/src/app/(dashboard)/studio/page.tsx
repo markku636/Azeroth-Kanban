@@ -21,7 +21,11 @@ interface ProjectDto {
   shotCount?: number;
   coverShotId?: string;
   coverUpdatedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+type SortKey = 'updated' | 'created' | 'title';
 
 type BadgeColor = 'primary' | 'secondary' | 'info' | 'success' | 'warning' | 'danger';
 // 專案階段（schema：interview|script|storyboard|audio|export）→ 中文 + 顏色
@@ -49,6 +53,7 @@ export default function StudioProjectsPage() {
   const [creating, setCreating] = useState(false);
   const [newAspect, setNewAspect] = useState('9:16');
   const [q, setQ] = useState('');
+  const [sort, setSort] = useState<SortKey>('updated');
   const [preview, setPreview] = useState<{ id: string; title: string; v: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dupingId, setDupingId] = useState<string | null>(null);
@@ -135,9 +140,17 @@ export default function StudioProjectsPage() {
   const finished = projects.filter((p) => p.hasOutput).length;
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    if (!kw) return projects;
-    return projects.filter((p) => p.title.toLowerCase().includes(kw) || (p.description ?? '').toLowerCase().includes(kw));
-  }, [projects, q]);
+    const base = kw
+      ? projects.filter((p) => p.title.toLowerCase().includes(kw) || (p.description ?? '').toLowerCase().includes(kw))
+      : projects;
+    const arr = [...base];
+    if (sort === 'title') arr.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hant'));
+    else {
+      const key = sort === 'updated' ? 'updatedAt' : 'createdAt';
+      arr.sort((a, b) => String(b[key] ?? '').localeCompare(String(a[key] ?? ''))); // ISO 字串遞減＝新到舊
+    }
+    return arr;
+  }, [projects, q, sort]);
 
   return (
     <div className="flex h-full w-full max-w-6xl flex-col px-2 py-2 sm:p-6">
@@ -163,6 +176,19 @@ export default function StudioProjectsPage() {
               onClear={() => setQ('')}
               className="w-44 sm:w-56"
             />
+          )}
+          {projects.length > 1 && (
+            <select
+              aria-label="排序方式"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              title="專案排序方式"
+              className="flex-none rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50"
+            >
+              <option value="updated">最近更新</option>
+              <option value="created">最新建立</option>
+              <option value="title">名稱</option>
+            </select>
           )}
           <Link href="/studio/characters">
             <Button variant="outline" size="sm">
