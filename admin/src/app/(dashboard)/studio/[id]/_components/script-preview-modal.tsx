@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { PiXBold, PiSpeakerHighBold, PiPlayFill, PiStopFill, PiSpinnerGapBold } from 'react-icons/pi';
+import { PiXBold, PiSpeakerHighBold, PiPlayFill, PiStopFill, PiSpinnerGapBold, PiCopyBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 
 interface ShotLite { id: string; shotNo: number; tts: string | null; emotion?: string | null; characterId?: string | null }
@@ -61,6 +61,15 @@ export function ScriptPreviewModal({
 
   const stopAll = () => { cancelRef.current = true; audioRef.current?.pause(); };
 
+  // 複製整份旁白腳本（依分鏡順序、含鏡號與角色），供 teleprompter／字幕／審稿外用。
+  const copyScript = () => {
+    if (!lines.length) { toast('沒有旁白可複製'); return; }
+    const text = lines
+      .map((ln) => `#${ln.shotNo}${ln.characterId && charNames[ln.characterId] ? ` [${charNames[ln.characterId]}]` : ''} ${ln.tts ?? ''}`.trim())
+      .join('\n');
+    navigator.clipboard.writeText(text).then(() => toast.success('已複製旁白腳本'), () => toast.error('複製失敗'));
+  };
+
   return (
     <Modal isOpen onClose={() => { stopAll(); onClose(); }} size="lg">
       <div className="flex max-h-[85vh] flex-col">
@@ -69,6 +78,9 @@ export function ScriptPreviewModal({
             <PiSpeakerHighBold className="h-5 w-5 text-sky-500" /> 旁白預覽（{lines.length} 句）
           </div>
           <div className="flex items-center gap-3">
+            <button type="button" onClick={copyScript} disabled={lines.length === 0} title="複製整份旁白腳本" className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-primary disabled:opacity-40">
+              <PiCopyBold className="h-4 w-4" /> 複製腳本
+            </button>
             {allMode ? (
               <button type="button" onClick={stopAll} className="flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600">
                 <PiStopFill className="h-4 w-4" /> 停止
