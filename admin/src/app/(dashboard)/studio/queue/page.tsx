@@ -50,6 +50,9 @@ const STAGE_LABEL: Record<string, string> = {
 };
 const stageLabel = (s?: string) => (s ? STAGE_LABEL[s] ?? s : '');
 
+// 正在跑的任務「幾秒沒更新」：秒數大時改用分鐘顯示，較易讀。
+const fmtAge = (s: number) => (s < 90 ? `${s} 秒` : `${Math.floor(s / 60)} 分${s % 60 ? ` ${s % 60} 秒` : ''}`);
+
 function ago(ms: number | null): string {
   if (!ms) return '';
   const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
@@ -241,7 +244,14 @@ export default function StudioQueuePage() {
                         </span>
                         {c?.shotIndex && c.shotTotal ? <span>第 {c.shotIndex} / 共 {c.shotTotal} 鏡</span> : null}
                         {pct != null && <span>{pct}%</span>}
-                        {c && <span className="text-gray-400">已 {c.ageSec}s 未更新</span>}
+                        {c && (
+                          <span
+                            className={c.ageSec >= 300 ? 'font-medium text-red-500' : c.ageSec >= 180 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'}
+                            title={c.ageSec >= 300 ? '長時間沒有進度，這個任務可能卡住了' : undefined}
+                          >
+                            已 {fmtAge(c.ageSec)} 未更新{c.ageSec >= 300 ? '（可能卡住）' : ''}
+                          </span>
+                        )}
                       </div>
                       {c?.shotLabel && <div className="mt-1 line-clamp-1 text-xs text-gray-500">「{c.shotLabel}」</div>}
                       {pct != null && (
