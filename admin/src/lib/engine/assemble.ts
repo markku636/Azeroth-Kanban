@@ -109,6 +109,15 @@ const capScale = (canvasH?: number): number => (canvasH && canvasH > 0 ? canvasH
 // artifacts). Inserted before captions so text edges aren't over-sharpened. Disable: STUDIO_UNSHARP=off.
 const UNSHARP = (process.env.STUDIO_UNSHARP ?? "on").toLowerCase() !== "off" ? ",unsharp=5:5:0.4:5:5:0.0" : "";
 
+// Subtle cinematic colour grade applied to every shot for a filmic look: a touch more contrast and
+// saturation, shadows nudged cool + highlights nudged warm (the classic teal-orange film look). Kept
+// gentle so it enhances rather than restyles the image. Disable with STUDIO_GRADE=off. Applied after
+// any sharpening and before captions, so on-screen text keeps its intended colours. Each clip is graded
+// at build time so the whole film (including crossfades) reads uniformly.
+const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() !== "off"
+  ? ",eq=contrast=1.06:saturation=1.08:gamma=0.98,colorbalance=rs=-0.015:bs=0.025:rh=0.03:bh=-0.025"
+  : "";
+
 /** 產生字幕 drawtext filter + 寫好的暫存字幕檔（呼叫端負責 unlink）。canvasH 用來等比縮放字級/位置。 */
 function subDrawtext(text: string, style: SubStyle | undefined, font: string, canvasH?: number): { filter: string; subFile: string } {
   const subFile = join(tmpdir(), `sub_${randomUUID()}.txt`);
@@ -182,7 +191,7 @@ export class Compositor {
     let vf =
       `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +
-      `zoompan=z='min(zoom+${rate}\\,${zmax})':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}`;
+      `zoompan=z='min(zoom+${rate}\\,${zmax})':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
     let subFile: string | undefined;
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
@@ -296,7 +305,7 @@ export class Compositor {
     const W = o.width ?? 720, H = o.height ?? 1280, pad = o.pad ?? 0.4;
     const adur = o.voice ? await probeDuration(o.voice) : (o.fallbackDur ?? 4.0);
     const dur = adur + pad;
-    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`;
+    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${GRADE}`;
     let subFile: string | undefined;
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
@@ -425,7 +434,7 @@ export class Compositor {
     let vf =
       `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +
-      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${swayX}':y='ih/2-(ih/zoom/2)${swayY}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}`;
+      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${swayX}':y='ih/2-(ih/zoom/2)${swayY}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
 
     const font = o.memeFont ?? findBoldCjkFont();
     const tmpFiles: string[] = [];
@@ -466,7 +475,7 @@ export class Compositor {
     const W = o.width ?? 720, H = o.height ?? 1280, pad = o.pad ?? 0.4;
     const adur = o.voice ? await probeDuration(o.voice) : (o.fallbackDur ?? 3.5);
     const dur = adur + pad;
-    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1`;
+    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${GRADE}`;
     const font = o.memeFont ?? findBoldCjkFont();
     const tmpFiles: string[] = [];
     if (font && o.topCaption) {
