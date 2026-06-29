@@ -34,6 +34,7 @@ export default function StoryPage() {
   const [sub, setSub] = useState<{ fontSize: number; color: string; position: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom' });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
+  const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
   const prompt = usePrompt();
 
   useEffect(() => {
@@ -118,6 +119,37 @@ export default function StoryPage() {
     setGenBusy(false);
   };
 
+  // 單欄 AI「潤飾」（非破壞式，只改這一欄）：依其他已填欄位脈絡改寫，預填並即時儲存。
+  const polishField = async (field: FieldKey) => {
+    setWandBusy(field);
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${projectId}/bible/polish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, text: form[field] }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.message ?? 'AI 潤飾失敗');
+      const out = j.data?.text as string | undefined;
+      if (!out) throw new Error('AI 沒有產生內容');
+      setForm((f) => ({ ...f, [field]: out }));
+      savedRef.current[field] = out;
+      void patchBible({ [field]: out } as Partial<Record<FieldKey, string>>);
+      toast.success('已用 AI 潤飾並儲存');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'AI 潤飾失敗'); }
+    setWandBusy(null);
+  };
+
+  const wandBtn = (field: FieldKey) => (
+    <button
+      type="button"
+      onClick={() => void polishField(field)}
+      disabled={wandBusy !== null}
+      title="用 AI 潤飾此欄位（依故事脈絡改寫並儲存，不影響其他欄）"
+      className="flex items-center gap-1 rounded-md border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-50 disabled:opacity-40 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/20"
+    >
+      <PiSparkleFill className="h-3 w-3" /> {wandBusy === field ? '潤飾中…' : '潤飾'}
+    </button>
+  );
+
   const attachChar = async (characterId: string) => {
     if (!characterId) return;
     try {
@@ -168,19 +200,35 @@ export default function StoryPage() {
         <h2 className="mb-3 text-sm font-semibold text-gray-700">核心設定</h2>
         <Input label="題材／設定" value={form.description} onChange={set('description')} onBlur={saveField('description')} placeholder="這支短片的題材或一句設定…" />
         <div className="mt-3">
-          <Textarea label="核心前提（故事種子）" value={form.premise} onChange={set('premise')} onBlur={saveField('premise')} rows={3} placeholder="比 logline 更完整的一段：主角是誰、想要什麼、阻礙是什麼…" textareaClassName="resize-none" />
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-gray-700">核心前提（故事種子）</span>
+            {aiEnabled && wandBtn('premise')}
+          </div>
+          <Textarea value={form.premise} onChange={set('premise')} onBlur={saveField('premise')} rows={3} placeholder="比 logline 更完整的一段：主角是誰、想要什麼、阻礙是什麼…" textareaClassName="resize-none" />
         </div>
         <div className="mt-3">
-          <Input label="Logline（一句話前提）" value={form.logline} onChange={set('logline')} onBlur={saveField('logline')} placeholder="一句話講完整個故事的核心…" />
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-gray-700">Logline（一句話前提）</span>
+            {aiEnabled && wandBtn('logline')}
+          </div>
+          <Input value={form.logline} onChange={set('logline')} onBlur={saveField('logline')} placeholder="一句話講完整個故事的核心…" />
         </div>
       </section>
 
       {/* 世界觀與風格 */}
       <section className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
         <h2 className="mb-3 text-sm font-semibold text-gray-700">世界觀與風格</h2>
-        <Textarea label="世界觀／背景設定" value={form.worldSetting} onChange={set('worldSetting')} onBlur={saveField('worldSetting')} rows={3} placeholder="時代、地點、規則、氛圍…AI 會據此維持一致背景。" textareaClassName="resize-none" />
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-gray-700">世界觀／背景設定</span>
+          {aiEnabled && wandBtn('worldSetting')}
+        </div>
+        <Textarea value={form.worldSetting} onChange={set('worldSetting')} onBlur={saveField('worldSetting')} rows={3} placeholder="時代、地點、規則、氛圍…AI 會據此維持一致背景。" textareaClassName="resize-none" />
         <div className="mt-3">
-          <Textarea label="風格指南（視覺＋敘事）" value={form.styleGuide} onChange={set('styleGuide')} onBlur={saveField('styleGuide')} rows={3} placeholder="鏡頭語言、色調、SDXL 風格關鍵字（如 photorealistic, cinematic lighting）、敘事調性…" textareaClassName="resize-none" />
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-gray-700">風格指南（視覺＋敘事）</span>
+            {aiEnabled && wandBtn('styleGuide')}
+          </div>
+          <Textarea value={form.styleGuide} onChange={set('styleGuide')} onBlur={saveField('styleGuide')} rows={3} placeholder="鏡頭語言、色調、SDXL 風格關鍵字（如 photorealistic, cinematic lighting）、敘事調性…" textareaClassName="resize-none" />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Input label="語氣／調性" value={form.tone} onChange={set('tone')} onBlur={saveField('tone')} placeholder="如：迷因吐槽、溫馨" />
@@ -188,7 +236,11 @@ export default function StoryPage() {
           <Input label="目標觀眾" value={form.targetAudience} onChange={set('targetAudience')} onBlur={saveField('targetAudience')} placeholder="如：年輕族群" />
         </div>
         <div className="mt-3">
-          <Textarea label="補充（禁忌、catchphrase、品牌調性…）" value={form.bibleNotes} onChange={set('bibleNotes')} onBlur={saveField('bibleNotes')} rows={2} placeholder="任何想讓 AI 記住的補充設定…" textareaClassName="resize-none" />
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-gray-700">補充（禁忌、catchphrase、品牌調性…）</span>
+            {aiEnabled && wandBtn('bibleNotes')}
+          </div>
+          <Textarea value={form.bibleNotes} onChange={set('bibleNotes')} onBlur={saveField('bibleNotes')} rows={2} placeholder="任何想讓 AI 記住的補充設定…" textareaClassName="resize-none" />
         </div>
       </section>
 
