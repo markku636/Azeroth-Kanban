@@ -23,6 +23,27 @@ export function AuditModal({ projectId, onClose }: { projectId: string; onClose:
   const [audit, setAudit] = useState<Audit | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
+
+  const applyTitle = async (title: string) => {
+    if (!title || applying) return;
+    setApplying(true);
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.code !== 0) throw new Error(json.message ?? '套用失敗');
+      toast.success('已套用為專案標題');
+      window.dispatchEvent(new Event('studio:reload'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '套用失敗');
+    } finally {
+      setApplying(false);
+    }
+  };
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -126,15 +147,26 @@ export function AuditModal({ projectId, onClose }: { projectId: string; onClose:
 
               {audit.suggestedTitle && (
                 <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-300">
-                  <div className="mb-1 flex items-center justify-between">
+                  <div className="mb-1 flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-gray-500">建議標題</span>
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard.writeText(audit.suggestedTitle).then(() => toast.success('已複製標題'), () => toast.error('複製失敗'))}
-                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary"
-                    >
-                      <PiCopyBold className="h-3.5 w-3.5" /> 複製
-                    </button>
+                    <div className="flex flex-none items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void applyTitle(audit.suggestedTitle)}
+                        disabled={applying}
+                        className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 disabled:opacity-40"
+                        title="把建議標題設為這個專案的標題"
+                      >
+                        <PiCheckCircleFill className="h-3.5 w-3.5" /> {applying ? '套用中…' : '套用'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(audit.suggestedTitle).then(() => toast.success('已複製標題'), () => toast.error('複製失敗'))}
+                        className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary"
+                      >
+                        <PiCopyBold className="h-3.5 w-3.5" /> 複製
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm font-semibold text-gray-900">{audit.suggestedTitle}</p>
                 </div>
