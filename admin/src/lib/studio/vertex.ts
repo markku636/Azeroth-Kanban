@@ -138,6 +138,9 @@ function endpoint(model?: string): string {
 }
 
 /** 單輪生成：system 指令 + 多輪對話 → 純文字。assistant 角色映射成 Vertex 的 'model'。 */
+// gemini 2.5 系思考型模型的 thinking-token 緩衝（加在呼叫端的答案預算之上，避免答案被截斷）。
+const THINKING_RESERVE = 2048;
+
 export async function generateText(opts: {
   system: string;
   messages: VertexMessage[];
@@ -157,12 +160,13 @@ export async function generateText(opts: {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     })),
-    // 思考型模型（gemini 2.5 系）會先花 ~1000–1800 個 thinking tokens 才產生答案；
-    // 太低的上限會讓 JSON 答案被 MAX_TOKENS 截斷（→ 解析失敗 → 像「空回應」）。
-    // 故設一個能容納 thinking+答案 的下限；上限拉高不會讓短答案變長（模型仍會在 STOP 自然結束、只計實際 tokens）。
+    // 思考型模型（gemini 2.5 系）會先花 ~1000–1800 個 thinking tokens 才產生答案。
+    // 把呼叫端的 maxTokens 當「答案預算」，再加一段 thinking 緩衝當實際上限，
+    // 避免 JSON 答案被 MAX_TOKENS 截斷（截斷→解析失敗→看起來像「空回應」）。
+    // 上限拉高不會讓短答案變長（模型仍在 STOP 自然結束、只計實際產生的 tokens）。
     generationConfig: {
       temperature: opts.temperature ?? 0.7,
-      maxOutputTokens: Math.max(opts.maxTokens ?? 4096, 4096),
+      maxOutputTokens: (opts.maxTokens ?? 2048) + THINKING_RESERVE,
     },
   };
 

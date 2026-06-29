@@ -127,11 +127,15 @@ export function YouTubeMetaModal({
   const downloadThumb = () => {
     const canvas = canvasRef.current;
     if (!canvas || !canvas.width) return;
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = 'thumbnail.png';
-    a.click();
-    toast.success('縮圖已下載');
+    try {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png'); // 同源圖→不會污染 canvas；保險起見仍包 try/catch
+      a.download = 'thumbnail.png';
+      a.click();
+      toast.success('縮圖已下載');
+    } catch {
+      toast.error('縮圖匯出失敗');
+    }
   };
 
   const copy = (text: string, label: string) => {

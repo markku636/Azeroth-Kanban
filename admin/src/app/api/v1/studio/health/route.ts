@@ -6,15 +6,15 @@ export const dynamic = 'force-dynamic';
 
 // 影像生成引擎（ComfyUI）就緒檢查。最常見的卡關是主機 sleep/idle 把 host ComfyUI 弄掉，
 // 生成 job 會在佇列裡無聲地卡住。前端用此端點在生成前/旁邊提示「引擎尚未就緒」。
-const COMFY_URL = process.env.COMFYUI_URL;
-const COMFY_HOST = COMFY_URL ? COMFY_URL.replace(/^https?:\/\//, '') : '';
+// 保留原本的 scheme（若設成 https 的 ComfyUI 也能正確探測，不會被降級成 http）。
+const COMFY_URL = (process.env.COMFYUI_URL ?? '').replace(/\/+$/, '');
 
 async function probeComfy(): Promise<{ configured: boolean; reachable: boolean; vramFreeGB?: number }> {
-  if (!COMFY_HOST) return { configured: false, reachable: false };
+  if (!COMFY_URL) return { configured: false, reachable: false };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 3000);
   try {
-    const r = await fetch(`http://${COMFY_HOST}/system_stats`, { signal: ctrl.signal, cache: 'no-store' });
+    const r = await fetch(`${COMFY_URL}/system_stats`, { signal: ctrl.signal, cache: 'no-store' });
     if (!r.ok) return { configured: true, reachable: false };
     const data = (await r.json()) as { devices?: Array<{ vram_free?: number }> };
     const free = data?.devices?.[0]?.vram_free;
