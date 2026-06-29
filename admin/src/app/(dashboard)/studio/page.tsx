@@ -21,6 +21,7 @@ interface ProjectDto {
   hasOutput: boolean;
   outputUpdatedAt: string | null;
   shotCount?: number;
+  keyframedCount?: number;
   coverShotId?: string;
   coverUpdatedAt?: string | null;
   createdAt?: string;
@@ -323,6 +324,11 @@ export default function StudioProjectsPage() {
                   <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.fps}fps</span>
                   <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.renderQuality === 'standard' ? '720p' : '1080p'}</span>
                   {p.shotCount != null && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.shotCount} 個分鏡</span>}
+                  {p.shotCount != null && p.shotCount > 0 && p.keyframedCount != null && (
+                    <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">
+                      {p.keyframedCount >= p.shotCount ? '✓ 已生圖' : `已生圖 ${p.keyframedCount}/${p.shotCount}`}
+                    </span>
+                  )}
                 </div>
                 {p.description && <div className="pointer-events-none relative z-10 mt-2 line-clamp-2 text-sm text-gray-600">{p.description}</div>}
                 {/* 撐高，讓底部分隔線在各卡片對齊到最底 */}

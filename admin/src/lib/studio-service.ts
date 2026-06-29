@@ -31,6 +31,8 @@ export type ProjectDto = Pick<
   outputUpdatedAt: string | null;
   /** 分鏡數，僅列表查詢會帶 */
   shotCount?: number;
+  /** 已有關鍵幀的分鏡數（列表卡片顯示「已生圖 X/Y」進度）；僅列表查詢會帶 */
+  keyframedCount?: number;
   /** 封面用：第一個有關鍵幀的分鏡（給尚無成片的進行中專案顯示縮圖）；僅列表查詢會帶 */
   coverShotId?: string;
   coverUpdatedAt?: string | null;
@@ -62,7 +64,7 @@ const ERR_DB = 'studio.db_error';
 
 function projectToDto(
   p: StudioProject,
-  extra?: { shotCount?: number; cover?: { id: string; updatedAt: Date } | null },
+  extra?: { shotCount?: number; keyframedCount?: number; cover?: { id: string; updatedAt: Date } | null },
 ): ProjectDto {
   const out = projectOutputInfo(p.id);
   return {
@@ -71,6 +73,7 @@ function projectToDto(
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
+    ...(extra?.keyframedCount != null ? { keyframedCount: extra.keyframedCount } : {}),
     ...(extra?.cover ? { coverShotId: extra.cover.id, coverUpdatedAt: extra.cover.updatedAt.toISOString() } : {}),
   };
 }
@@ -115,8 +118,18 @@ export async function listProjects(ownerId: string, all = false): Promise<ApiRes
         shots: { where: { keyframePath: { not: null } }, orderBy: { sortOrder: 'asc' }, take: 1, select: { id: true, updatedAt: true } },
       },
     });
+    // 各專案「已生關鍵幀」的分鏡數：單一 groupBy 聚合，避免 N+1（列表卡片顯示生圖進度用）
+    const ids = rows.map((r) => r.id);
+    const kfGroups = ids.length
+      ? await prisma.shot.groupBy({
+          by: ['projectId'],
+          where: { projectId: { in: ids }, keyframePath: { not: null } },
+          _count: true,
+        })
+      : [];
+    const kfMap = new Map(kfGroups.map((g) => [g.projectId, g._count]));
     return ApiResponse.success(
-      rows.map((r) => projectToDto(r, { shotCount: r._count.shots, cover: r.shots[0] ?? null })),
+      rows.map((r) => projectToDto(r, { shotCount: r._count.shots, keyframedCount: kfMap.get(r.id) ?? 0, cover: r.shots[0] ?? null })),
       '取得專案列表成功',
     );
   } catch (e) {
