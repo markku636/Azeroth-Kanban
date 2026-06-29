@@ -15,7 +15,7 @@ import {
   PiSparkleFill, PiPlusBold, PiPlayFill, PiPencilSimpleLineBold,
   PiDotsSixVerticalBold, PiFilmSlateDuotone, PiImageSquareBold, PiFilmReelBold, PiMusicNotesBold,
   PiCaretLeftBold, PiVideoFill, PiClockCounterClockwiseBold, PiCopySimpleBold, PiListChecksBold, PiTrashBold, PiSpeakerHighBold,
-  PiYoutubeLogoFill, PiWarningCircleBold, PiGaugeBold,
+  PiYoutubeLogoFill, PiWarningCircleBold, PiGaugeBold, PiLightningBold,
 } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -98,7 +98,7 @@ function SceneDragHandle({ sceneId }: { sceneId: string }) {
   );
 }
 
-function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHeight, characterName, selectMode, selected, onToggleSelect, onRegenKf, onRegenVideo, onEdit, onHistory, onPreview, onClone }: { shot: ShotDto; label: string; active?: boolean; pct?: number; disabled: boolean; rowIndex: number; minHeight?: number; characterName?: string; selectMode?: boolean; selected?: boolean; onToggleSelect?: () => void; onRegenKf: () => void; onRegenVideo: () => void; onEdit: () => void; onHistory: () => void; onPreview: (tab: 'image' | 'video') => void; onClone: () => void }) {
+function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHeight, characterName, isHook, selectMode, selected, onToggleSelect, onRegenKf, onRegenVideo, onEdit, onHistory, onPreview, onClone }: { shot: ShotDto; label: string; active?: boolean; pct?: number; disabled: boolean; rowIndex: number; minHeight?: number; characterName?: string; isHook?: boolean; selectMode?: boolean; selected?: boolean; onToggleSelect?: () => void; onRegenKf: () => void; onRegenVideo: () => void; onEdit: () => void; onHistory: () => void; onPreview: (tab: 'image' | 'video') => void; onClone: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: shot.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, minHeight: minHeight ? `${minHeight}px` : undefined };
   const meta = STATUS_META[shot.status] ?? { color: 'secondary' as BadgeColor, label: shot.status };
@@ -112,6 +112,11 @@ function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHei
           )}
           <span {...attributes} {...listeners} className="cursor-grab select-none text-gray-300 hover:text-gray-500"><PiDotsSixVerticalBold className="h-3.5 w-3.5" /></span>
           #{shot.shotNo}
+          {isHook && (
+            <span title="開場鉤子：短影音前 3 秒決定成敗。把最吸睛的畫面／衝突／提問放在這一鏡。" className="flex items-center gap-0.5 rounded-full bg-amber-100 px-1 py-px text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              <PiLightningBold className="h-2.5 w-2.5" />鉤子
+            </span>
+          )}
           {(shot.punch || shot.caption) && <span title="喜劇鏡（迷因吐槽）">🎬</span>}
           {shot.keyframeMode === 'upload' && <span title="上傳圖直接當關鍵幀">📎</span>}
           {shot.keyframeMode === 'faceid' && <span title="參考圖重繪">🎭</span>}
@@ -749,6 +754,8 @@ export default function StoryboardPage() {
   // 縮圖底圖＝第一個有關鍵幀的分鏡（通常是鉤子鏡），供 YouTube 文案的縮圖產生器疊大字。
   const hookShot = data.scenes.flatMap((s) => s.shots).find((sh) => sh.keyframePath);
   const hookKeyframeUrl = hookShot ? `/api/v1/studio/shots/${hookShot.id}/keyframe?v=${encodeURIComponent(hookShot.updatedAt)}` : undefined;
+  // 開場鉤子＝整支影片按順序的第一鏡（前 3 秒決定觀眾去留）；在看板上標記，提醒把功力下在這。
+  const openingShotId = data.scenes.flatMap((s) => s.shots)[0]?.id;
 
   return (
     <div className="flex h-full flex-col px-2 py-2 sm:p-6">
@@ -962,7 +969,7 @@ export default function StoryboardPage() {
               <SortableContext items={sc.shots.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col gap-2 overflow-y-auto">
                   {sc.shots.map((s, idx) => (
-                    <SortableShotCard key={s.id} shot={s} label={shotLabel(s)} active={shotProg[s.id] != null && shotProg[s.id].status !== 'done'} pct={shotProg[s.id]?.status !== 'done' ? shotProg[s.id]?.pct : undefined} disabled={generating || busy} rowIndex={idx} minHeight={rowHeights[idx]} characterName={s.characterId ? charNames[s.characterId] : undefined} selectMode={selectMode} selected={selectedIds.has(s.id)} onToggleSelect={() => toggleSelect(s.id)} onRegenKf={() => void genKeyframes([s.id])} onRegenVideo={() => void genRender([s.id])} onEdit={() => setEditingShotId(s.id)} onHistory={() => setHistoryShot(s)} onPreview={(tab) => setMediaPreview({ shot: s, tab })} onClone={() => void cloneShot(s)} />
+                    <SortableShotCard key={s.id} shot={s} label={shotLabel(s)} active={shotProg[s.id] != null && shotProg[s.id].status !== 'done'} pct={shotProg[s.id]?.status !== 'done' ? shotProg[s.id]?.pct : undefined} disabled={generating || busy} rowIndex={idx} minHeight={rowHeights[idx]} characterName={s.characterId ? charNames[s.characterId] : undefined} isHook={s.id === openingShotId} selectMode={selectMode} selected={selectedIds.has(s.id)} onToggleSelect={() => toggleSelect(s.id)} onRegenKf={() => void genKeyframes([s.id])} onRegenVideo={() => void genRender([s.id])} onEdit={() => setEditingShotId(s.id)} onHistory={() => setHistoryShot(s)} onPreview={(tab) => setMediaPreview({ shot: s, tab })} onClone={() => void cloneShot(s)} />
                   ))}
                   {sc.shots.length === 0 && <div className="rounded border border-dashed border-gray-200 px-2 py-3 text-center text-xs text-gray-300">尚無分鏡</div>}
                 </div>
