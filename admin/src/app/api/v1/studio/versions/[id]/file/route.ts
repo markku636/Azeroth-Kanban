@@ -14,6 +14,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<Record
   const session = await auth();
   const memberId = session?.user?.memberId;
   if (!memberId) return new Response('unauthorized', { status: 401 });
+  if (!(await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_VIEW))) return new Response('forbidden', { status: 403 });
   const { id } = await params;
 
   const bypass = await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_VIEW_ALL);

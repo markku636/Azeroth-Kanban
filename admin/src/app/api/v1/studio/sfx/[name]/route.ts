@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { auth } from '@/auth';
+import { hasPermission } from '@/lib/permission-service';
+import { PERMISSIONS } from '@/config/permissions';
 import { sfxFile, SFX_NAMES, type SfxName } from '@/lib/engine/sfx';
 
 export const runtime = 'nodejs';
@@ -13,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(_request: NextRequest, { params }: { params: Promise<Record<string, string>> }) {
   const session = await auth();
   if (!session?.user?.memberId) return new Response(JSON.stringify({ message: '尚未登入' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_VIEW))) return new Response(JSON.stringify({ message: '沒有權限' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   const { name } = await params;
   if (!SFX_NAMES.includes(name as SfxName)) return new Response(JSON.stringify({ message: '未知的音效' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
   try {
