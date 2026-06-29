@@ -157,33 +157,47 @@ export async function generateText(opts: {
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }],
     })),
-    generationConfig: { temperature: opts.temperature ?? 0.7, maxOutputTokens: opts.maxTokens ?? 4096 },
+    // 思考型模型（gemini 2.5 系）會先花 ~1000–1800 個 thinking tokens 才產生答案；
+    // 太低的上限會讓 JSON 答案被 MAX_TOKENS 截斷（→ 解析失敗 → 像「空回應」）。
+    // 故設一個能容納 thinking+答案 的下限；上限拉高不會讓短答案變長（模型仍會在 STOP 自然結束、只計實際 tokens）。
+    generationConfig: {
+      temperature: opts.temperature ?? 0.7,
+      maxOutputTokens: Math.max(opts.maxTokens ?? 4096, 4096),
+    },
   };
 
-  const res = await fetchWithRetry(
-    endpoint(opts.model),
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
-    Number(process.env.VERTEX_TIMEOUT_MS ?? 60_000),
-    2,
-  );
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    // 不外洩 Google 原始錯誤體（含 project 路徑/配額細節）；僅伺服器端 log，對外只回 status。
-    console.error('[vertex] generateContent failed', res.status, detail.slice(0, 500));
-    throw new Error(`Vertex 生成失敗（${res.status}）`);
+  // Gemini 偶爾回「空輸出 + finishReason=STOP」（已知間歇性 quirk）→ 在來源處重試最多 3 次，
+  // 讓所有生成路徑（分鏡/聖經/魔法棒/YouTube 文案/健檢）都更穩，少掉隨機空回應的失敗。
+  const EMPTY_RETRIES = 3;
+  for (let attempt = 0; attempt < EMPTY_RETRIES; attempt++) {
+    const res = await fetchWithRetry(
+      endpoint(opts.model),
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+      Number(process.env.VERTEX_TIMEOUT_MS ?? 60_000),
+      2,
+    );
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      // 不外洩 Google 原始錯誤體（含 project 路徑/配額細節）；僅伺服器端 log，對外只回 status。
+      console.error('[vertex] generateContent failed', res.status, detail.slice(0, 500));
+      throw new Error(`Vertex 生成失敗（${res.status}）`);
+    }
+    const data = (await res.json()) as {
+      candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>;
+      usageMetadata?: Record<string, number>;
+    };
+    const cand = data.candidates?.[0];
+    const text = (cand?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
+    if (text) return text;
+    // 空輸出但結束原因非正常（MAX_TOKENS/SAFETY/RECITATION）→ 重試無益，丟可辨識錯誤。
+    if (cand?.finishReason && cand.finishReason !== 'STOP') {
+      throw new Error(`Vertex 無輸出（finishReason=${cand.finishReason}）`);
+    }
+    // 空輸出 + STOP/未知 = 偶發空回應 → 換下一次嘗試
   }
-  const data = (await res.json()) as {
-    candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  const cand = data.candidates?.[0];
-  const text = (cand?.content?.parts ?? []).map((p) => p.text ?? '').join('').trim();
-  // 空輸出但結束原因非正常（MAX_TOKENS/SAFETY/RECITATION）→ 丟可辨識錯誤，避免前端只看到籠統「沒回傳」。
-  if (!text && cand?.finishReason && cand.finishReason !== 'STOP') {
-    throw new Error(`Vertex 無輸出（finishReason=${cand.finishReason}）`);
-  }
-  return text;
+  return '';
 }
