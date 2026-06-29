@@ -23,7 +23,9 @@ const STARTERS = [
 export function InterviewChat({ projectId, hasShots, onClose, onDone }: { projectId: string; hasShots?: boolean; onClose: () => void; onDone: () => void }) {
   const confirm = useConfirm();
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'assistant', content: '嗨！想做什麼樣的短片？用一句話告訴我你的故事點子吧。' },
+    { role: 'assistant', content: hasShots
+      ? '嗨！這個專案已經有分鏡了——我生成的分鏡會「新增」一份（不會取代現有的）。想做什麼樣的短片？'
+      : '嗨！想做什麼樣的短片？用一句話告訴我你的故事點子吧。' },
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
