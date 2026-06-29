@@ -249,6 +249,12 @@ export default function ScriptPage() {
 
   const genScript = async () => {
     if (!aiEnabled) { toast('AI 尚未啟用：請設定 AI 憑證，或用「+ 新增場景」手動建立腳本', { icon: '🔒' }); return; }
+    // 生成是「新增」場景而非取代 — 已有場景時再生成會疊加重複，先確認（同 expand/R13/R56 footgun）。
+    const existingScenes = (data?.scenes ?? []).filter((s) => s.id !== '__unassigned__').length;
+    if (existingScenes > 0) {
+      const ok = await confirm({ title: '已有場景', message: `目前已有 ${existingScenes} 個場景。AI 生成會「再新增」場景（不會取代既有），可能造成重複。要繼續嗎？`, confirmLabel: '繼續生成' });
+      if (!ok) return;
+    }
     let body: Record<string, unknown> = {};
     if (!premise.trim()) {
       const p = await prompt({ title: 'AI 生成腳本', message: '先給一句故事題材，我幫你生出 logline 與分場', placeholder: '例：長大的小智揹著房貸回到舊街…', confirmLabel: '生成', required: true });
