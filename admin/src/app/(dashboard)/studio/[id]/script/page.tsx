@@ -43,19 +43,19 @@ function SceneCard({
   const [saving, setSaving] = useState(false);
   const [wandBusy, setWandBusy] = useState(false);
 
-  // 劇情概要 AI 潤飾（synopsis 是展開分鏡的種子）：潤飾後直接套用並存檔。
-  const polishSynopsis = async () => {
+  // 場景欄位 AI 潤飾（synopsis 是展開分鏡的種子、dialogue 為台詞草稿）：潤飾後直接套用並存檔。
+  const polishField = async (field: 'synopsis' | 'dialogue') => {
     setWandBusy(true);
     try {
       const res = await fetch(`/api/v1/studio/scenes/${scene.id}/polish`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field: 'synopsis', text: synopsis }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, text: field === 'synopsis' ? synopsis : dialogue }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.message ?? 'AI 潤飾失敗');
       const out = j.data?.text as string | undefined;
       if (!out) throw new Error('AI 沒有產生內容');
-      setSynopsis(out);
-      await onSave({ synopsis: out });
+      if (field === 'synopsis') setSynopsis(out); else setDialogue(out);
+      await onSave({ [field]: out });
       toast.success('已用 AI 潤飾並儲存');
     } catch (e) { toast.error(e instanceof Error ? e.message : 'AI 潤飾失敗'); }
     setWandBusy(false);
@@ -93,7 +93,7 @@ function SceneCard({
         {aiEnabled && (
           <button
             type="button"
-            onClick={() => void polishSynopsis()}
+            onClick={() => void polishField('synopsis')}
             disabled={wandBusy || disabled}
             title="用 AI 潤飾劇情概要（依故事脈絡改寫並儲存，能拉高展開分鏡的品質）"
             className="flex items-center gap-1 rounded-md border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-50 disabled:opacity-40 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/20"
@@ -111,8 +111,21 @@ function SceneCard({
         textareaClassName="resize-none"
       />
       <div className="mt-2">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-gray-700">台詞／旁白草稿（選填）</span>
+          {aiEnabled && dialogue.trim() && (
+            <button
+              type="button"
+              onClick={() => void polishField('dialogue')}
+              disabled={wandBusy || disabled}
+              title="用 AI 潤飾台詞（更口語、有態度，依角色與本場情境）"
+              className="flex items-center gap-1 rounded-md border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-50 disabled:opacity-40 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/20"
+            >
+              <PiSparkleFill className="h-3 w-3" /> {wandBusy ? '潤飾中…' : '潤飾'}
+            </button>
+          )}
+        </div>
         <Textarea
-          label="台詞／旁白草稿（選填）"
           value={dialogue}
           onChange={(e) => setDialogue(e.target.value)}
           onBlur={() => { if (dialogue !== (scene.dialogue ?? '')) void save({ dialogue }); }}
