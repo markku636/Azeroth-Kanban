@@ -180,7 +180,7 @@ export function RefineModal({
     <Modal isOpen onClose={onClose} size="xl">
       <div className="max-h-[88vh] overflow-y-auto p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
             <PiSparkleFill className="h-5 w-5 text-violet-500" /> 分鏡 #{shotNo} 洗圖工作台
           </h3>
           <button type="button" onClick={onClose} aria-label="關閉" className="text-gray-400 hover:text-gray-600">
@@ -215,7 +215,7 @@ export function RefineModal({
                     onPointerLeave={() => { drawing.current = false; }}
                   />
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
                   <span>筆刷</span>
                   <input type="range" min={10} max={120} value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="flex-1 accent-violet-500" aria-label="筆刷大小" />
                   <Button size="sm" variant="outline" onClick={clearMask} disabled={!hasStrokes}>清除圈選</Button>
@@ -239,7 +239,7 @@ export function RefineModal({
                   disabled={working}
                 />
                 <div>
-                  <div className="mb-1 flex items-center justify-between text-sm text-gray-700 dark:text-gray-300">
+                  <div className="mb-1 flex items-center justify-between text-sm text-gray-700">
                     <span>改動幅度（denoise）</span>
                     <span className="tabular-nums text-violet-600 dark:text-violet-300">{denoise.toFixed(2)}</span>
                   </div>
@@ -269,7 +269,7 @@ export function RefineModal({
             {/* 前後比較 */}
             {focused && current && focused.id !== current.id && (
               <div className="rounded-lg border border-violet-200 bg-violet-50/40 p-3 dark:border-violet-900 dark:bg-violet-950/20">
-                <div className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">前後比較</div>
+                <div className="mb-2 text-sm font-medium text-gray-700">前後比較</div>
                 <div className="grid grid-cols-2 gap-3">
                   <figure className="m-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -295,7 +295,7 @@ export function RefineModal({
 
             {/* 版本歷史 strip */}
             <section>
-              <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
                 <PiClockCounterClockwiseBold className="h-4 w-4 text-blue-500" /> 版本歷史（{keyframes.length}）— 點圖比較，可挑歷史版本採用
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1">

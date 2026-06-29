@@ -52,7 +52,7 @@ export function DropZone({
         onChange={(e) => { handle(e.target.files); e.currentTarget.value = ''; }}
       />
       <PiUploadSimpleBold className="h-5 w-5 text-gray-400" />
-      <div className="text-sm text-gray-600 dark:text-gray-400">拖放圖片到此，或點擊選檔</div>
+      <div className="text-sm text-gray-600">拖放圖片到此，或點擊選檔</div>
       {hint && <div className="text-xs text-gray-400">{hint}</div>}
     </div>
   );

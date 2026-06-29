@@ -296,7 +296,7 @@ export function ShotEditModal({
         }}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-lg font-semibold text-gray-900">
             {isCreate ? '新增分鏡' : `編輯分鏡 #${shot.shotNo}`}
           </h3>
           <button type="button" onClick={onClose} aria-label="關閉" className="text-gray-400 hover:text-gray-600">
@@ -344,7 +344,7 @@ export function ShotEditModal({
                     <div className="flex h-28 w-20 flex-none items-center justify-center rounded border border-dashed border-gray-300 text-center text-[10px] text-gray-400">尚無圖</div>
                   )}
                   <div className="flex flex-1 flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
                       <label className="flex items-center gap-1"><input type="radio" name="refmode" checked={refMode === 'upload'} onChange={() => setRefMode('upload')} /> 直接當關鍵幀</label>
                       <label className="flex items-center gap-1"><input type="radio" name="refmode" checked={refMode === 'faceid'} onChange={() => setRefMode('faceid')} /> 參考重繪</label>
                     </div>
@@ -417,7 +417,7 @@ export function ShotEditModal({
                   </Button>
                 </div>
               ) : (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-gray-500">
                   AI 未啟用：請於後端設定 <code>LLM_PROVIDER=vertex</code> 與 Vertex 憑證（或 <code>ANTHROPIC_API_KEY</code>）。
                 </p>
               )}
@@ -464,7 +464,7 @@ export function ShotEditModal({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">動態分支</label>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">動態分支</label>
             <select
               aria-label="動態分支"
               value={branch}
@@ -498,8 +498,8 @@ export function ShotEditModal({
 
           <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-gray-300">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">🎬 喜劇（迷因吐槽，可留空）</span>
-              <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+              <span className="text-sm font-medium text-gray-700">🎬 喜劇（迷因吐槽，可留空）</span>
+              <label className="flex items-center gap-1.5 text-xs text-gray-600">
                 <input type="checkbox" checked={punch} onChange={(e) => setPunch(e.target.checked)} className="rounded" />
                 反轉鏡（punch-zoom）
               </label>
@@ -521,7 +521,7 @@ export function ShotEditModal({
               </div>
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">卡點音效</label>
+                  <label className="block text-sm font-medium text-gray-700">卡點音效</label>
                   {sfx !== 'none' && (
                     <button
                       type="button"

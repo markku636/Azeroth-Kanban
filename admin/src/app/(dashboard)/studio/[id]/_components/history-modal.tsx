@@ -59,7 +59,7 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
       <Modal isOpen onClose={onClose} size="xl">
         <div className="max-h-[85vh] overflow-y-auto p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
               <PiClockCounterClockwiseBold className="h-5 w-5 text-blue-500" /> 分鏡 #{shotNo} 生成歷史
             </h3>
             <button type="button" onClick={onClose} aria-label="關閉" className="text-gray-400 hover:text-gray-600">
@@ -80,7 +80,7 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
             <div className="space-y-5">
               {images.length > 0 && (
                 <section>
-                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
                     <PiImageSquareBold className="h-4 w-4 text-sky-500" /> 圖片版本（{images.length}）
                   </div>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -105,7 +105,7 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
 
               {videos.length > 0 && (
                 <section>
-                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-gray-700">
                     <PiFilmReelBold className="h-4 w-4 text-emerald-500" /> 影片版本（{videos.length}）
                   </div>
                   <div className="space-y-1.5">
@@ -119,7 +119,7 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
                         <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-600 text-white">
                           <PiPlayFill className="h-3.5 w-3.5" />
                         </span>
-                        <span className="text-gray-700 dark:text-gray-300">{fmt(v.createdAt)}</span>
+                        <span className="text-gray-700">{fmt(v.createdAt)}</span>
                         {i === 0 && <span className="ms-auto rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">最新</span>}
                       </button>
                     ))}

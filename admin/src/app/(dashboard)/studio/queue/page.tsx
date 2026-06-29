@@ -162,7 +162,7 @@ export default function StudioQueuePage() {
     <div className="flex h-full w-full max-w-4xl flex-col px-2 py-2 sm:p-6">
       <div className="mb-5 flex items-start justify-between gap-2">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
             <PiCpuDuotone className="h-7 w-7 text-blue-600" /> GPU 佇列
           </h1>
           <p className="mt-1 text-sm text-gray-500">GPU 一次只跑一鏡，這裡是它現在在做什麼、還有什麼排隊沒跑。</p>
@@ -195,7 +195,7 @@ export default function StudioQueuePage() {
         <div className="flex flex-col gap-5">
           {/* ── 正在跑 ── */}
           <section>
-            <h2 className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">正在跑</h2>
+            <h2 className="mb-2 text-sm font-semibold text-gray-700">正在跑</h2>
             {idle ? (
               <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                 <PiCheckCircleDuotone className="h-5 w-5" /> GPU 閒置中，沒有任務在跑。
@@ -209,11 +209,11 @@ export default function StudioQueuePage() {
                     <div key={j.jobId} className="rounded-lg border border-blue-200 bg-blue-50/50 p-4 shadow-sm dark:bg-gray-50">
                       <div className="flex items-center justify-between gap-2">
                         {j.owned ? (
-                          <Link href={`/studio/${j.projectId}`} className="font-semibold text-gray-900 hover:text-blue-600 dark:text-gray-100">
+                          <Link href={`/studio/${j.projectId}`} className="font-semibold text-gray-900 hover:text-blue-600">
                             {j.projectTitle}
                           </Link>
                         ) : (
-                          <span className="font-semibold text-gray-500 dark:text-gray-300">{j.projectTitle}</span>
+                          <span className="font-semibold text-gray-500">{j.projectTitle}</span>
                         )}
                         <div className="flex shrink-0 items-center gap-2">
                           <Badge color="info" variant="flat" size="sm">{j.mode}</Badge>
@@ -254,7 +254,7 @@ export default function StudioQueuePage() {
 
           {/* ── 排隊中（還沒跑） ── */}
           <section>
-            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
               <PiHourglassMediumDuotone className="h-4 w-4" /> 排隊中（還沒跑）
               {data && <Badge color="secondary" variant="flat" size="sm">{data.counts.waiting + data.counts.delayed}</Badge>}
             </h2>
@@ -267,11 +267,11 @@ export default function StudioQueuePage() {
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-medium text-gray-500">{i + 1}</span>
                       {j.owned ? (
-                        <Link href={`/studio/${j.projectId}`} className="truncate font-medium text-gray-800 hover:text-blue-600 dark:text-gray-100">
+                        <Link href={`/studio/${j.projectId}`} className="truncate font-medium text-gray-800 hover:text-blue-600">
                           {j.projectTitle}
                         </Link>
                       ) : (
-                        <span className="truncate font-medium text-gray-500 dark:text-gray-300">{j.projectTitle}</span>
+                        <span className="truncate font-medium text-gray-500">{j.projectTitle}</span>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-2 text-xs text-gray-500">

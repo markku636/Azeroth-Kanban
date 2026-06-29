@@ -46,7 +46,7 @@ export default function CharacterLibraryPage() {
           <PiMagnifyingGlassBold className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="搜尋角色…" className="w-full" inputClassName="ps-9" />
         </div>
-        <label className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
           <input type="checkbox" checked={includeArchived} onChange={(e) => setIncludeArchived(e.target.checked)} className="rounded" /> 顯示已封存
         </label>
       </div>

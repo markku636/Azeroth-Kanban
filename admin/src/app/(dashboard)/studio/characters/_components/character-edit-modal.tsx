@@ -297,7 +297,7 @@ export function CharacterEditModal({
         <div className="mt-4 rounded-lg border border-dashed border-gray-200 p-3 dark:border-gray-300">
           <div className="mb-2 flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-sm font-medium text-gray-700"><PiStarFill className="h-3.5 w-3.5 text-amber-400" /> 形象圖（上傳或 AI 生成，FaceID 一致臉）</span>
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+            <label className="flex items-center gap-1.5 text-xs text-gray-600">
               <input type="checkbox" checked={setPrimary} onChange={(e) => setSetPrimary(e.target.checked)} className="rounded" /> 設為主形象圖
             </label>
           </div>
