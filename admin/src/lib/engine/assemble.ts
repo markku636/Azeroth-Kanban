@@ -134,7 +134,8 @@ function subDrawtext(text: string, style: SubStyle | undefined, font: string, ca
     `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(subFile)}:` +
     `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
     `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
-    `x=(w-text_w)/2:y=${y}:line_spacing=${ls}`;
+    // gentle 0.35s alpha fade-in so the narration subtitle glides in rather than popping (commas escaped)
+    `x=(w-text_w)/2:y=${y}:line_spacing=${ls}:alpha='if(lt(t\\,0.35)\\,t/0.35\\,1)'`;
   return { filter, subFile };
 }
 
