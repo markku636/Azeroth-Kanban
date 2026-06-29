@@ -203,7 +203,7 @@ export class Compositor {
     const args = ["-y", "-loop", "1", "-i", o.image];
     if (o.voice) args.push("-i", o.voice);
     else args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
-    args.push("-filter_complex", `[0:v]${vf}[v]`, "-map", "[v]", "-map", "1:a", "-c:a", "aac", "-b:a", "160k");
+    args.push("-filter_complex", `[0:v]${vf}[v]${o.voice ? `;[1:a]apad=whole_dur=${dur.toFixed(3)}[a]` : ""}`, "-map", "[v]", "-map", o.voice ? "[a]" : "1:a", "-c:a", "aac", "-b:a", "160k");
     args.push(...VIDEO_ARGS, "-t", dur.toFixed(3), o.out);
 
     const { code, stderr } = await run(FFMPEG, args);
@@ -314,7 +314,7 @@ export class Compositor {
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
     if (o.voice) args.push("-i", o.voice);
     else args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
-    args.push("-filter_complex", `[0:v]${vf}[v]`, "-map", "[v]", "-map", "1:a",
+    args.push("-filter_complex", `[0:v]${vf}[v]${o.voice ? `;[1:a]apad=whole_dur=${dur.toFixed(3)}[a]` : ""}`, "-map", "[v]", "-map", o.voice ? "[a]" : "1:a",
       ...VIDEO_ARGS, "-c:a", "aac", "-b:a", "160k",
       "-t", dur.toFixed(3), o.out);
     const { code, stderr } = await run(FFMPEG, args);
@@ -453,7 +453,7 @@ export class Compositor {
     const args = ["-y", "-loop", "1", "-i", o.image];
     if (o.voice) args.push("-i", o.voice);
     else args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
-    args.push("-filter_complex", `[0:v]${vf}[v]`, "-map", "[v]", "-map", "1:a", "-c:a", "aac", "-b:a", "160k",
+    args.push("-filter_complex", `[0:v]${vf}[v]${o.voice ? `;[1:a]apad=whole_dur=${dur.toFixed(3)}[a]` : ""}`, "-map", "[v]", "-map", o.voice ? "[a]" : "1:a", "-c:a", "aac", "-b:a", "160k",
       ...VIDEO_ARGS, "-t", dur.toFixed(3), o.out);
 
     const { code, stderr } = await run(FFMPEG, args);
@@ -491,7 +491,7 @@ export class Compositor {
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
     if (o.voice) args.push("-i", o.voice);
     else args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
-    args.push("-filter_complex", `[0:v]${vf}[v]`, "-map", "[v]", "-map", "1:a", "-c:a", "aac", "-b:a", "160k",
+    args.push("-filter_complex", `[0:v]${vf}[v]${o.voice ? `;[1:a]apad=whole_dur=${dur.toFixed(3)}[a]` : ""}`, "-map", "[v]", "-map", o.voice ? "[a]" : "1:a", "-c:a", "aac", "-b:a", "160k",
       ...VIDEO_ARGS, "-t", dur.toFixed(3), o.out);
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
