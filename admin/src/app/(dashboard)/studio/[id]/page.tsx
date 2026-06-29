@@ -930,10 +930,10 @@ export default function StoryboardPage() {
             <span>· 共 {totalShots} 個分鏡</span>
             {totalShots > 0 && (
               <span
-                title="粗估成片長度（依字數估語速，非精準值）。短影音黃金區間約 30–45 秒。"
-                className={estSeconds > 75 || estSeconds < 15 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500'}
+                title="粗估成片長度（依字數估語速，非精準值）。短影音完播率約 60 秒後明顯下滑，黃金區間約 15–45 秒（越短越易看完）。"
+                className={estSeconds > 60 || estSeconds < 15 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500'}
               >
-                · 約 {fmtDur(estSeconds * 1000)}{estSeconds > 75 ? '（偏長）' : estSeconds < 15 ? '（偏短）' : ''}
+                · 約 {fmtDur(estSeconds * 1000)}{estSeconds > 60 ? '（偏長）' : estSeconds < 15 ? '（偏短）' : ''}
               </span>
             )}
             {totalShots > 0 && (
