@@ -185,7 +185,7 @@ function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHei
         const longStatic = shot.branch !== 'i2v' && shot.branch !== 'lip' && sec > 6;
         return (
           <div className="mt-1 flex items-center gap-1.5 text-[10px]">
-            <span title={longStatic ? '靜態鏡偏長，短影音建議多用 2–4 秒快切' : '此鏡粗估時長（依字數估算）'} className={longStatic ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-gray-400'}>≈{Math.round(sec)}s</span>
+            <span title={longStatic ? '靜態鏡偏長，短影音建議多用 2–4 秒快切' : '此鏡粗估時長（依字數估算）'} className={longStatic ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-gray-400'}>{longStatic ? '⚠ ' : ''}≈{Math.round(sec)}s</span>
             {shot.branch === 'i2v' && <span title="動態生成（i2v，真動態，較慢）" className="rounded bg-sky-100 px-1 font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">動態</span>}
             {shot.branch === 'lip' && <span title="對嘴數字人（會說話）" className="rounded bg-violet-100 px-1 font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">對嘴</span>}
           </div>
