@@ -179,6 +179,18 @@ function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHei
           <span className="truncate">🎭 {characterName}</span>
         </div>
       )}
+      {(() => {
+        // 粗估此鏡時長 + 動態類型；靜態鏡偏長(>6s)亮黃提醒（短影音宜多用快切）。
+        const sec = estShotSeconds(shot);
+        const longStatic = shot.branch !== 'i2v' && shot.branch !== 'lip' && sec > 6;
+        return (
+          <div className="mt-1 flex items-center gap-1.5 text-[10px]">
+            <span title={longStatic ? '靜態鏡偏長，短影音建議多用 2–4 秒快切' : '此鏡粗估時長（依字數估算）'} className={longStatic ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-gray-400'}>≈{Math.round(sec)}s</span>
+            {shot.branch === 'i2v' && <span title="動態生成（i2v，真動態，較慢）" className="rounded bg-sky-100 px-1 font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">動態</span>}
+            {shot.branch === 'lip' && <span title="對嘴數字人（會說話）" className="rounded bg-violet-100 px-1 font-medium text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">對嘴</span>}
+          </div>
+        );
+      })()}
       <div className="mt-1.5 flex gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
         <button type="button" onClick={onRegenKf} disabled={disabled} className="flex flex-1 items-center justify-center gap-1 rounded border border-sky-300 px-1.5 py-1 text-[11px] text-sky-700 hover:bg-sky-50 disabled:opacity-40">
           <PiImageSquareBold className="h-3 w-3" /> 生圖
