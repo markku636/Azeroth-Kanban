@@ -7,6 +7,7 @@ import { Button, Input, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
 import { PiUsersThreeDuotone, PiPlusBold, PiTrashBold, PiArrowSquareOutBold, PiArrowRightBold, PiSparkleFill } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
+import { useConfirm } from '@/hooks/use-confirm';
 
 interface CharacterLite { id: string; name: string; isArchived: boolean }
 interface ProjectCharacter { id: string; characterId: string; roleInStory: string | null; character: { id: string; name: string } }
@@ -37,6 +38,7 @@ export default function StoryPage() {
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
   const prompt = usePrompt();
+  const confirm = useConfirm();
 
   useEffect(() => {
     void (async () => {
@@ -107,6 +109,12 @@ export default function StoryPage() {
     if (!seed) {
       const s = await prompt({ title: 'AI 生成故事設定', message: '給一句題材，我幫你產生前提／世界觀／風格／語氣／類型／受眾', placeholder: '例：長大的小智揹著房貸回到舊街…', confirmLabel: '生成', required: true });
       if (!s) return; seed = s;
+    }
+    // 已有設定內容 → 重新生成會整份覆蓋（前提/世界觀/風格…），先確認避免誤刪手寫內容（同 R50/R13 footgun）。
+    const hasExisting = (['premise', 'logline', 'worldSetting', 'styleGuide', 'tone', 'genre', 'targetAudience', 'bibleNotes'] as FieldKey[]).some((k) => form[k]?.trim());
+    if (hasExisting) {
+      const ok = await confirm({ title: '重新生成會覆蓋現有設定', message: '目前已有故事設定，AI 重新生成會覆蓋前提／世界觀／風格／語氣／類型／受眾等欄位。要繼續嗎？', type: 'danger', confirmLabel: '重新生成' });
+      if (!ok) return;
     }
     setGenBusy(true);
     const t = toast.loading('AI 生成故事設定中…');
