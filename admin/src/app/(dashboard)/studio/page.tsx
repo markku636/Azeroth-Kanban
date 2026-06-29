@@ -179,6 +179,19 @@ export default function StudioProjectsPage() {
               >
                 {/* 整卡可點 = 鋪滿的 stretched link（在最底層），預覽鈕為其上的獨立可點元素，避免 button 巢狀在 anchor 內 */}
                 <Link href={`/studio/${p.id}`} aria-label={`開啟專案 ${p.title}`} className="absolute inset-0 z-0 rounded-lg" />
+                {p.hasOutput && (
+                  <div className="pointer-events-none relative z-10 mb-3 flex h-40 items-center justify-center overflow-hidden rounded-lg bg-black">
+                    {/* 用成片在 0.5s 的畫面當海報（媒體片段 #t=0.5，preload=metadata），無需後端改動。直式片＝手機比例 letterbox。 */}
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video
+                      src={`/api/v1/studio/projects/${p.id}/output${p.outputUpdatedAt ? `?v=${encodeURIComponent(p.outputUpdatedAt)}` : ''}#t=0.5`}
+                      preload="metadata"
+                      muted
+                      playsInline
+                      className="h-full w-auto max-w-full object-contain"
+                    />
+                  </div>
+                )}
                 <div className="pointer-events-none relative z-10 flex items-start justify-between gap-2">
                   <div className="line-clamp-2 font-semibold leading-snug text-gray-900 transition-colors group-hover:text-blue-600">{p.title}</div>
                   <Badge color={meta.color} variant="flat" size="sm" className="flex-none">{meta.label}</Badge>
