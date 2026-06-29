@@ -56,6 +56,7 @@ export const PATCH = withPermission(
           status: str(body.status),
           aspect: str(body.aspect),
           fps: typeof body.fps === 'number' ? body.fps : undefined,
+          bgmGain: typeof body.bgmGain === 'number' ? body.bgmGain : undefined,
           subtitleStyle: body.subtitleStyle && typeof body.subtitleStyle === 'object' ? (body.subtitleStyle as { fontSize?: number; color?: string; position?: string }) : undefined,
         },
         buildActor(session, request),

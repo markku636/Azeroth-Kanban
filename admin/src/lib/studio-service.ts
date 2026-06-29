@@ -168,7 +168,7 @@ export async function createProject(
   }
 }
 
-const PROJECT_FIELDS = ['title', 'description', 'logline', 'status', 'aspect', 'fps', 'renderQuality'] as const;
+const PROJECT_FIELDS = ['title', 'description', 'logline', 'status', 'aspect', 'fps', 'renderQuality', 'bgmGain'] as const;
 type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>> & {
   /** 字幕圖層樣式 {fontSize,color,position}；Json 欄位，特殊處理。 */
   subtitleStyle?: { fontSize?: number; color?: string; position?: string };
@@ -185,6 +185,9 @@ export async function updateProject(
   }
   if (patch.renderQuality != null && !['standard', 'high'].includes(patch.renderQuality)) {
     return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, '成片品質僅支援 standard 或 high', 'studio.render_quality_invalid');
+  }
+  if (patch.bgmGain != null && (typeof patch.bgmGain !== 'number' || patch.bgmGain < 0 || patch.bgmGain > 1)) {
+    return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, 'BGM 音量需在 0~1 之間', 'studio.bgm_gain_invalid');
   }
   try {
     const existing = await prisma.studioProject.findFirst({ where: ownerWhere(id, ownerId, options) as Prisma.StudioProjectWhereInput });

@@ -64,7 +64,7 @@ interface ShotDto {
   hasClip?: boolean;
 }
 interface SceneDto { id: string; title: string; sortOrder: number; shots: ShotDto[]; hasOutput?: boolean; outputUpdatedAt?: string | null }
-interface ProjectDto { id: string; title: string; status: string; aspect: string; fps: number; renderQuality: string | null; bgmPath: string | null; hasOutput: boolean; outputUpdatedAt: string | null }
+interface ProjectDto { id: string; title: string; status: string; aspect: string; fps: number; renderQuality: string | null; bgmPath: string | null; bgmGain: number | null; hasOutput: boolean; outputUpdatedAt: string | null }
 interface Storyboard { project: ProjectDto; scenes: SceneDto[] }
 interface Prog { stage: string; pct?: number; status?: string }
 type Gen = 'idle' | 'running' | 'gated' | 'generating' | 'done' | 'error';
@@ -762,6 +762,12 @@ export default function StoryboardPage() {
     setBusy(false);
   };
 
+  // 調整 BGM 音量（0~1，引擎合成時讀取）。樂觀更新本地；只在下次「② 生成影片」生效。
+  const updateBgmGain = (g: number) => {
+    setData((d) => (d ? { ...d, project: { ...d.project, bgmGain: g } } : d));
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bgmGain: g }) });
+  };
+
   const totalShots = data?.scenes.reduce((a, s) => a + s.shots.length, 0) ?? 0;
   const estSeconds = data ? data.scenes.reduce((a, s) => a + s.shots.reduce((b, sh) => b + estShotSeconds(sh), 0), 0) : 0;
   // 生成進度：已生關鍵幀 / 已生單鏡影片的分鏡數（讓使用者一眼知道還差多少，不必逐卡看）。
@@ -886,7 +892,13 @@ export default function StoryboardPage() {
             <PiMusicNotesBold className={`me-1.5 h-4 w-4 ${data.project.bgmPath ? 'text-emerald-500' : 'text-gray-400'}`} /> {data.project.bgmPath ? 'BGM ✓' : 'BGM'}
           </Button>
           {data.project.bgmPath && (
-            <button type="button" onClick={() => void clearBgm()} disabled={busy} className="text-xs text-gray-400 hover:text-red-500" title="改用程序化配樂">清除</button>
+            <>
+              <span className="flex items-center gap-1 text-xs text-gray-500" title="BGM 音量（0～0.6，預設 0.15）；改後「② 生成影片」生效">
+                <PiMusicNotesBold className="h-3 w-3 text-emerald-500" />
+                <input type="range" min={0} max={0.6} step={0.05} value={data.project.bgmGain ?? 0.15} onChange={(e) => updateBgmGain(Number(e.target.value))} disabled={busy} aria-label="BGM 音量" className="w-16 accent-emerald-500" />
+              </span>
+              <button type="button" onClick={() => void clearBgm()} disabled={busy} className="text-xs text-gray-400 hover:text-red-500" title="改用程序化配樂">清除</button>
+            </>
           )}
           {finalReady && (
             <Button variant="outline" onClick={() => setFinalOpen(true)} title="預覽 / 下載已生成的成片" className="border-emerald-300 text-emerald-700 hover:border-emerald-400 hover:text-emerald-800 dark:border-emerald-700 dark:text-emerald-300">
