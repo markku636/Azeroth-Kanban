@@ -443,6 +443,7 @@ export default function StoryboardPage() {
   const renameProject = async () => {
     const t = await prompt({ title: '重新命名專案', defaultValue: data?.project.title ?? '', confirmLabel: '儲存', required: true });
     if (!t || t === data?.project.title) return;
+    if (t.length > 120) { toast.error('標題不可超過 120 字'); return; }
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t }) });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '重新命名失敗'); }
@@ -452,6 +453,7 @@ export default function StoryboardPage() {
   const renameScene = async (sc: SceneDto) => {
     const t = await prompt({ title: '重新命名場景', defaultValue: sc.title, confirmLabel: '儲存', required: true });
     if (!t || t === sc.title) return;
+    if (t.length > 120) { toast.error('場景標題不可超過 120 字'); return; }
     try {
       const res = await fetch(`/api/v1/studio/scenes/${sc.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: t }) });
       if (!res.ok) throw new Error();
