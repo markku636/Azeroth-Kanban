@@ -235,6 +235,7 @@ export default function StoryboardPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const esRef = useRef<EventSource | null>(null);
   const baseTitleRef = useRef<string>(''); // 背景分頁完成提醒：暫存原始分頁標題
+  const lastGenRef = useRef<(() => void) | null>(null); // 最近一次生成動作（供錯誤後一鍵重試）
   // 讓「同一排」（各幕中相同序位）的分鏡卡高度一致：量出每排最高的卡，套成該排各卡的 min-height。
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
@@ -690,6 +691,7 @@ export default function StoryboardPage() {
   const ENGINE_DOWN_MSG = '影像生成引擎（ComfyUI）尚未就緒，先在主機啟動 ComfyUI 再生成，否則會卡在佇列。';
 
   const genKeyframes = async (shotIds?: string[]) => {
+    lastGenRef.current = () => void genKeyframes(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setShotProg({}); setGen('running'); setOverall(shotIds ? `生成 ${shotIds.length} 鏡圖片…` : '生成全部圖片…');
     try {
@@ -711,6 +713,7 @@ export default function StoryboardPage() {
         if (!ok) return;
       }
     }
+    lastGenRef.current = () => void genRender(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
     try {
@@ -725,6 +728,7 @@ export default function StoryboardPage() {
   // 場景級：只生成並「單獨」合成這一幕的影片（不動到整支成片）。
   const genSceneRender = async (scene: SceneDto) => {
     if (scene.shots.length === 0) { toast('此幕尚無分鏡'); return; }
+    lastGenRef.current = () => void genSceneRender(scene);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setGen('generating'); setOverall(`生成「${scene.title}」影片…`);
     try {
@@ -920,6 +924,21 @@ export default function StoryboardPage() {
         <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           <PiWarningCircleBold className="mt-0.5 h-4 w-4 flex-none" />
           <span>影像生成引擎（ComfyUI）目前連不上。現在按生成會卡在佇列無法完成——請先在主機啟動 ComfyUI，並避免主機進入睡眠。</span>
+        </div>
+      )}
+
+      {gen === 'error' && !generating && (
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          <span className="flex items-start gap-2">
+            <PiWarningCircleBold className="mt-0.5 h-4 w-4 flex-none" />
+            <span>{overall || '生成失敗'}{/* 多半是 TTS／ComfyUI 暫時連不上；排除後可直接重試 */}</span>
+          </span>
+          <span className="flex flex-none items-center gap-2">
+            {lastGenRef.current && (
+              <button type="button" onClick={() => { const f = lastGenRef.current; setGen('idle'); setOverall(''); f?.(); }} className="rounded border border-red-300 px-2 py-1 font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:text-red-300">重試</button>
+            )}
+            <button type="button" onClick={() => { setGen('idle'); setOverall(''); }} className="rounded px-2 py-1 text-red-500 hover:text-red-700">知道了</button>
+          </span>
         </div>
       )}
 
