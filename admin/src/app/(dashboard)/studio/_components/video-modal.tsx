@@ -65,7 +65,7 @@ export function VideoModal({
             {!err && (
               <a
                 href={src}
-                download={downloadName ?? ''}
+                download={(downloadName ?? '').replace(/[\\/:*?"<>|]/g, '_')}
                 className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-primary"
                 title="下載影片"
               >

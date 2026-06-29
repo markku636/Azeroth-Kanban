@@ -30,7 +30,7 @@ export function MediaModal({
   const imageSrc = `/api/v1/studio/shots/${shotId}/keyframe${v}`;
   const videoSrc = `/api/v1/studio/shots/${shotId}/clip${v}`;
   const activeSrc = tab === 'video' ? videoSrc : imageSrc;
-  const downloadName = tab === 'video' ? `${title}.mp4` : `${title}.png`;
+  const downloadName = `${title.replace(/[\\/:*?"<>|]/g, '_')}.${tab === 'video' ? 'mp4' : 'png'}`;
   const err = tab === 'video' ? vidErr : imgErr;
 
   const tabBtn = (key: 'image' | 'video', icon: React.ReactNode, text: string, disabled?: boolean) => {
