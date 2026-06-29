@@ -334,7 +334,7 @@ export default function StudioProjectsPage() {
                       成片 {p.outputUpdatedAt ? dayjs(p.outputUpdatedAt).format('MM/DD HH:mm') : ''}
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-300">尚無成片</span>
+                    <span className="text-xs text-gray-400">{p.updatedAt ? `更新於 ${dayjs(p.updatedAt).format('MM/DD HH:mm')}` : '尚無成片'}</span>
                   )}
                   <div className="pointer-events-auto flex items-center gap-1">
                     {p.hasOutput && (
