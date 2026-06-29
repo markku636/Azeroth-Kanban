@@ -1048,6 +1048,15 @@ export default function StoryboardPage() {
       {selectMode && (
         <div className="fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 shadow-xl dark:border-gray-200 dark:bg-gray-50">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-700">已選 {selectedIds.size} 鏡</span>
+          {(() => {
+            const allIds = data.scenes.flatMap((s) => s.shots).map((sh) => sh.id);
+            const allSelected = allIds.length > 0 && selectedIds.size >= allIds.length;
+            return (
+              <button type="button" onClick={() => setSelectedIds(allSelected ? new Set() : new Set(allIds))} disabled={busy} className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-300 dark:hover:bg-gray-100">
+                {allSelected ? '全不選' : '全選'}
+              </button>
+            );
+          })()}
           <button type="button" onClick={() => void bulkGen('keyframes')} disabled={selectedIds.size === 0 || busy || generating} className="flex items-center gap-1 rounded border border-sky-300 px-2 py-1 text-xs text-sky-700 hover:bg-sky-50 disabled:opacity-40 dark:border-sky-700 dark:text-sky-300">
             <PiImageSquareBold className="h-3.5 w-3.5" /> 批次生圖
           </button>
