@@ -15,6 +15,7 @@ import {
   PiSparkleFill, PiPlusBold, PiPlayFill, PiPencilSimpleLineBold,
   PiDotsSixVerticalBold, PiFilmSlateDuotone, PiImageSquareBold, PiFilmReelBold, PiMusicNotesBold,
   PiCaretLeftBold, PiVideoFill, PiClockCounterClockwiseBold, PiCopySimpleBold, PiListChecksBold, PiTrashBold, PiSpeakerHighBold,
+  PiYoutubeLogoFill,
 } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -23,6 +24,7 @@ import { ShotEditModal } from './_components/shot-edit-modal';
 import { HistoryModal } from './_components/history-modal';
 import { ScriptPreviewModal } from './_components/script-preview-modal';
 import { VideoModal } from '../_components/video-modal';
+import { YouTubeMetaModal } from './_components/youtube-meta-modal';
 import { MediaModal } from '../_components/media-modal';
 
 /** SSR-safe layout effect：伺服器端退回 useEffect，避免 useLayoutEffect 的 SSR 警告。 */
@@ -189,6 +191,7 @@ export default function StoryboardPage() {
   const [shotProg, setShotProg] = useState<Record<string, Prog>>({});
   const [finalReady, setFinalReady] = useState(false);
   const [finalOpen, setFinalOpen] = useState(false);
+  const [ytOpen, setYtOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [creatingShot, setCreatingShot] = useState<{ sceneId: string | null } | null>(null);
@@ -758,6 +761,11 @@ export default function StoryboardPage() {
               <PiVideoFill className="me-1.5 h-4 w-4" /> 成片預覽
             </Button>
           )}
+          {finalReady && aiEnabled && (
+            <Button variant="outline" onClick={() => setYtOpen(true)} title="AI 產生 YouTube/抖音 上架文案（吸睛標題、說明、hashtags）" className="border-red-300 text-red-700 hover:border-red-400 hover:text-red-800 dark:border-red-800 dark:text-red-300">
+              <PiYoutubeLogoFill className="me-1.5 h-4 w-4" /> YouTube 文案
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setScriptPreview(true)} disabled={totalShots === 0} title="預覽旁白腳本並試聽（帶情緒）" className="border-sky-300 text-sky-700 hover:border-sky-400 hover:text-sky-800 dark:border-sky-700 dark:text-sky-300">
             <PiSpeakerHighBold className="me-1.5 h-4 w-4" /> 旁白預覽
           </Button>
@@ -959,6 +967,8 @@ export default function StoryboardPage() {
           onClose={() => setFinalOpen(false)}
         />
       )}
+
+      {ytOpen && <YouTubeMetaModal projectId={projectId} onClose={() => setYtOpen(false)} />}
 
       {historyShot && (
         <HistoryModal
