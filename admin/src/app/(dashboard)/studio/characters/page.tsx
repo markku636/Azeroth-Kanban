@@ -31,7 +31,10 @@ export default function CharacterLibraryPage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const filtered = chars.filter((c) => !q.trim() || c.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const filtered = chars.filter((c) => {
+    const kw = q.trim().toLowerCase();
+    return !kw || c.name.toLowerCase().includes(kw) || (c.persona ?? '').toLowerCase().includes(kw);
+  });
 
   return (
     <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-2 py-4 sm:p-6">
