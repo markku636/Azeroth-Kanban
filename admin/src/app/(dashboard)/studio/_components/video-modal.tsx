@@ -90,7 +90,18 @@ export function VideoModal({
         ) : (
           <div className="flex items-center justify-center bg-black">
             {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <video src={src} controls autoPlay playsInline onError={() => setErr(true)} className="max-h-[78vh] w-auto max-w-full" />
+            <video
+              src={src}
+              controls
+              autoPlay
+              playsInline
+              onError={() => setErr(true)}
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                if (v.videoWidth && v.videoHeight && Number.isFinite(v.duration)) setMeta({ w: v.videoWidth, h: v.videoHeight, dur: v.duration });
+              }}
+              className="max-h-[78vh] w-auto max-w-full"
+            />
           </div>
         )}
       </div>
