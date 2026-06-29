@@ -55,6 +55,8 @@ export default function StudioProjectsPage() {
   const [title, setTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [newAspect, setNewAspect] = useState('9:16');
+  useEffect(() => { const a = localStorage.getItem('studio:newAspect'); if (a === '9:16' || a === '16:9' || a === '1:1') setNewAspect(a); }, []);
+  const changeAspect = (a: string) => { setNewAspect(a); try { localStorage.setItem('studio:newAspect', a); } catch { /* 隱私模式 */ } };
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<SortKey>('updated');
   // 記住使用者的排序偏好（在 effect 內讀 localStorage，避免 SSR hydration 不一致）。
@@ -227,7 +229,7 @@ export default function StudioProjectsPage() {
         <select
           aria-label="畫幅比例"
           value={newAspect}
-          onChange={(e) => setNewAspect(e.target.value)}
+          onChange={(e) => changeAspect(e.target.value)}
           title="新專案的畫幅（可在專案內再改）"
           className="flex-none rounded-md border border-gray-300 bg-white px-2 text-sm text-gray-700 dark:bg-gray-50"
         >
