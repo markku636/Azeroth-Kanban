@@ -5,7 +5,7 @@ import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import { withPermission } from '@/lib/with-permission';
 import { hasPermission } from '@/lib/permission-service';
 import { PERMISSIONS } from '@/config/permissions';
-import { getStoryboard, type StudioActor } from '@/lib/studio-service';
+import { getProject, getStoryboard, type StudioActor } from '@/lib/studio-service';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 import { applyProposals, type Proposal } from '@/lib/studio/agent/proposals';
 
@@ -33,6 +33,9 @@ export const POST = withPermission(
     if (!proposals.length) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '沒有要套用的提案');
 
     const bypass = await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_EDIT_ALL);
+    // 先擋：呼叫者必須能存取此 URL 專案（一般使用者＝擁有者；admin＝bypass）。沒過就不套用任何提案。
+    const proj = await getProject(memberId, id, { bypassOwnership: bypass });
+    if (proj.code !== ApiReturnCode.SUCCESS) return ApiResponse.json(proj);
     const outcome = await applyProposals(memberId, id, proposals, buildActor(session, request), { bypassOwnership: bypass });
     const sb = await getStoryboard(memberId, id, { bypassOwnership: bypass });
     return ApiResponse.ok({ ...outcome, storyboard: sb.data }, `已套用 ${outcome.applied} / ${proposals.length} 筆`);
