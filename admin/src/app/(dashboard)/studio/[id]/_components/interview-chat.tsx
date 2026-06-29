@@ -25,6 +25,7 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
   ]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [directLen, setDirectLen] = useState(6); // 直接生成的分鏡數（短4/標準6/長9，對齊短影音長度甜蜜點）
   const endRef = useRef<HTMLDivElement | null>(null);
 
   // 新訊息／思考狀態變化時，自動捲到對話底部
@@ -77,7 +78,7 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
       const res = await fetch(`/api/v1/studio/projects/${projectId}/interview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea, count: 6 }),
+        body: JSON.stringify({ idea, count: directLen }),
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.code === 0) {
@@ -142,6 +143,21 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
             </div>
           )}
           <div ref={endRef} />
+        </div>
+        <div className="flex items-center gap-1.5 border-t border-gray-100 px-3 pt-2 text-xs text-gray-400 dark:border-gray-200">
+          <PiLightningFill className="h-3 w-3 text-purple-400" />
+          <span>直接生成長度</span>
+          {([['短', 4], ['標準', 6], ['長', 9]] as const).map(([label, n]) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => setDirectLen(n)}
+              className={directLen === n ? 'rounded bg-purple-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
+            >
+              {label}
+            </button>
+          ))}
+          <span className="text-gray-300">≈ {directLen} 鏡</span>
         </div>
         <div className="flex items-end gap-2 border-t border-gray-200 p-3 dark:border-gray-300">
           <Textarea
