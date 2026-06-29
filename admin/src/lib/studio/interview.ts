@@ -145,8 +145,9 @@ export interface PlannedBible {
   premise: string; worldSetting: string; styleGuide: string; tone: string; genre: string; targetAudience: string;
 }
 const BIBLE_SYSTEM = `你是專業編劇與世界觀設定師。根據使用者的題材，產生一份「故事設定（故事聖經）」。
+premise 要有「高概念鉤子」：一句話就能講清楚、帶明顯反差或衝突、讓人想看下去（這份設定會貫穿之後所有分鏡，鉤子越強成片越吸睛）。
 只回傳 JSON 物件（不要 markdown、不要多餘文字），格式：
-{"premise":"核心前提，2-4句，含主角/目標/阻礙","worldSetting":"世界觀背景：時代、地點、規則、氛圍","styleGuide":"視覺與敘事風格：鏡頭/色調/SDXL 風格關鍵字(可混入英文如 photorealistic, cinematic lighting)","tone":"語氣調性(如 迷因吐槽/溫馨/史詩)","genre":"類型","targetAudience":"目標觀眾"}
+{"premise":"核心前提，2-4句，含主角/目標/阻礙，且開頭就點出最大的反差或衝突鉤子","worldSetting":"世界觀背景：時代、地點、規則、氛圍","styleGuide":"視覺與敘事風格：鏡頭/色調/SDXL 風格關鍵字(可混入英文如 photorealistic, cinematic lighting)","tone":"語氣調性(如 迷因吐槽/溫馨/史詩)","genre":"類型","targetAudience":"目標觀眾"}
 以繁體中文為主；styleGuide 可含英文 SDXL 風格詞。`;
 
 /** 題材一句話 → 完整故事聖經欄位（供「故事設定」頁一鍵生成）。 */
