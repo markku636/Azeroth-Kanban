@@ -81,6 +81,14 @@ export function AgentPanel({ projectId, open, onClose, onApplied }: { projectId:
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [msgs, sending]);
 
+  // 此面板是手刻 drawer（非共用 Modal）→ 自己補 Esc 關閉，與全站其他覆蓋層一致。
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   const changeProvider = (p: Provider) => {
     setProvider(p);
     void fetch(`/api/v1/studio/projects/${projectId}/bible`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ agentProvider: p }) });
@@ -137,7 +145,7 @@ export function AgentPanel({ projectId, open, onClose, onApplied }: { projectId:
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-200 bg-white shadow-2xl dark:border-gray-200 dark:bg-gray-50">
+    <div role="dialog" aria-modal="true" aria-label="AI 導演助手" className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-gray-200 bg-white shadow-2xl dark:border-gray-200 dark:bg-gray-50">
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-200">
         <div className="flex items-center gap-2">
           <PiRobotDuotone className="h-5 w-5 text-blue-500" />
@@ -201,6 +209,7 @@ export function AgentPanel({ projectId, open, onClose, onApplied }: { projectId:
         <div className="flex items-end gap-2">
           <textarea
             aria-label="給 AI 助手的訊息"
+            autoFocus
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
