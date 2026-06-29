@@ -514,7 +514,19 @@ export function ShotEditModal({
                 <Input value={punchline} onChange={(e) => setPunchline(e.target.value)} placeholder="反轉爆點，會在反轉點彈出（黃字）" variant="flat" />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">卡點音效</label>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">卡點音效</label>
+                  {sfx !== 'none' && (
+                    <button
+                      type="button"
+                      onClick={() => { const a = new Audio(`/api/v1/studio/sfx/${sfx}`); a.play().catch(() => toast.error('音效試聽失敗')); }}
+                      title="試聽這個音效"
+                      className="flex items-center gap-1 rounded-md border border-amber-300 px-2 py-0.5 text-xs font-medium text-amber-700 transition-colors hover:border-amber-400 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950/20"
+                    >
+                      <PiSpeakerHighBold className="h-3 w-3" /> 試聽
+                    </button>
+                  )}
+                </div>
                 <select
                   aria-label="卡點音效"
                   value={sfx}
