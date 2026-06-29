@@ -211,7 +211,7 @@ export function YouTubeMetaModal({
           )}
           {meta && (
             <div className="flex flex-col gap-4">
-              <Field label="標題" hint="貼到 YouTube 標題列；前段就有鉤子" value={meta.title} onCopy={() => copy(meta.title, '標題')} big />
+              <Field label="標題" hint="貼到 YouTube 標題列；前段就有鉤子" value={meta.title} onCopy={() => copy(meta.title, '標題')} big warnLen={70} />
               <Field label="縮圖大字" hint="放在封面圖上的超大字" value={meta.thumbnailText} onCopy={() => copy(meta.thumbnailText, '縮圖大字')} />
               <Field label="影片說明" hint="第 1 行是最強鉤子" value={meta.description} onCopy={() => copy(meta.description, '說明')} multiline />
               {meta.hashtags.length > 0 && (
@@ -304,6 +304,7 @@ function Field({
   onCopy,
   multiline,
   big,
+  warnLen,
 }: {
   label: string;
   hint?: string;
@@ -311,8 +312,10 @@ function Field({
   onCopy: () => void;
   multiline?: boolean;
   big?: boolean;
+  warnLen?: number; // 超過此字數提醒會被平台截斷（如 YouTube 標題在搜尋/動態牆約 70 字）
 }) {
   if (!value) return null;
+  const over = warnLen != null && value.length > warnLen;
   return (
     <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-300">
       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -320,9 +323,19 @@ function Field({
           {label}
           {hint ? <span className="ml-1.5 font-normal text-gray-400">· {hint}</span> : null}
         </span>
-        <button type="button" onClick={onCopy} className="flex flex-none items-center gap-1 text-xs text-gray-400 hover:text-primary">
-          <PiCopyBold className="h-3.5 w-3.5" /> 複製
-        </button>
+        <div className="flex flex-none items-center gap-2">
+          {warnLen != null && (
+            <span
+              className={over ? 'text-xs text-amber-600 dark:text-amber-400' : 'text-xs text-gray-400'}
+              title={over ? `超過約 ${warnLen} 字，在 YouTube 搜尋／動態牆會被截斷` : undefined}
+            >
+              {value.length} 字{over ? '（偏長易被截）' : ''}
+            </span>
+          )}
+          <button type="button" onClick={onCopy} className="flex items-center gap-1 text-xs text-gray-400 hover:text-primary">
+            <PiCopyBold className="h-3.5 w-3.5" /> 複製
+          </button>
+        </div>
       </div>
       <p className={`whitespace-pre-wrap break-words text-gray-900 ${big ? 'text-base font-semibold' : 'text-sm'} ${multiline ? '' : ''}`}>{value}</p>
     </div>
