@@ -256,10 +256,18 @@ export function ShotEditModal({
     }
   };
 
+  const canSave = !busy && (visual.trim() !== '' || tts.trim() !== '' || caption.trim() !== '');
+
   return (
     <>
     <Modal isOpen onClose={onClose} size="lg">
-      <div className="max-h-[85vh] overflow-y-auto p-5">
+      <div
+        className="max-h-[85vh] overflow-y-auto p-5"
+        onKeyDown={(e) => {
+          // Ctrl/Cmd+Enter 從任一輸入框快速儲存（編輯多鏡時加速）。
+          if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSave) { e.preventDefault(); void save(); }
+        }}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {isCreate ? '新增分鏡' : `編輯分鏡 #${shot.shotNo}`}
@@ -504,11 +512,12 @@ export function ShotEditModal({
               刪除
             </Button>
           )}
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <span className="hidden text-[11px] text-gray-400 sm:inline">⌘/Ctrl + Enter 儲存</span>
             <Button variant="outline" onClick={onClose} disabled={busy}>
               取消
             </Button>
-            <Button onClick={() => void save()} isLoading={busy} disabled={busy || (!visual.trim() && !tts.trim() && !caption.trim())} className="bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700">
+            <Button onClick={() => void save()} isLoading={busy} disabled={!canSave} className="bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700">
               {isCreate ? '新增' : '儲存'}
             </Button>
           </div>
