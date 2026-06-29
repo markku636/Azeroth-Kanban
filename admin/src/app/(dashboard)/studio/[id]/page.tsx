@@ -428,6 +428,7 @@ export default function StoryboardPage() {
   const addScene = async () => {
     const title = await prompt({ title: '新增場景', placeholder: '場景名稱', defaultValue: `場景 ${(data?.scenes.length ?? 0) + 1}`, confirmLabel: '新增', required: true });
     if (!title) return;
+    if (title.length > 120) { toast.error('場景標題不可超過 120 字'); return; }
     setBusy(true);
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/scenes`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title }) });
