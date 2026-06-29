@@ -224,6 +224,11 @@ export default function ScriptPage() {
 
   const expandScene = async (scene: SceneDto) => {
     if (!aiEnabled) { toast('AI 尚未啟用：可到分鏡看板用「+ 新增分鏡」手動建立', { icon: '🔒' }); return; }
+    // 展開是「新增」而非取代 — 對已有分鏡的場景再展開會疊加重複分鏡，先確認。
+    if (scene.shots.length > 0) {
+      const ok = await confirm({ title: '這一場已有分鏡', message: `「${scene.title}」已有 ${scene.shots.length} 個分鏡。展開會「再新增」分鏡（不會取代既有），可能造成重複。要繼續嗎？`, confirmLabel: '繼續展開' });
+      if (!ok) return;
+    }
     setBusy(true);
     const t = toast.loading(`展開「${scene.title}」為分鏡…`);
     try {
@@ -239,16 +244,20 @@ export default function ScriptPage() {
   };
 
   const expandAll = async () => {
-    const scenes = (data?.scenes ?? []).filter((s) => s.id !== '__unassigned__' && (s.synopsis?.trim() || s.dialogue?.trim()));
-    if (!scenes.length) { toast('沒有可展開的場景（請先填寫劇情概要）'); return; }
+    const ready = (data?.scenes ?? []).filter((s) => s.id !== '__unassigned__' && (s.synopsis?.trim() || s.dialogue?.trim()));
+    if (!ready.length) { toast('沒有可展開的場景（請先填寫劇情概要）'); return; }
     if (!aiEnabled) { toast('AI 尚未啟用：可到分鏡看板用「+ 新增分鏡」手動建立', { icon: '🔒' }); return; }
+    // 展開是「新增」分鏡 — 只展開尚未有分鏡的場景，避免一鍵把已展開的場景全部疊成重複分鏡。
+    const pending = ready.filter((s) => s.shots.length === 0);
+    if (!pending.length) { toast('所有場景都已展開過了', { icon: '✅' }); router.push(`/studio/${projectId}`); return; }
+    const skipped = ready.length - pending.length;
     setBusy(true);
-    const t = toast.loading('全部展開為分鏡…');
+    const t = toast.loading(skipped > 0 ? `展開 ${pending.length} 個場景（略過 ${skipped} 個已展開）…` : '全部展開為分鏡…');
     try {
-      for (const sc of scenes) {
+      for (const sc of pending) {
         await fetch(`/api/v1/studio/scenes/${sc.id}/expand`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
       }
-      toast.success('已全部展開，前往分鏡看板', { id: t });
+      toast.success('已展開，前往分鏡看板', { id: t });
       router.push(`/studio/${projectId}`);
     } catch (e) { toast.error(e instanceof Error ? e.message : '展開失敗', { id: t }); setBusy(false); }
   };
