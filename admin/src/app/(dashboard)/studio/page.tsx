@@ -220,6 +220,7 @@ export default function StudioProjectsPage() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="新專案名稱…"
+          maxLength={120}
           onKeyDown={(e) => { if (e.key === 'Enter') void create(); }}
         />
         <select
