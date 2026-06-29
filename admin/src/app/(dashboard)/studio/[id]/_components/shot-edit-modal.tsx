@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Input, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiXBold, PiUploadSimpleBold, PiImageSquareBold, PiFilmReelBold, PiPlayFill, PiSparkleFill } from 'react-icons/pi';
+import { PiXBold, PiUploadSimpleBold, PiImageSquareBold, PiFilmReelBold, PiPlayFill, PiSparkleFill, PiSpeakerHighBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { useConfirm } from '@/hooks/use-confirm';
 import { RefineModal } from './refine-modal';
@@ -72,6 +72,7 @@ export function ShotEditModal({
   // 單鏡欄位魔法棒：標記哪一欄潤飾中（per-field spinner + 並發鎖）。
   type WandField = 'visual' | 'tts' | 'caption' | 'punchline';
   const [wandBusy, setWandBusy] = useState<WandField | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false); // 旁白試聽中
   // 角色指派（指派後 speaker/FaceID 連動，由後端 assignCharacterToShot 處理）
   const [characterId, setCharacterId] = useState(shot?.characterId ?? '');
   const [projectChars, setProjectChars] = useState<ProjectCharLite[]>([]);
@@ -205,6 +206,26 @@ export function ShotEditModal({
       <PiSparkleFill className="h-3 w-3" /> {wandBusy === field ? '潤飾中…' : '潤飾'}
     </button>
   );
+
+  // 試聽旁白：先存目前編輯（讓試聽反映剛改的台詞/情緒/角色），再用與生成相同的聲音設定合成並播放。
+  const previewVoice = async () => {
+    if (!shot || !tts.trim()) return;
+    setVoiceBusy(true);
+    try {
+      if (!(await persist())) { setVoiceBusy(false); return; }
+      const res = await fetch(`/api/v1/studio/shots/${shot.id}/preview-voice`, { method: 'POST' });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '試聽失敗'); }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.onerror = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '試聽失敗');
+    }
+    setVoiceBusy(false);
+  };
 
   // 先存目前編輯，再排入單鏡生成（① 生圖 / ② 生片），關閉後在看板看進度。
   const genThis = async (kind: 'keyframes' | 'render') => {
@@ -413,7 +434,20 @@ export function ShotEditModal({
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <span className="text-sm font-medium text-gray-700">旁白／台詞（tts，繁中）</span>
-              {aiEnabled && wandBtn('tts')}
+              <div className="flex items-center gap-1.5">
+                {!isCreate && (
+                  <button
+                    type="button"
+                    onClick={() => void previewVoice()}
+                    disabled={voiceBusy || busy || !tts.trim()}
+                    title="用實際聲音設定（角色語音＋情緒）試聽這句旁白；需 TTS 服務運作中"
+                    className="flex items-center gap-1 rounded-md border border-sky-300 px-2 py-0.5 text-xs font-medium text-sky-700 transition-colors hover:border-sky-400 hover:bg-sky-50 disabled:opacity-40 dark:border-sky-700 dark:text-sky-300 dark:hover:bg-sky-950/20"
+                  >
+                    <PiSpeakerHighBold className="h-3 w-3" /> {voiceBusy ? '合成中…' : '試聽'}
+                  </button>
+                )}
+                {aiEnabled && wandBtn('tts')}
+              </div>
             </div>
             <Textarea
               value={tts}
