@@ -39,6 +39,17 @@ RUN npm run build --workspace=common
 
 RUN npm run build --workspace=admin
 
+# ─── Stage 3a: 影片生成 Worker (BullMQ + LangGraph + ffmpeg) ───
+# 重用 builder（已含 admin/worker + admin/src + tsconfig + 完整 node_modules(含 tsx) + 已 generate 的 prisma client）
+FROM builder AS worker
+# ffmpeg for assembly; font-noto-cjk so drawtext renders 中文大字幕 on the Linux worker
+RUN apk add --no-cache ffmpeg font-noto-cjk
+WORKDIR /app/admin
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+# cwd=/app/admin → tsx 讀 admin/tsconfig.json 的 @/* → ./src/* 解析 worker 的 @/lib 匯入；node_modules 走 /app/node_modules
+CMD ["node", "../node_modules/tsx/dist/cli.mjs", "worker/index.ts"]
+
 # ─── Stage 3: Production runner ───
 FROM node:20-alpine AS runner
 WORKDIR /app

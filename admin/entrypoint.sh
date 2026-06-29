@@ -21,11 +21,14 @@ done
 echo "[entrypoint] postgres ready"
 
 echo "──────────────────────────────────────────────"
-echo "[entrypoint] running prisma migrate deploy..."
+echo "[entrypoint] running prisma db push (repo 無 migration，直接同步 schema)..."
 echo "──────────────────────────────────────────────"
 # 直接用 node 呼叫 prisma CLI 入口，繞過 .bin/ 的 symlink 解析問題
 # （Docker COPY 單檔 symlink 會 dereference，導致 wasm 找不到）
-node ./node_modules/prisma/build/index.js migrate deploy --schema=./prisma/schema.prisma
+# repo 無 prisma/migrations → migrate deploy 形同 no-op；改用 db push 建/同步 studio + kanban 全部表（idempotent、加性）
+# --accept-data-loss：允許 db push 套用會丟資料的變更（例如移除 Kanban 後 drop kanban_card 表）。
+# 本系統用 db push 作為「schema = 真相」的同步機制，無 migration 檔，故需此旗標才能套用移除型變更。
+node ./node_modules/prisma/build/index.js db push --schema=./prisma/schema.prisma --skip-generate --accept-data-loss
 
 if [ "$SEED_ON_START" = "true" ]; then
   echo "──────────────────────────────────────────────"

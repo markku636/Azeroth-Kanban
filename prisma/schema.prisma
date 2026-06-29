@@ -21,34 +21,18 @@ model Member {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  kanbanCards  KanbanCard[]
+  studioProjects StudioProject[]
+  studioScenes   Scene[]
+  studioShots    Shot[]
+  studioAssets   Asset[]
+  studioJobs     Job[]
+  studioVersions Version[]
+  studioCharacters        Character[]
+  studioProjectCharacters ProjectCharacter[]
+  media          Media[]
 
   @@index([isActive])
   @@map("members")
-}
-
-// ─── Kanban 卡片 ───
-enum CardStatus {
-  TODO
-  IN_PROGRESS
-  IN_REVIEW
-  DONE
-}
-
-model KanbanCard {
-  id          String     @id @default(cuid())
-  title       String     @db.VarChar(120)
-  description String?    @db.VarChar(2000)
-  status      CardStatus @default(TODO)
-  sortOrder   Int        @map("sort_order")
-  ownerId     String     @map("owner_id")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-
-  owner Member @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  @@index([ownerId, status, sortOrder], name: "idx_owner_status_order")
-  @@map("kanban_card")
 }
 
 // ─── 角色 ───
@@ -130,4 +114,253 @@ model LoginRecord {
   @@index([status])
   @@index([createdAt])
   @@map("login_records")
+}
+
+// ─── Studio 影片工作室 ───
+enum ShotStatus {
+  DRAFT
+  KEYFRAME
+  VOICE
+  VIDEO
+  NEEDS_REVIEW
+  READY
+}
+
+enum JobState {
+  QUEUED
+  RUNNING
+  WAITING
+  DONE
+  FAILED
+}
+
+model StudioProject {
+  id          String   @id @default(cuid())
+  title       String   @db.VarChar(120)
+  description String?  @db.VarChar(2000)
+  logline     String?  @db.VarChar(500) // 一句話前提（腳本層）
+  // ─── 故事聖經（單一真相來源：整個 AI 生成鏈都從這裡衍生，全部可空）───
+  premise        String?  @db.Text                              // 核心前提／故事種子（比 logline 更完整的一段）
+  worldSetting   String?  @db.Text     @map("world_setting")    // 世界觀／背景設定（時代、地點、規則）
+  styleGuide     String?  @db.Text     @map("style_guide")      // 視覺＋敘事風格指南（鏡頭、色調、SDXL 風格關鍵字）
+  tone           String?  @db.VarChar(200)                      // 語氣／調性（如「黑色幽默」「溫馨」「迷因吐槽」）
+  genre          String?  @db.VarChar(120)                      // 類型（喜劇／恐怖／紀實…）
+  targetAudience String?  @db.VarChar(200) @map("target_audience") // 目標觀眾
+  bibleNotes     String?  @db.Text     @map("bible_notes")      // 自由補充（禁忌、catchphrase、品牌調性…）
+  agentProvider  String?  @db.VarChar(40) @map("agent_provider") // 每專案預設 AI 供應商：anthropic|vertex|claude-agent
+  status      String   @default("interview") // 精靈階段：interview|script|storyboard|audio|export
+  spec        Json? // project.json 鏡像（storySpec/style/voice/bgm）
+  threadId    String?  @map("thread_id") // LangGraph thread = "studio:<id>"
+  aspect      String   @default("9:16")
+  fps         Int      @default(30)
+  renderQuality String? @map("render_quality") // 成片品質：standard(720p,快) | high(1080p,更銳利,較慢)；空=high(預設高品質)
+  bgmPath     String?  @map("bgm_path") // 專案 BGM 檔（空=程序化 pad 自動生成）
+  bgmGain     Float?   @map("bgm_gain") // BGM 混音音量（空=0.15）
+  subtitleStyle Json?  @map("subtitle_style") // 字幕圖層樣式：{fontScale, color, position(bottom|center|top)}（空=預設）
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner             Member             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  scenes            Scene[]
+  shots             Shot[]
+  assets            Asset[]
+  jobs              Job[]
+  projectCharacters ProjectCharacter[]
+
+  @@index([ownerId, status], name: "idx_studio_project_owner_status")
+  @@map("studio_projects")
+}
+
+model Scene {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  title     String   @db.VarChar(120)
+  synopsis  String?  @db.Text // 劇情概要：這一場在演什麼（腳本層，可編輯）
+  dialogue  String?  @db.Text // 台詞／旁白草稿（選填）
+  sortOrder Int      @map("sort_order")
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner   Member        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shots   Shot[]
+
+  @@index([projectId, sortOrder], name: "idx_studio_scene_project_order")
+  @@index([ownerId])
+  @@map("studio_scenes")
+}
+
+model Shot {
+  id           String     @id @default(cuid())
+  projectId    String     @map("project_id")
+  sceneId      String?    @map("scene_id")
+  shotNo       Int        @map("shot_no")
+  sortOrder    Int        @map("sort_order")
+  role         String     @default("narration")
+  speaker      String?
+  subtitle     String?    @db.VarChar(2000)
+  tts          String?    @db.Text
+  visual       String?    @db.Text
+  motion       String?    @db.Text
+  emotion      String?
+  branch       String     @default("still") // lip | i2v | still
+  caption      String?    @db.Text // 迷因大字幕（setup）
+  punchline    String?    @db.Text // 反轉下字幕（punchline）
+  sfx          String? // 卡點音效 vineboom|scratch|rimshot|ding|whoosh|boing
+  punch        Boolean    @default(false) // 反轉鏡：punch-zoom + 下字幕彈出
+  punchAtFrac  Float?     @map("punch_at_frac") // 反轉點佔該鏡時長比例
+  punchZoom    Float?     @map("punch_zoom") // 反轉變焦倍率
+  status       ShotStatus @default(DRAFT)
+  keyframePath String?    @map("keyframe_path")
+  refImage     String?    @map("ref_image") // 使用者上傳的參考圖（faceid 重繪來源 / upload 即關鍵幀）
+  keyframeMode String     @default("sdxl") @map("keyframe_mode") // sdxl(文生圖) | upload(直接當關鍵幀) | faceid(參考重繪)
+  selectedKeyframeId String? @map("selected_keyframe_id") // 目前選中的 Version.id（洗圖歷史中的現役版本）
+  voiceWav     String?    @map("voice_wav")
+  lipsyncMp4   String?    @map("lipsync_mp4")
+  i2vMp4       String?    @map("i2v_mp4")
+  characterId  String?    @map("character_id") // 指派給此鏡的角色（驅動 speaker/voice/faceid，可空）
+  ownerId      String     @map("owner_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  owner     Member        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project   StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scene     Scene?        @relation(fields: [sceneId], references: [id], onDelete: SetNull)
+  character Character?    @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  versions  Version[]
+
+  @@index([projectId, sortOrder], name: "idx_studio_shot_project_order")
+  @@index([sceneId, status])
+  @@index([ownerId])
+  @@map("studio_shots")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  kind      String   @db.VarChar(40) // character | location | prop
+  name      String   @db.VarChar(120)
+  slug      String   @db.VarChar(120)
+  refImages Json?    @map("ref_images")
+  faceIdRef String?  @map("faceid_ref")
+  sheetKey  String?  @map("sheet_key")
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner   Member        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, kind], name: "idx_studio_asset_project_kind")
+  @@index([ownerId])
+  @@map("studio_assets")
+}
+
+model Job {
+  id           String    @id @default(cuid())
+  projectId    String    @map("project_id")
+  kind         String    @db.VarChar(40) // keyframe|voice|i2v|lipsync|assemble|interview
+  state        JobState  @default(QUEUED)
+  promptId     String?   @map("prompt_id")
+  threadId     String?   @map("thread_id")
+  checkpointId String?   @map("checkpoint_id")
+  payload      Json?
+  error        String?   @db.Text
+  ownerId      String    @map("owner_id")
+  startedAt    DateTime? @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  owner   Member        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  project StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, state], name: "idx_studio_job_project_state")
+  @@index([ownerId, state])
+  @@map("studio_jobs")
+}
+
+model Version {
+  id        String   @id @default(cuid())
+  shotId    String   @map("shot_id")
+  stage     String   @db.VarChar(40) // keyframe | voice | video
+  path      String   @db.Text
+  meta      Json?
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner Member @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  shot  Shot   @relation(fields: [shotId], references: [id], onDelete: Cascade)
+
+  @@index([shotId, createdAt], name: "idx_studio_version_shot_created")
+  @@index([ownerId])
+  @@map("studio_versions")
+}
+
+// ─── 角色庫（owner-scoped，可跨專案重用）───
+model Character {
+  id            String   @id @default(cuid())
+  ownerId       String   @map("owner_id") // 跨專案：屬於使用者而非專案
+  name          String   @db.VarChar(120) // 角色名（顯示用）
+  slug          String   @db.VarChar(120) // 穩定識別／檔名用（owner 內唯一）
+  persona       String?  @db.Text // 個性／背景／動機（餵 LLM 保持一致）
+  appearance    String?  @db.Text // 外觀描述（英文，供 SDXL 一致性）
+  sealSpeaker   String?  @map("seal_speaker") // Seal-TTS speaker id（= 寫入 shot.speaker）
+  ttsEngine     String?  @map("tts_engine") // 預設 cosyvoice3，可空
+  loraScale     Float?   @map("lora_scale") // cosyvoice3 lora_scale（0~1）
+  voiceInstruct String?  @map("voice_instruct") // 預設情緒/語氣（可被 shot.emotion 覆寫）
+  refImages     Json?    @map("ref_images") // string[] 參考圖路徑
+  faceIdRef     String?  @map("faceid_ref") // 主 FaceID 參考圖（= shot.refImage 來源）
+  avatarPath    String?  @map("avatar_path") // 角色庫縮圖
+  isArchived    Boolean  @default(false) @map("is_archived") // 軟封存（不刪以免斷既有引用）
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  owner             Member             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  projectCharacters ProjectCharacter[]
+  shots             Shot[]
+
+  @@unique([ownerId, slug], name: "uq_character_owner_slug")
+  @@index([ownerId, isArchived], name: "idx_character_owner_archived")
+  @@map("studio_characters")
+}
+
+// ─── 專案↔角色 選角（哪些角色在這個專案登場 + 此專案中的定位）───
+model ProjectCharacter {
+  id          String   @id @default(cuid())
+  projectId   String   @map("project_id")
+  characterId String   @map("character_id")
+  roleInStory String?  @map("role_in_story") @db.VarChar(120) // 此專案中的定位（主角/反派/旁白…）
+  sortOrder   Int      @default(0) @map("sort_order") // 角色表排序（沿用 SORT_GAP）
+  ownerId     String   @map("owner_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project   StudioProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  character Character     @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  owner     Member        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, characterId], name: "uq_project_character")
+  @@index([projectId], name: "idx_project_character_project")
+  @@map("studio_project_characters")
+}
+
+// ─── 媒體庫（owner-scoped，獨立檔案庫，存於 MinIO/S3）───
+model Media {
+  id        String   @id @default(cuid())
+  key       String   @unique // S3 物件 key：YYYY/MM/<uuid>.<ext>
+  fileName  String   @map("file_name") @db.VarChar(255) // 原始檔名（下載時用）
+  mimeType  String   @map("mime_type") @db.VarChar(150)
+  kind      String   @db.VarChar(20) // image | video | audio | file（由 mime 推導）
+  size      Int // bytes（上傳上限遠低於 2^31，Int 安全）
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner Member @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, createdAt], name: "idx_media_owner_created")
+  @@index([kind])
+  @@map("media_library")
 }

@@ -11,6 +11,7 @@ import RingBellSolidIcon from "@/components/icons/ring-bell-solid";
 import ChatSolidIcon from "@/components/icons/chat-solid";
 import { PiSunDuotone, PiMoonDuotone } from "react-icons/pi";
 import LanguageSwitcher from "@/components/language-switcher";
+import QueueIndicator from "@/layouts/queue-indicator";
 
 export default function HeaderMenuRight() {
   const { theme, setTheme } = useTheme();
@@ -28,6 +29,7 @@ export default function HeaderMenuRight() {
 
   return (
     <div className="ms-auto flex shrink-0 items-center gap-2 text-gray-700 xs:gap-3 xl:gap-4">
+      {!isAgentPortal && <QueueIndicator />}
       {!isAgentPortal && (
         <MessagesDropdown>
           <ActionIcon

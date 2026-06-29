@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GitOps 固化：把媒體庫 bucket（與選用的 policy/user）寫進 deploy repo 的
+# MinIO Helm chart values（依 dogfood 規則，避免 chart 重建後 bucket 消失）。
+#
+# 這是 Bitnami MinIO chart 的 values 結構範例 —— 併進你 deploy repo 的
+#   storage/minio/values.yaml
+# 的 `buckets:` / `policies:` / `users:` 清單即可（鍵名依你實際的 chart 調整）。
+#
+# 私密：buckets 不要給 policy: public / download。
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 1) Bucket（私密；不設 policy = 預設只有帶憑證/簽章能存取）
+buckets:
+  - name: studio-media
+    purge: false
+
+# 2)（選用）由 chart 直接 provision 只綁此 bucket 的讀寫 policy，
+#    省掉手動跑 setup-minio.sh 的 policy 步驟。
+policies:
+  - name: studio-media-rw
+    statements:
+      - resources:
+          - "arn:aws:s3:::studio-media"
+          - "arn:aws:s3:::studio-media/*"
+        actions:
+          - "s3:GetObject"
+          - "s3:PutObject"
+          - "s3:DeleteObject"
+          - "s3:ListBucket"
+
+# 3)（選用）專屬 app user，綁上面 policy。
+#    secretKey 不要明碼進 GitOps —— 改用 chart 的 existingSecret 機制注入。
+provisioning:
+  enabled: true
+  users:
+    - username: studio-media-app
+      # 建議：existingSecret 指向 k8s Secret（見 k8s-admin-s3.example.yaml），勿明碼
+      password: ""            # ← 留空，改用 existingSecret
+      policies:
+        - studio-media-rw

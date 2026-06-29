@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 
 const ROLES = [
   { name: 'admin',  displayName: '系統管理員', description: '擁有所有功能與管理權限',                   isSystem: true },
-  { name: 'user',   displayName: '一般使用者', description: '可使用 Kanban 看板（CRUD 自己的卡片）',     isSystem: true },
-  { name: 'viewer', displayName: '檢視者',     description: '僅可檢視自己的看板（唯讀）',                 isSystem: true },
+  { name: 'user',   displayName: '一般使用者', description: '可使用影片工作室（CRUD 自己的專案）',         isSystem: true },
+  { name: 'viewer', displayName: '檢視者',     description: '僅可檢視自己的影片專案（唯讀）',             isSystem: true },
 ] as const;
 
 const PERMISSIONS = [
@@ -21,23 +21,31 @@ const PERMISSIONS = [
   // ─── 稽核 ───
   { code: 'audit_logs.view',     groupCode: 'AUDIT',           groupName: '稽核',         name: '檢視稽核紀錄',   description: '檢視稽核紀錄' },
   { code: 'login_records.view',  groupCode: 'AUDIT',           groupName: '稽核',         name: '檢視登入紀錄',   description: '檢視登入紀錄' },
-  // ─── Kanban ───
-  { code: 'kanban.view',         groupCode: 'KANBAN',          groupName: '看板',         name: '檢視看板',       description: '進入 Kanban 並檢視自己的卡片' },
-  { code: 'kanban.create',       groupCode: 'KANBAN',          groupName: '看板',         name: '新增卡片',       description: '建立新卡片' },
-  { code: 'kanban.edit',         groupCode: 'KANBAN',          groupName: '看板',         name: '編輯卡片',       description: '編輯卡片（含拖拉改狀態 / 排序）' },
-  { code: 'kanban.delete',       groupCode: 'KANBAN',          groupName: '看板',         name: '刪除卡片',       description: '刪除卡片' },
-  { code: 'kanban.view_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '檢視所有卡片',   description: '檢視所有使用者建立的卡片（含 owner 資訊）' },
-  { code: 'kanban.edit_all',     groupCode: 'KANBAN',          groupName: '看板',         name: '編輯所有卡片',   description: '編輯任何使用者的卡片（含拖拉改狀態 / 排序）' },
-  { code: 'kanban.delete_all',   groupCode: 'KANBAN',          groupName: '看板',         name: '刪除所有卡片',   description: '刪除任何使用者的卡片' },
   // ─── 角色權限管理 ───
   { code: 'role_permissions.view', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '檢視角色權限',   description: '檢視 Role-Permission 指派' },
   { code: 'role_permissions.edit', groupCode: 'ROLE_PERMISSIONS', groupName: '角色權限', name: '編輯角色權限',   description: '在 UI 指派 Role 持有的 permissions' },
+
+  // ─── Studio 影片工作室 ───
+  { code: 'studio.view',         groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '檢視工作室',     description: '進入影片工作室並檢視自己的專案' },
+  { code: 'studio.create',       groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '建立專案',       description: '建立新的影片專案' },
+  { code: 'studio.edit',         groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '編輯專案/分鏡',  description: '編輯專案、場景與分鏡（含新增/拖拉分鏡）' },
+  { code: 'studio.delete',       groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '刪除專案/分鏡',  description: '刪除專案、場景與分鏡' },
+  { code: 'studio.view_all',     groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '檢視所有專案',   description: '檢視所有使用者的影片專案' },
+  { code: 'studio.edit_all',     groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '編輯所有專案',   description: '編輯任何使用者的專案與分鏡' },
+  { code: 'studio.delete_all',   groupCode: 'STUDIO', groupName: 'Studio 影片工作室', name: '刪除所有專案',   description: '刪除任何使用者的專案與分鏡' },
+
+  // ─── 媒體庫 ───
+  { code: 'media.view',          groupCode: 'MEDIA',  groupName: '媒體庫',           name: '檢視媒體庫',     description: '進入媒體庫並檢視自己上傳的檔案' },
+  { code: 'media.create',        groupCode: 'MEDIA',  groupName: '媒體庫',           name: '上傳媒體',       description: '上傳檔案到媒體庫' },
+  { code: 'media.delete',        groupCode: 'MEDIA',  groupName: '媒體庫',           name: '刪除媒體',       description: '刪除自己上傳的媒體檔案' },
+  { code: 'media.view_all',      groupCode: 'MEDIA',  groupName: '媒體庫',           name: '檢視所有媒體',   description: '檢視所有使用者上傳的媒體' },
+  { code: 'media.delete_all',    groupCode: 'MEDIA',  groupName: '媒體庫',           name: '刪除所有媒體',   description: '刪除任何使用者的媒體檔案' },
 ] as const;
 
 const ROLE_PERMISSION_MATRIX: Record<string, readonly string[]> = {
   admin: PERMISSIONS.map((p) => p.code),
-  user: ['kanban.view', 'kanban.create', 'kanban.edit', 'kanban.delete'],
-  viewer: ['kanban.view'],
+  user: ['studio.view', 'studio.create', 'studio.edit', 'studio.delete', 'media.view', 'media.create', 'media.delete'],
+  viewer: ['studio.view', 'media.view'],
 };
 
 const DEFAULT_MEMBERS = [

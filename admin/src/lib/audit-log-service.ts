@@ -5,7 +5,19 @@
 
 import { prisma } from '@/lib/prisma';
 
-export type AuditEntityType = 'Role' | 'Member' | 'RolePermission' | 'KanbanCard';
+export type AuditEntityType =
+  | 'Role'
+  | 'Member'
+  | 'RolePermission'
+  | 'StudioProject'
+  | 'Scene'
+  | 'Shot'
+  | 'Asset'
+  | 'Job'
+  | 'Version'
+  | 'Character'
+  | 'ProjectCharacter'
+  | 'Media';
 export type AuditAction = 'create' | 'update' | 'delete' | 'move';
 
 export interface CreateAuditLogParams {

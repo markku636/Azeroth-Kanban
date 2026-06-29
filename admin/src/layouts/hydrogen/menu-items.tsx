@@ -6,7 +6,10 @@ import {
   PiShieldWarningDuotone,
   PiUserGearDuotone,
   PiClipboardTextDuotone,
-  PiKanbanDuotone,
+  PiFilmSlateDuotone,
+  PiCpuDuotone,
+  PiUsersThreeDuotone,
+  PiImagesDuotone,
 } from "react-icons/pi";
 
 export interface MenuItem {
@@ -25,12 +28,30 @@ export const menuItems: MenuItem[] = [
     icon: <PiUserCircleDuotone />,
   },
 
-  // ── Kanban ──
+  // ── Studio ──
   {
-    name: "admin.menu.kanban",
-    href: routes.kanban,
-    icon: <PiKanbanDuotone />,
-    requiredPermission: PERMISSIONS.KANBAN_VIEW,
+    name: "admin.menu.studio",
+    href: routes.studio.list,
+    icon: <PiFilmSlateDuotone />,
+    requiredPermission: PERMISSIONS.STUDIO_VIEW,
+  },
+  {
+    name: "admin.menu.characters",
+    href: routes.studio.characters,
+    icon: <PiUsersThreeDuotone />,
+    requiredPermission: PERMISSIONS.STUDIO_VIEW,
+  },
+  {
+    name: "admin.menu.queue",
+    href: routes.studio.queue,
+    icon: <PiCpuDuotone />,
+    requiredPermission: PERMISSIONS.STUDIO_VIEW,
+  },
+  {
+    name: "admin.menu.media",
+    href: routes.media.list,
+    icon: <PiImagesDuotone />,
+    requiredPermission: PERMISSIONS.MEDIA_VIEW,
   },
 
   // ── RBAC ──

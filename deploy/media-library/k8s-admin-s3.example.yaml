@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# 範例：若 admin app 將來改跑在 k8s（目前是 docker-compose），用這份把媒體庫的
+# S3_* 設定注入 admin Deployment。把 <namespace> 換成實際 namespace。
+#
+# 注意（presigned 簽章）：S3_PUBLIC_URL 必須是「瀏覽器可達」的對外位址，
+# 因為後端就是用這個 host 幫前端簽 URL。S3_ENDPOINT 同樣保持對外位址即可
+# （app 的 media-storage.ts 用 S3_PUBLIC_URL 當 client endpoint）。
+#
+# 套用：kubectl apply -f k8s-admin-s3.example.yaml
+#      之後 deploy repo 的 admin Deployment 也要併入下方 env / envFrom。
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Secret
+metadata:
+  name: studio-media-s3
+  namespace: <namespace>
+type: Opaque
+stringData:
+  # = setup-minio.sh / minio chart 建的專屬 user，勿用 minioadmin
+  S3_ACCESS_KEY: "studio-media-app"
+  S3_SECRET_KEY: "REPLACE_WITH_REAL_SECRET"   # ← 換成真值；勿提交真 secret 進 git
+---
+# 把下列 env / envFrom 併進 admin Deployment 的 container（name 依你的實際 manifest）。
+# 這裡單獨列出是「要貼進去的片段」，不是可直接 apply 的完整 Deployment。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kanban-admin
+  namespace: <namespace>
+spec:
+  template:
+    spec:
+      containers:
+        - name: admin
+          env:
+            - name: S3_ENDPOINT
+              value: "https://minio.markkulab.net"
+            - name: S3_PUBLIC_URL
+              value: "https://minio.markkulab.net"
+            - name: S3_REGION
+              value: "us-east-1"
+            - name: S3_BUCKET
+              value: "studio-media"
+          envFrom:
+            - secretRef:
+                name: studio-media-s3   # 提供 S3_ACCESS_KEY / S3_SECRET_KEY

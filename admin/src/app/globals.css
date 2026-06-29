@@ -868,6 +868,16 @@ td.rc-table-cell-fix-right {
 }
 
 /*
+* rizzui Input / Textarea 預設在 border 之外又疊了一圈 ring-[0.6px]，
+* 視覺上會變成「雙框 / 內框」。把非聚焦狀態的 ring 拿掉，只留單一 border；
+* 聚焦時 (.is-focus) 仍保留 primary ring 當焦點提示，所以不影響可用性。
+*/
+.rizzui-input-container:not(.is-focus),
+.rizzui-textarea-field:not(.is-focus) {
+  box-shadow: none !important;
+}
+
+/*
 * Draft Text Editor
 */
 .text_editor .rdw-editor-wrapper .rdw-editor-toolbar {

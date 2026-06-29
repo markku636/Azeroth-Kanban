@@ -50,6 +50,21 @@ services:
       retries: 10
       start_period: 30s
 
+  # ─── Redis（BullMQ 佇列 + 進度 pub/sub）───
+  redis:
+    image: redis:7-alpine
+    container_name: kanban-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── 後台管理 (Next.js Admin) ───
   admin:
     build:
@@ -76,6 +91,28 @@ services:
       POSTGRES_PORT: "5432"
       # 啟動時自動跑 seed（idempotent / upsert）；想跳過設為 false
       SEED_ON_START: ${SEED_ON_START:-true}
+      # ─── Studio 影片工作室 ───
+      REDIS_URL: redis://redis:6379
+      STUDIO_STORAGE_ROOT: /studio-storage
+      # 訪談 / 新增分鏡協助 LLM：LLM_PROVIDER 選 anthropic（預設）或 vertex（Gemini）
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-claude-opus-4-8}
+      # Gemini on Vertex AI（僅 LLM_PROVIDER=vertex 時需要；GOOGLE_VERTEX_CREDENTIALS 放 service account JSON 整串）
+      GOOGLE_VERTEX_PROJECT: ${GOOGLE_VERTEX_PROJECT:-}
+      GOOGLE_VERTEX_LOCATION: ${GOOGLE_VERTEX_LOCATION:-global}
+      GOOGLE_VERTEX_MODEL: ${GOOGLE_VERTEX_MODEL:-gemini-flash-latest}
+      GOOGLE_VERTEX_CREDENTIALS: ${GOOGLE_VERTEX_CREDENTIALS:-}
+      # GPU 佇列頁要讀 ComfyUI 原生 /queue（best-effort）；經 host-gateway 連回主機
+      COMFYUI_URL: ${COMFYUI_URL:-http://host.docker.internal:8188}
+      # ─── 媒體庫（MinIO/S3 相容物件儲存，私密 + presigned URL）───
+      # 私密模式：endpoint 與 public URL 都用「瀏覽器/容器都可達」的對外位址，presigned 才簽得對
+      S3_ENDPOINT: ${S3_ENDPOINT:-https://minio.markkulab.net}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-https://minio.markkulab.net}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-studio-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
     ports:
       - "3010:3000"
     extra_hosts:
@@ -85,9 +122,49 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_started
+      redis:
+        condition: service_healthy
+    volumes:
+      - studio_storage:/studio-storage
+
+  # ─── 影片生成 Worker (BullMQ + LangGraph + ffmpeg) ───
+  # 同一個 admin/Dockerfile 的 worker 階段；跑在獨立容器，concurrency:1 = 單 GPU 排隊
+  worker:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+      target: worker
+    container_name: kanban-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-kanban}:${POSTGRES_PASSWORD:-kanban_secret}@postgres:5432/${POSTGRES_DB:-kanban}?schema=public"
+      REDIS_URL: redis://redis:6379
+      # ComfyUI / Seal-TTS / GPU 留主機；經 host-gateway 連回主機
+      COMFYUI_URL: ${COMFYUI_URL:-http://host.docker.internal:8188}
+      COMFYUI_DIR: /comfyui
+      SEAL_TTS_URL: ${SEAL_TTS_URL:-http://192.168.50.57:7866}
+      SEAL_TTS_API_KEY: ${SEAL_TTS_API_KEY:-}
+      STUDIO_STORAGE_ROOT: /studio-storage
+      STUDIO_SDXL_CKPT: ${STUDIO_SDXL_CKPT:-juggernautXL_v9_V9 + RDPhoto 2.safetensors}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # 主機 ComfyUI 目錄掛進來：worker 寫 input 供 ComfyUI 讀、讀 output 餵 ffmpeg
+      - "${COMFYUI_DIR_HOST:-D:/BaiduNetdiskDownload/260518-WY-S130-ComfyUI/260518-WY-S130-ComfyUI/ComfyUI}:/comfyui"
+      - studio_storage:/studio-storage
 
 volumes:
   postgres_data:
     driver: local
   keycloak_data:
+    driver: local
+  redis_data:
+    driver: local
+  studio_storage:
     driver: local

@@ -5,6 +5,7 @@ const config: Config = {
   content: [
     './src/**/*.{js,ts,jsx,tsx}',
     './node_modules/rizzui/dist/*.{js,ts,jsx,tsx}', // must use this line to compile and generate our RizzUI components style
+    '../node_modules/rizzui/dist/*.{js,ts,jsx,tsx}', // npm workspaces hoist rizzui to the repo root; scan it there too
   ],
   darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
