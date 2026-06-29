@@ -219,6 +219,7 @@ export function RefineModal({
                 <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
                   <span>筆刷</span>
                   <input type="range" min={10} max={120} value={brush} onChange={(e) => setBrush(Number(e.target.value))} className="flex-1 accent-violet-500" aria-label="筆刷大小" />
+                  <span className="w-9 flex-none text-right tabular-nums text-violet-600 dark:text-violet-300">{brush}px</span>
                   <Button size="sm" variant="outline" onClick={clearMask} disabled={!hasStrokes}>清除圈選</Button>
                 </div>
                 <p className="mt-1 text-[11px] leading-relaxed text-gray-400">
