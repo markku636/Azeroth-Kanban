@@ -34,6 +34,7 @@ export function StudioStageTabs() {
           {i > 0 && <PiCaretRightBold className="h-3 w-3 flex-none text-gray-300" />}
           <Link
             href={s.href}
+            aria-current={s.active ? 'page' : undefined}
             className={
               'flex flex-none items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ' +
               (s.active
