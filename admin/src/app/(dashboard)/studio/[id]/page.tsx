@@ -187,6 +187,7 @@ export default function StoryboardPage() {
   const [busy, setBusy] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [engineDown, setEngineDown] = useState(false);
+  const [queuedAhead, setQueuedAhead] = useState<number | null>(null);
 
   const [gen, setGen] = useState<Gen>('idle');
   const [overall, setOverall] = useState<string>('');
@@ -309,6 +310,27 @@ export default function StoryboardPage() {
     const t = setInterval(() => { if (!document.hidden) void checkHealth(); }, 25000);
     return () => clearInterval(t);
   }, [checkHealth]);
+
+  // 生成期間若 GPU 正忙於「別的」工作，本工作其實是在排隊 → 誠實顯示「排隊中」而非假裝在跑。
+  const generatingNow = gen === 'running' || gen === 'generating';
+  useEffect(() => {
+    if (!generatingNow) { setQueuedAhead(null); return; }
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/v1/studio/queue', { cache: 'no-store' });
+        const json = await res.json().catch(() => ({}));
+        const d = json?.data as { active?: Array<{ projectId?: string }>; counts?: { active?: number; waiting?: number } } | undefined;
+        if (stopped || !d) return;
+        const mineActive = Array.isArray(d.active) && d.active.some((a) => a.projectId === projectId);
+        const activeCount = d.counts?.active ?? 0;
+        setQueuedAhead(!mineActive && activeCount > 0 ? activeCount + (d.counts?.waiting ?? 0) : null);
+      } catch { /* 忽略：排隊提示是錦上添花，不擋主流程 */ }
+    };
+    void poll();
+    const t = setInterval(() => { if (!document.hidden) void poll(); }, 5000);
+    return () => { stopped = true; clearInterval(t); };
+  }, [generatingNow, projectId]);
 
   useEffect(() => {
     const es = new EventSource(`/api/v1/studio/projects/${projectId}/events`);
@@ -832,8 +854,14 @@ export default function StoryboardPage() {
 
       {generating && (
         <div className="mb-3">
+          {queuedAhead != null && (
+            <div className="mb-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              <PiClockCounterClockwiseBold className="mt-0.5 h-3.5 w-3.5 flex-none" />
+              <span>GPU 正忙於其他工作，你的工作排隊中（佇列約 {queuedAhead} 個）。輪到時會自動開始，可先離開頁面。</span>
+            </div>
+          )}
           <div className="mb-1 flex items-center justify-between gap-2 text-xs text-gray-500">
-            <span>{overall || '生成中…'}{genStartRef.current ? ` · 已 ${fmtDur(nowTs - genStartRef.current)}` : ''}</span>
+            <span>{queuedAhead != null ? '排隊中…' : (overall || '生成中…')}{genStartRef.current ? ` · 已 ${fmtDur(nowTs - genStartRef.current)}` : ''}</span>
             <span className="flex-none">
               {totalShots > 0 && `${doneShots} / ${totalShots} 鏡`}
               {genStartRef.current > 0 && doneShots > 0 && doneShots < totalShots
