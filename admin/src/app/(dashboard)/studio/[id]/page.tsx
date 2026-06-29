@@ -235,6 +235,7 @@ export default function StoryboardPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const esRef = useRef<EventSource | null>(null);
+  const loadSeq = useRef(0); // 防止較慢的舊 load 覆蓋較新的（生成中 SSE 事件頻繁觸發 load）
   const baseTitleRef = useRef<string>(''); // 背景分頁完成提醒：暫存原始分頁標題
   const lastGenRef = useRef<(() => void) | null>(null); // 最近一次生成動作（供錯誤後一鍵重試）
   // 讓「同一排」（各幕中相同序位）的分鏡卡高度一致：量出每排最高的卡，套成該排各卡的 min-height。
@@ -247,16 +248,18 @@ export default function StoryboardPage() {
   );
 
   const load = useCallback(async () => {
+    const mine = ++loadSeq.current;
     setLoading(true);
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/storyboard`);
       const json = await res.json();
+      if (mine !== loadSeq.current) return; // 已有更新的 load 發出 → 丟棄這次（避免舊資料覆蓋新）
       if (res.ok) { setData(json.data); setFinalReady(Boolean(json.data?.project?.hasOutput)); }
       else setError(json.message ?? '載入失敗');
     } catch {
-      setError('載入失敗');
+      if (mine === loadSeq.current) setError('載入失敗');
     }
-    setLoading(false);
+    if (mine === loadSeq.current) setLoading(false);
   }, [projectId]);
 
   useEffect(() => { void load(); }, [load]);
