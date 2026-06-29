@@ -61,6 +61,16 @@ export function parseShotArray(text: string): PlannedShot[] {
   }
 }
 
+// 短影音「好看」的黃金法則（資料驅動，2026 YouTube Shorts/抖音 retention 研究）。
+// 注入到各生成 system prompt，讓產出的分鏡/腳本天生具備鉤子→爆點的吸睛結構。
+export const SHORT_FORM_CRAFT = `短影音「好看」黃金法則（務必遵守，這是觀眾留不留下來的關鍵）：
+1. 鉤子（第 1 個分鏡）：前 0.5~3 秒就要抓住人——用「視覺衝擊 + 大膽宣稱或懸念」開場，絕不慢慢鋪陳（約 5~6 成觀眾在前 3 秒就滑走）。第一句旁白直接拋出最荒謬/最有看點的鉤子，例如反差、衝突、「你絕對想不到…」。
+2. 爆點（最後 1 個分鏡）：收在一個記得住的反轉或回扣（呼應開頭，讓人想再看一次／看留言）。下筆前先想好「開頭鉤子」與「結尾爆點」，中間每一鏡都是連接兩者的橋。
+3. 每一鏡都要「推進或加碼」：刪掉任何不推進劇情、也不好笑的鏡頭。寧短勿拖，多用快切。
+4. 喜劇用 setup→punchline 的「升級」結構：笑點一個比一個誇張、出乎意料，別重複同一個梗。
+5. 旁白口語、有態度、短句（每句盡量 ≤15 字），跟得上快節奏；別用書面腔或冗詞。
+6. 整體偏短：多用 2~4 秒短鏡，總長約 30~45 秒最吸睛；想好了就砍掉 3 成。`;
+
 // 通用導演 + 喜劇能力：依使用者風格決定要不要用大字幕/音效/反轉欄位（不強制每片都搞笑）。
 // export：新增分鏡協助（shot-assist.ts）共用同一份欄位規格。
 export const SHOT_FIELDS = `每個分鏡物件欄位：
@@ -77,7 +87,8 @@ export const SHOT_FIELDS = `每個分鏡物件欄位：
 - punchZoom：可選 約 1.5~2.2，反轉放大倍率（預設 1.9）
 若使用者想要「搞笑 / 迷因 / 吐槽」風格：用 setup→punchline 結構，誇張 emotion，反轉鏡設 punch=true 並配 vineboom/scratch/rimshot，caption 寫鋪陳、punchline 寫吐槽爆點。`;
 
-const PLAN_SYSTEM = `你是專業 AI 短片分鏡導演，擅長各種風格，特別擅長迷因吐槽喜劇。根據使用者的故事點子與風格，產生一份分鏡表。
+const PLAN_SYSTEM = `你是專業 AI 短片分鏡導演，擅長各種風格，特別擅長能在 YouTube Shorts／抖音瘋傳的迷因吐槽喜劇。根據使用者的故事點子與風格，產生一份「抓得住人、好看」的分鏡表。
+${SHORT_FORM_CRAFT}
 ${SHOT_FIELDS}
 只回傳 JSON 陣列，不要任何其他文字或 markdown。`;
 
@@ -122,9 +133,11 @@ function parseScript(text: string): PlannedScript {
   }
 }
 
-const SCRIPT_SYSTEM = `你是專業 AI 短片編劇。根據使用者的故事題材，產生一份「腳本大綱」：一句話前提(logline) + 數個有先後順序的「故事場景」。
+const SCRIPT_SYSTEM = `你是專業 AI 短片編劇，擅長寫能在社群瘋傳的短影音。根據使用者的故事題材，產生一份「腳本大綱」：一句話前提(logline) + 數個有先後順序的「故事場景」。
+${SHORT_FORM_CRAFT}
+特別注意：第一場必須是強鉤子（開門見山就有看點/衝突），最後一場必須收在記得住的爆點或反轉。
 只回傳 JSON 物件（不要 markdown、不要多餘文字），格式：
-{"logline":"一句話前提","scenes":[{"title":"場景標題","synopsis":"這一場在演什麼（2~4 句，含人物動作與轉折）","dialogue":"該場關鍵台詞或旁白草稿，可留空字串"}]}
+{"logline":"一句話前提（要像會爆的影片標題一樣有看點/衝突/懸念）","scenes":[{"title":"場景標題","synopsis":"這一場在演什麼（2~4 句，含人物動作與轉折）","dialogue":"該場關鍵台詞或旁白草稿，可留空字串"}]}
 要求：場景之間劇情連續、有起承轉合；台詞用繁體中文；synopsis 寫清楚畫面與情節但不要寫成分鏡（分鏡之後再展開）。`;
 
 // ─────────────────────────── 故事聖經 AI 生成 ───────────────────────────
@@ -188,10 +201,11 @@ export async function planSceneShots(
   return parseShotArray(text);
 }
 
-const CHAT_SYSTEM = `你是影片企劃精靈，用繁體中文和使用者對話，了解他想做的短片，擅長迷因吐槽喜劇。
+const CHAT_SYSTEM = `你是影片企劃精靈，用繁體中文和使用者對話，了解他想做的短片，擅長做能在 YouTube Shorts／抖音瘋傳的迷因吐槽喜劇。
 規則：
 - 先用 2~4 個「簡短」問題釐清：類型/風格（是否搞笑吐槽）、主角、長度或鏡頭數、氛圍。一次只問一個問題。
 - 當資訊足夠，停止發問，直接輸出分鏡表，格式嚴格為：一行 <STORYBOARD> 後接 JSON 陣列，再接一行 </STORYBOARD>，陣列外不要任何文字。
+${SHORT_FORM_CRAFT}
 ${SHOT_FIELDS}`;
 
 export type ChatResult = { done: false; reply: string } | { done: true; shots: PlannedShot[] };
