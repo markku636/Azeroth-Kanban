@@ -239,6 +239,8 @@ export default function StoryboardPage() {
   const loadSeq = useRef(0); // 防止較慢的舊 load 覆蓋較新的（生成中 SSE 事件頻繁觸發 load）
   const baseTitleRef = useRef<string>(''); // 背景分頁完成提醒：暫存原始分頁標題
   const lastGenRef = useRef<(() => void) | null>(null); // 最近一次生成動作（供錯誤後一鍵重試）
+  const lastEventRef = useRef<number>(0); // 最近一次收到 SSE 進度的時間（看門狗判斷是否停滯）
+  const [stalled, setStalled] = useState(false); // 生成中但長時間無進度（worker 可能未啟動）
   // 讓「同一排」（各幕中相同序位）的分鏡卡高度一致：量出每排最高的卡，套成該排各卡的 min-height。
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [rowHeights, setRowHeights] = useState<Record<number, number>>({});
@@ -368,6 +370,16 @@ export default function StoryboardPage() {
     return () => { stopped = true; clearInterval(t); };
   }, [generatingNow, projectId]);
 
+  // 看門狗：生成中但 5 分鐘都沒有任何 SSE 進度 → 很可能 worker 沒在處理（未啟動／已掛）。
+  // 純提示、不改生成狀態（job 也可能只是跑很慢）；「排隊中」已能解釋的情況不重複示警（見渲染處）。
+  useEffect(() => {
+    if (!generatingNow) { setStalled(false); return; }
+    lastEventRef.current = Date.now();
+    setStalled(false);
+    const id = setInterval(() => setStalled(Date.now() - lastEventRef.current > 300_000), 30_000);
+    return () => clearInterval(id);
+  }, [generatingNow]);
+
   // 背景分頁完成提醒：生成常要數分鐘，使用者多半切到別的分頁。完成／失敗時用分頁標題閃示
   // （免通知權限、不擾民），回到本分頁即自動還原。
   useEffect(() => {
@@ -390,6 +402,7 @@ export default function StoryboardPage() {
     es.onmessage = (ev) => {
       let e: { shotId?: string; sceneId?: string; stage: string; pct?: number; status?: string; message?: string };
       try { e = JSON.parse(ev.data); } catch { return; }
+      lastEventRef.current = Date.now(); // 有進度就餵看門狗（自動解除停滯提示）
       if (e.shotId) setShotProg((p) => ({ ...p, [e.shotId as string]: { stage: e.stage, pct: e.pct, status: e.status } }));
       if (e.stage === 'plan') setOverall('規劃中…');
       else if (e.stage === 'keyframes-done') { setOverall('圖片已生成 ✅，檢視後可生成影片'); setGen('idle'); toast.success('關鍵幀已生成 🖼'); flashTitle('✅ 圖片已生成 — 影片工作室'); void load(); }
@@ -992,6 +1005,15 @@ export default function StoryboardPage() {
             <div className="mb-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
               <PiClockCounterClockwiseBold className="mt-0.5 h-3.5 w-3.5 flex-none" />
               <span>GPU 正忙於其他工作，你的工作排隊中（佇列約 {queuedAhead} 個）。輪到時會自動開始，可先離開頁面。</span>
+            </div>
+          )}
+          {stalled && queuedAhead == null && (
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+              <span className="flex items-start gap-2">
+                <PiWarningCircleBold className="mt-0.5 h-3.5 w-3.5 flex-none" />
+                已 5 分鐘沒有進度，佇列裡也沒有在處理的工作 — 生成服務（worker）可能未啟動。
+              </span>
+              <Link href="/studio/queue" className="flex-none font-medium underline hover:no-underline">前往 GPU 佇列檢查 →</Link>
             </div>
           )}
           <div className="mb-1 flex items-center justify-between gap-2 text-xs text-gray-500">
