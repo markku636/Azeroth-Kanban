@@ -37,6 +37,16 @@ function fmtDur(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/**
+ * 粗估單鏡秒數（僅供抓短影音節奏，非精準）。有語音/字幕的鏡以字數估語速（中文約 4.5 字/秒）
+ * 加一截尾巴；純畫面鏡用 fallback（i2v 真動態略長）。對齊引擎：voice 時 = 語音長度+pad，無 voice 時 = fallbackDur。
+ */
+function estShotSeconds(s: { tts: string | null; caption: string | null; punchline: string | null; branch: string }): number {
+  const text = (s.tts?.trim() || [s.caption, s.punchline].filter(Boolean).join('，')).trim();
+  if (text) return Math.min(12, Math.max(1.5, text.length / 4.5)) + 0.4;
+  return s.branch === 'i2v' ? 4.0 : 3.8;
+}
+
 /** 乾淨的細邊框旋轉 spinner（取代 rizzui 預設那顆放射狀 spinner，色彩跟隨 text 色）。尺寸由 className 指定（h-/w-）。 */
 function Spinner({ className = '' }: { className?: string }) {
   return <span aria-hidden className={`inline-block animate-spin rounded-full border-2 border-current border-r-transparent ${className}`} />;
@@ -706,6 +716,7 @@ export default function StoryboardPage() {
   };
 
   const totalShots = data?.scenes.reduce((a, s) => a + s.shots.length, 0) ?? 0;
+  const estSeconds = data ? data.scenes.reduce((a, s) => a + s.shots.reduce((b, sh) => b + estShotSeconds(sh), 0), 0) : 0;
   const doneShots = Object.values(shotProg).filter((p) => p.status === 'done').length;
 
   const shotLabel = (s: ShotDto): string => {
@@ -789,6 +800,14 @@ export default function StoryboardPage() {
               <option value="standard">標準 720p</option>
             </select>
             <span>· 共 {totalShots} 個分鏡</span>
+            {totalShots > 0 && (
+              <span
+                title="粗估成片長度（依字數估語速，非精準值）。短影音黃金區間約 30–45 秒。"
+                className={estSeconds > 75 || estSeconds < 15 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500'}
+              >
+                · 約 {fmtDur(estSeconds * 1000)}{estSeconds > 75 ? '（偏長）' : estSeconds < 15 ? '（偏短）' : ''}
+              </span>
+            )}
             {overall && <Badge color="info" variant="flat" size="sm">{overall}</Badge>}
           </p>
         </div>
