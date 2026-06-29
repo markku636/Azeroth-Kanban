@@ -146,7 +146,7 @@ function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHei
           <img
             src={`/api/v1/studio/shots/${shot.id}/keyframe?v=${encodeURIComponent(shot.updatedAt)}`}
             alt={`分鏡 ${shot.shotNo} 關鍵幀`}
-            className="aspect-video w-full cursor-zoom-in rounded object-cover"
+            className="aspect-[3/4] w-full cursor-zoom-in rounded bg-gray-100 object-contain dark:bg-gray-100"
             onClick={(e) => { e.stopPropagation(); onPreview('image'); }}
             title="點擊放大檢視"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
