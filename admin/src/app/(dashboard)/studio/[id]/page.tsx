@@ -15,7 +15,7 @@ import {
   PiSparkleFill, PiPlusBold, PiPlayFill, PiPencilSimpleLineBold,
   PiDotsSixVerticalBold, PiFilmSlateDuotone, PiImageSquareBold, PiFilmReelBold, PiMusicNotesBold,
   PiCaretLeftBold, PiVideoFill, PiClockCounterClockwiseBold, PiCopySimpleBold, PiListChecksBold, PiTrashBold, PiSpeakerHighBold,
-  PiYoutubeLogoFill, PiWarningCircleBold,
+  PiYoutubeLogoFill, PiWarningCircleBold, PiGaugeBold,
 } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -25,6 +25,7 @@ import { HistoryModal } from './_components/history-modal';
 import { ScriptPreviewModal } from './_components/script-preview-modal';
 import { VideoModal } from '../_components/video-modal';
 import { YouTubeMetaModal } from './_components/youtube-meta-modal';
+import { AuditModal } from './_components/audit-modal';
 import { MediaModal } from '../_components/media-modal';
 
 /** SSR-safe layout effect：伺服器端退回 useEffect，避免 useLayoutEffect 的 SSR 警告。 */
@@ -193,6 +194,7 @@ export default function StoryboardPage() {
   const [finalReady, setFinalReady] = useState(false);
   const [finalOpen, setFinalOpen] = useState(false);
   const [ytOpen, setYtOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
   const [creatingShot, setCreatingShot] = useState<{ sceneId: string | null } | null>(null);
@@ -801,6 +803,11 @@ export default function StoryboardPage() {
           <Button variant="outline" onClick={() => setScriptPreview(true)} disabled={totalShots === 0} title="預覽旁白腳本並試聽（帶情緒）" className="border-sky-300 text-sky-700 hover:border-sky-400 hover:text-sky-800 dark:border-sky-700 dark:text-sky-300">
             <PiSpeakerHighBold className="me-1.5 h-4 w-4" /> 旁白預覽
           </Button>
+          {aiEnabled && (
+            <Button variant="outline" onClick={() => setAuditOpen(true)} disabled={totalShots === 0} title="用短影音黃金法則健檢這支影片的吸睛度，並給具體改進建議" className="border-purple-300 text-purple-700 hover:border-purple-400 hover:text-purple-800 dark:border-purple-800 dark:text-purple-300">
+              <PiGaugeBold className="me-1.5 h-4 w-4" /> 影片健檢
+            </Button>
+          )}
           <Button variant="outline" onClick={() => void genKeyframes()} disabled={busy || generating || totalShots === 0} title="先生成每鏡關鍵幀圖片，檢視後再生影片" className="border-sky-300 text-sky-700 hover:border-sky-400 hover:text-sky-800 dark:border-sky-700 dark:text-sky-300">
             <PiImageSquareBold className="me-1.5 h-4 w-4" /> ① 生成圖片
           </Button>
@@ -1008,6 +1015,8 @@ export default function StoryboardPage() {
       )}
 
       {ytOpen && <YouTubeMetaModal projectId={projectId} hookKeyframeUrl={hookKeyframeUrl} onClose={() => setYtOpen(false)} />}
+
+      {auditOpen && <AuditModal projectId={projectId} onClose={() => setAuditOpen(false)} />}
 
       {historyShot && (
         <HistoryModal
