@@ -183,15 +183,23 @@ export class Compositor {
     // 慢推近 + 沿一個（每鏡不同）方向的線性漂移，比定格的純縮放更有電影感。漂移量取超採樣畫布的小比例，
     // 配合 2× 超採樣的裁切餘裕 → 不會移出畫面。技法同 memeStill 的手持運鏡（此處更柔和）。
     const seed = o.motionSeed ?? 0;
+    // Alternate the camera move per shot so the film isn't one repeated zoom: even seeds push in, odd
+    // seeds pull back (a reveal easing from tight to near-full-frame). Both stay inside the 2× supersample
+    // margin by construction — pull-back ends near 1.0 (little crop room) so its drift is halved, and all
+    // drift is ∝on (zero at the wide end), so nothing ever slides off-frame.
+    const pullBack = (((seed % 2) + 2) % 2) === 1;
+    const zexpr = pullBack
+      ? `max(${zmax}-${(zmax - 1.04).toFixed(4)}*on/${frames}\\,1.04)` // reveal: tight → wide
+      : `min(zoom+${rate}\\,${zmax})`;                                  // push-in
     const dir = ((seed % 4) + 4) % 4; // 0:右 1:左 2:下 3:上
-    const driftPx = Math.round(W * 0.06); // 整段總漂移（輸入像素，超採樣下很細微）
+    const driftPx = Math.round(W * 0.06 * (pullBack ? 0.5 : 1)); // 整段總漂移（超採樣下很細微；pull-back 減半保裁切餘裕）
     const dx = dir === 0 ? `+${driftPx}*on/${frames}` : dir === 1 ? `-${driftPx}*on/${frames}` : "";
     const dy = dir === 2 ? `+${driftPx}*on/${frames}` : dir === 3 ? `-${driftPx}*on/${frames}` : "";
-    // comma inside min() must be escaped so it isn't read as a filter separator
+    // comma inside min()/max() must be escaped so it isn't read as a filter separator
     let vf =
       `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +
-      `zoompan=z='min(zoom+${rate}\\,${zmax})':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
+      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
     let subFile: string | undefined;
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
