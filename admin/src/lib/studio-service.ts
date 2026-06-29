@@ -30,6 +30,9 @@ export type ProjectDto = Pick<
   outputUpdatedAt: string | null;
   /** 分鏡數，僅列表查詢會帶 */
   shotCount?: number;
+  /** 封面用：第一個有關鍵幀的分鏡（給尚無成片的進行中專案顯示縮圖）；僅列表查詢會帶 */
+  coverShotId?: string;
+  coverUpdatedAt?: string | null;
 };
 
 export type ShotDto = Pick<
@@ -56,7 +59,10 @@ export interface StoryboardDto {
 
 const ERR_DB = 'studio.db_error';
 
-function projectToDto(p: StudioProject, extra?: { shotCount?: number }): ProjectDto {
+function projectToDto(
+  p: StudioProject,
+  extra?: { shotCount?: number; cover?: { id: string; updatedAt: Date } | null },
+): ProjectDto {
   const out = projectOutputInfo(p.id);
   return {
     id: p.id, title: p.title, description: p.description, logline: p.logline, status: p.status,
@@ -64,6 +70,7 @@ function projectToDto(p: StudioProject, extra?: { shotCount?: number }): Project
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
+    ...(extra?.cover ? { coverShotId: extra.cover.id, coverUpdatedAt: extra.cover.updatedAt.toISOString() } : {}),
   };
 }
 
@@ -101,9 +108,16 @@ export async function listProjects(ownerId: string, all = false): Promise<ApiRes
     const rows = await prisma.studioProject.findMany({
       where: all ? {} : { ownerId },
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { shots: true } } },
+      include: {
+        _count: { select: { shots: true } },
+        // 第一個有關鍵幀的分鏡 → 給尚無成片的進行中專案當封面縮圖（單一查詢，無 N+1）
+        shots: { where: { keyframePath: { not: null } }, orderBy: { sortOrder: 'asc' }, take: 1, select: { id: true, updatedAt: true } },
+      },
     });
-    return ApiResponse.success(rows.map((r) => projectToDto(r, { shotCount: r._count.shots })), '取得專案列表成功');
+    return ApiResponse.success(
+      rows.map((r) => projectToDto(r, { shotCount: r._count.shots, cover: r.shots[0] ?? null })),
+      '取得專案列表成功',
+    );
   } catch (e) {
     console.error('[StudioService.listProjects]', { ownerId, all }, e);
     return ApiResponse.error(ApiReturnCode.INTERNAL_ERROR, '載入專案失敗', ERR_DB);
