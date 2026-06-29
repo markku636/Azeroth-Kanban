@@ -63,3 +63,68 @@ export async function suggestShots(projectId: string, input: SuggestInput): Prom
   });
   return parseShotArray(text).slice(0, input.count);
 }
+
+// ── 單鏡「魔法棒」：用 AI 潤飾既有分鏡的某一欄（畫面英文 prompt／旁白／喜劇大字），回傳純文字不落庫。──
+// 與角色魔法棒(character-assist)同調，但會帶入專案故事脈絡＋同鏡其他欄位以維持一致；provider 依 LLM_PROVIDER。
+
+export type ShotPolishField = 'visual' | 'tts' | 'caption' | 'punchline';
+export const SHOT_POLISH_FIELDS: readonly ShotPolishField[] = ['visual', 'tts', 'caption', 'punchline'];
+
+const POLISH_SYS: Record<ShotPolishField, string> = {
+  visual:
+    'You are an expert SDXL prompt engineer for short-form video keyframes. Rewrite the shot VISUAL into a single clean ' +
+    'English comma-separated prompt, ordered subject → action → setting → lighting → camera → style, leading with the subject and key light. ' +
+    'Keep it concise (about 25–35 words, never exceed the SDXL CLIP 77-token limit) and cinematic. ' +
+    'Preserve the original intent and any named characters. Output ONLY the prompt text — no markdown, no quotes, no labels.',
+  tts:
+    '你是短影音編劇。把這句旁白／台詞改寫得更口語、更有態度、更能在前 3 秒抓住觀眾。' +
+    '保留原意，繁體中文，盡量 ≤15 字、像真人在講話。只輸出改寫後的那一句，不要 markdown、引號、標題或說明。',
+  caption:
+    '你是迷因吐槽短片的字幕編劇。把這句「大字幕（setup）」改寫得更精煉、更有畫面、能鋪陳反轉。' +
+    '繁體中文、短而有力。只輸出該句，不要 markdown、引號或說明。',
+  punchline:
+    '你是迷因吐槽短片的字幕編劇。把這句「反轉爆點（punchline）」改寫得更出乎意料、更好笑、與 setup 形成反差。' +
+    '繁體中文、短而有力。只輸出該句，不要 markdown、引號或說明。',
+};
+
+const POLISH_LABEL: Record<ShotPolishField, string> = { visual: '畫面', tts: '旁白', caption: '大字幕 setup', punchline: '反轉 punchline' };
+
+export interface PolishInput {
+  field: ShotPolishField;
+  /** 目前欄位內容（可空，空時依脈絡為本鏡這欄生成）。 */
+  text: string;
+  /** 同鏡其他欄位（提升一致性）。 */
+  visual?: string; tts?: string; caption?: string; punchline?: string;
+}
+
+const MAX_POLISH_INPUT = 2000;
+
+function buildPolishUser(input: PolishInput, preamble: string): string {
+  const ctx: string[] = [];
+  if (preamble.trim()) ctx.push(preamble.trim());
+  const others: [ShotPolishField, string | undefined][] = [['visual', input.visual], ['tts', input.tts], ['caption', input.caption], ['punchline', input.punchline]];
+  for (const [f, v] of others) if (f !== input.field && v?.trim()) ctx.push(`本鏡${POLISH_LABEL[f]}：${v.trim().slice(0, 300)}`);
+  const cur = input.text.trim().slice(0, MAX_POLISH_INPUT);
+  ctx.push(cur ? `目前的${POLISH_LABEL[input.field]}（請潤飾／改寫）：\n${cur}` : `目前的${POLISH_LABEL[input.field]}為空，請依上述脈絡為本鏡這一欄產生合理內容。`);
+  return ctx.join('\n');
+}
+
+function cleanPolish(out: string): string {
+  let s = out.trim();
+  s = s.replace(/^```[a-zA-Z]*\s*/m, '').replace(/```\s*$/m, '').trim();
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith('「') && s.endsWith('」'))) s = s.slice(1, -1).trim();
+  return s;
+}
+
+/** 用 AI 潤飾既有分鏡的單一欄位（provider 依 LLM_PROVIDER），回傳乾淨純文字（不落庫）。 */
+export async function polishShotField(projectId: string, input: PolishInput): Promise<string> {
+  const story = await buildStoryContext(projectId);
+  const out = await complete({
+    system: POLISH_SYS[input.field] + (story.system ? `\n\n${story.system}` : ''),
+    messages: [{ role: 'user', content: buildPolishUser(input, story.preamble) }],
+    temperature: input.field === 'visual' ? 0.6 : 0.85,
+    // 思考型模型(2.5-flash/pro)會與輸出共用預算；放寬避免空輸出（同 character-assist）。
+    maxTokens: 2048,
+  });
+  return cleanPolish(out);
+}

@@ -69,6 +69,8 @@ export function ShotEditModal({
   const [emotion, setEmotion] = useState('');
   const [assistHint, setAssistHint] = useState('');
   const [assisting, setAssisting] = useState(false);
+  // 單鏡欄位魔法棒：標記哪一欄潤飾中（per-field spinner + 並發鎖）。
+  const [wandBusy, setWandBusy] = useState<'visual' | 'tts' | null>(null);
   // 角色指派（指派後 speaker/FaceID 連動，由後端 assignCharacterToShot 處理）
   const [characterId, setCharacterId] = useState(shot?.characterId ?? '');
   const [projectChars, setProjectChars] = useState<ProjectCharLite[]>([]);
@@ -166,6 +168,38 @@ export function ShotEditModal({
     }
     setAssisting(false);
   };
+
+  // 單鏡欄位「魔法棒」：用 AI 依故事脈絡＋同鏡其他欄位潤飾這一欄；結果預填讓使用者審核後再儲存（不落庫）。
+  const polish = async (field: 'visual' | 'tts') => {
+    setWandBusy(field);
+    try {
+      const res = await fetch('/api/v1/studio/shots/polish', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, field, text: field === 'visual' ? visual : tts, visual, tts, caption, punchline }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message ?? 'AI 潤飾失敗');
+      const out = json.data?.text as string | undefined;
+      if (!out) throw new Error('AI 沒有產生內容');
+      if (field === 'visual') setVisual(out); else setTts(out);
+      toast.success('已用 AI 潤飾，請檢視後儲存');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'AI 潤飾失敗');
+    }
+    setWandBusy(null);
+  };
+
+  const wandBtn = (field: 'visual' | 'tts') => (
+    <button
+      type="button"
+      onClick={() => void polish(field)}
+      disabled={wandBusy !== null || busy}
+      title="用 AI 潤飾此欄位（依故事脈絡改寫，會預填讓你審核）"
+      className="flex items-center gap-1 rounded-md border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-50 disabled:opacity-40 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/20"
+    >
+      <PiSparkleFill className="h-3 w-3" /> {wandBusy === field ? '潤飾中…' : '潤飾'}
+    </button>
+  );
 
   // 先存目前編輯，再排入單鏡生成（① 生圖 / ② 生片），關閉後在看板看進度。
   const genThis = async (kind: 'keyframes' | 'render') => {
@@ -350,22 +384,32 @@ export function ShotEditModal({
             </div>
           )}
 
-          <Textarea
-            label="畫面描述（visual，英文給 SDXL）"
-            value={visual}
-            onChange={(e) => setVisual(e.target.value)}
-            rows={3}
-            placeholder="e.g. a middle-aged Ash sitting on a couch, cinematic lighting"
-            textareaClassName="ring-0"
-          />
-          <Textarea
-            label="旁白／台詞（tts，繁中）"
-            value={tts}
-            onChange={(e) => setTts(e.target.value)}
-            rows={2}
-            placeholder="這句會用來配音，並作為字幕"
-            textareaClassName="ring-0"
-          />
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-gray-700">畫面描述（visual，英文給 SDXL）</span>
+              {aiEnabled && wandBtn('visual')}
+            </div>
+            <Textarea
+              value={visual}
+              onChange={(e) => setVisual(e.target.value)}
+              rows={3}
+              placeholder="e.g. a middle-aged Ash sitting on a couch, cinematic lighting"
+              textareaClassName="ring-0"
+            />
+          </div>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-sm font-medium text-gray-700">旁白／台詞（tts，繁中）</span>
+              {aiEnabled && wandBtn('tts')}
+            </div>
+            <Textarea
+              value={tts}
+              onChange={(e) => setTts(e.target.value)}
+              rows={2}
+              placeholder="這句會用來配音，並作為字幕"
+              textareaClassName="ring-0"
+            />
+          </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">動態分支</label>
             <select

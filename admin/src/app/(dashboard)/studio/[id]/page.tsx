@@ -1037,6 +1037,7 @@ export default function StoryboardPage() {
         <ShotEditModal
           projectId={projectId}
           shot={editingShot}
+          aiEnabled={aiEnabled}
           onClose={() => setEditingShotId(null)}
           onSaved={() => {
             setEditingShotId(null);
