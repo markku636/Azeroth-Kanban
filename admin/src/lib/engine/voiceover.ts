@@ -38,15 +38,37 @@ export class SealTTSClient {
     if (o.instruct) payload.instruct = o.instruct;
     if (o.pitch !== undefined) payload.pitch = o.pitch;
 
-    const r = await fetch(`${this.baseUrl}/v1/tts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-API-Key": this.apiKey },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(o.timeoutMs ?? 180_000),   // cold-start ~100s
-    });
-    if (!r.ok) throw new Error(`/v1/tts ${r.status}: ${(await r.text()).slice(0, 400)}`);
-    const data = (await r.json()) as { audio_base64: string; duration_sec?: number; sample_rate?: number };
-    return { wav: Buffer.from(data.audio_base64, "base64"), durationSec: data.duration_sec ?? 0, sampleRate: data.sample_rate ?? 24000 };
+    // Retry transient failures (network error, timeout, 5xx) with backoff — a single hiccup shouldn't
+    // fail a whole shot's render during an overnight batch. 4xx (auth / bad request) fails fast (no retry).
+    const attempts = 3;
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      let r: Response;
+      try {
+        r = await fetch(`${this.baseUrl}/v1/tts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-Key": this.apiKey },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(o.timeoutMs ?? 180_000),   // cold-start ~100s
+        });
+      } catch (e) {
+        lastErr = e;                                             // network / timeout → retryable
+        if (attempt < attempts) { await new Promise((res) => setTimeout(res, attempt * 1500)); continue; }
+        throw e instanceof Error ? new Error(`/v1/tts request failed after ${attempts} tries: ${e.message}`) : e;
+      }
+      if (r.ok) {
+        const data = (await r.json()) as { audio_base64: string; duration_sec?: number; sample_rate?: number };
+        return { wav: Buffer.from(data.audio_base64, "base64"), durationSec: data.duration_sec ?? 0, sampleRate: data.sample_rate ?? 24000 };
+      }
+      const body = (await r.text()).slice(0, 400);
+      if (r.status >= 500 && attempt < attempts) {               // transient server error → retry
+        lastErr = new Error(`/v1/tts ${r.status}: ${body}`);
+        await new Promise((res) => setTimeout(res, attempt * 1500));
+        continue;
+      }
+      throw new Error(`/v1/tts ${r.status}: ${body}`);           // 4xx, or final 5xx → fail
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(`/v1/tts failed after ${attempts} tries`);
   }
 
   async speakers(): Promise<unknown> {
