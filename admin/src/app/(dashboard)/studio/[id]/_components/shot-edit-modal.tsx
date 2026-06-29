@@ -273,6 +273,8 @@ export function ShotEditModal({
 
   const uploadRef = async (file: File) => {
     if (!shot) return;
+    // 先擋大小（伺服器上限 20MB）→ 不必把超大圖整個傳上去才收到錯誤。
+    if (file.size > 20 * 1024 * 1024) { toast.error(`圖片過大（${Math.round(file.size / 1024 / 1024)}MB），上限 20MB`); return; }
     setBusy(true);
     try {
       const fd = new FormData(); fd.append('file', file); fd.append('mode', refMode);
