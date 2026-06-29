@@ -22,6 +22,10 @@ export function AgentLauncher() {
           <PiRobotDuotone className="h-5 w-5" /> AI 助手
         </button>
       )}
+      {open && (
+        // 半透明背幕：給出「這是覆蓋層」的視覺提示，並支援點外面關閉（與其他 Modal 一致）。
+        <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpen(false)} aria-hidden="true" />
+      )}
       <AgentPanel projectId={params.id} open={open} onClose={() => setOpen(false)} onApplied={() => { /* board 透過 studio:reload 事件重載 */ }} />
     </>
   );
