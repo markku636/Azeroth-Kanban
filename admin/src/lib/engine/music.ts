@@ -2,19 +2,23 @@
 // vi–IV–I–V arc, a sub-bass root for weight, a gentle L/R detune for stereo width, and a slow swell /
 // fade so it breathes like a score bed rather than a flat drone. Mixed (and sidechain-ducked under the
 // narration) by assemble.mixBgm. Signature unchanged — callers just get a fuller, stereo bed.
-export function makePad(durationSec: number, opts: { sampleRate?: number; gain?: number } = {}): Buffer {
+// Emotional mood → 4-chord loop + sub-bass roots (one octave below each chord). 'neutral' is the
+// original Am–F–C–G (byte-identical default); the caller derives mood from the project's tone/genre so
+// a tense thriller gets a suspended progression, a comedy a brighter one, etc.
+const MOODS: Record<string, { chords: number[][]; roots: number[] }> = {
+  neutral: { chords: [[220, 261.63, 329.63], [174.61, 220, 261.63], [261.63, 329.63, 392], [196, 246.94, 293.66]], roots: [110, 87.31, 130.81, 98] },     // Am–F–C–G
+  warm:    { chords: [[261.63, 329.63, 392], [196, 246.94, 293.66], [220, 261.63, 329.63], [174.61, 220, 261.63]], roots: [130.81, 98, 110, 87.31] },     // C–G–Am–F (uplifting)
+  somber:  { chords: [[220, 261.63, 329.63], [164.81, 196, 246.94], [174.61, 220, 261.63], [261.63, 329.63, 392]], roots: [110, 82.41, 87.31, 130.81] },  // Am–Em–F–C (melancholy)
+  tense:   { chords: [[220, 261.63, 329.63], [174.61, 220, 261.63], [146.83, 174.61, 220], [164.81, 207.65, 246.94]], roots: [110, 87.31, 73.42, 82.41] }, // Am–F–Dm–E (suspense)
+};
+
+export function makePad(durationSec: number, opts: { sampleRate?: number; gain?: number; mood?: string } = {}): Buffer {
   const sr = opts.sampleRate ?? 44100;
   const gain = opts.gain ?? 0.2;
   const n = Math.floor(durationSec * sr);
   const L = new Float32Array(n), R = new Float32Array(n);
-  // vi–IV–I–V in A minor (Am – F – C – G): the classic emotional/cinematic loop. Triad voicings, Hz.
-  const chords = [
-    [220.00, 261.63, 329.63], // Am
-    [174.61, 220.00, 261.63], // F
-    [261.63, 329.63, 392.00], // C
-    [196.00, 246.94, 293.66], // G
-  ];
-  const roots = [110.00, 87.31, 130.81, 98.00]; // sub-bass root (one octave below) per chord, for weight
+  // 4-chord emotional loop selected by mood (default 'neutral' = the original Am–F–C–G). Triad voicings.
+  const { chords, roots } = MOODS[opts.mood ?? 'neutral'] ?? MOODS.neutral;
   const chordDur = durationSec / chords.length;
   const detune = 1.004; // ~7-cent L/R spread → stereo width without phasing
   // Scale the swell/release windows to the bed length so a short film isn't crushed near-silent (the

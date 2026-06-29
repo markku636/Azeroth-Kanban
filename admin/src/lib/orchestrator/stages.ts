@@ -411,6 +411,15 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
 }
 
 // ─────────────────────────── Assemble core（任意一組分鏡 → outDir/final.mp4）───────────────────────────
+/** Map a project's tone/genre to a fallback-score mood so the default bed fits the story (default neutral). */
+function moodFromProject(p: { tone?: string | null; genre?: string | null } | null): string {
+  const txt = `${p?.tone ?? ''} ${p?.genre ?? ''}`.toLowerCase();
+  if (/(tense|suspense|thriller|horror|action|驚悚|懸疑|緊張|恐怖|動作)/.test(txt)) return 'tense';
+  if (/(sad|melanchol|grief|somber|emotional|悲|哀|憂|傷感|療傷|催淚)/.test(txt)) return 'somber';
+  if (/(warm|happy|uplift|comedy|feel-?good|喜劇|溫暖|歡|勵志|搞笑|療癒)/.test(txt)) return 'warm';
+  return 'neutral';
+}
+
 async function assembleClips(projectId: string, shots: Shot[], outDir: string): Promise<string> {
   mkdirSync(outDir, { recursive: true });
 
@@ -458,11 +467,12 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
 
   const dur = await probeDuration(videoOut);
   const project = await prisma.studioProject.findUnique({ where: { id: projectId } });
+  const mood = moodFromProject(project); // 依故事 tone/genre 選配樂情緒（預設 neutral，向後相容）
   const bgm = join(outDir, 'bgm.wav');
   if (project?.bgmPath && existsSync(project.bgmPath)) {
     await loopAudioTo(project.bgmPath, +(dur + 0.5).toFixed(2), bgm); // 使用者上傳的 BGM，循環/裁切到片長
   } else {
-    writeFileSync(bgm, makePad(dur + 0.5, { gain: 0.8 })); // 預設：程序化 pad
+    writeFileSync(bgm, makePad(dur + 0.5, { gain: 0.8, mood })); // 預設：依情緒的程序化 pad
   }
   // Opt-in cinematic wrapper: opening title (over a darkened/blurred first keyframe) + 「完」end card,
   // joined to the film with dip-to-black. Gated by STUDIO_TITLECARD (default off → zero regression). The
@@ -477,10 +487,10 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     const { cw, ch } = await projectDims(projectId);
     // generate a longer pad (its swell/env are tuned for long beds) and let cardClip trim to the card —
     // the opening seconds are the natural build-up, which suits a title swell.
-    const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95 }));
+    const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95, mood }));
     const titleClip = join(outDir, 'title.mp4');
     await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8, audio: titlePad });
-    const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8 }));
+    const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8, mood }));
     const endClip = join(outDir, 'end.mp4');
     await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: '完', dur: 2.4, audio: endPad });
     await comp.stitch({ clips: [titleClip, mixOut, endClip], out: final, fades: [0.6, 0.6], transitions: ['fadeblack', 'fadeblack'] });
