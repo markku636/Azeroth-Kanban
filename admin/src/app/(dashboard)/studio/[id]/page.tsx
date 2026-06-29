@@ -744,6 +744,11 @@ export default function StoryboardPage() {
         const ok = await confirm({ title: '尚有分鏡未生圖', message: `有 ${missing} 個分鏡還沒有關鍵幀圖片，直接生成影片這些鏡可能沒有畫面。建議先按「① 生成圖片」。要仍然繼續嗎？`, confirmLabel: '仍要生成' });
         if (!ok) return;
       }
+      // 配音服務離線且有含旁白的鏡 → 生片到配音那步會失敗，先省下一趟白跑的算圖（ttsDown 只在 TTS 有設定且真的掛時為真）。
+      if (ttsDown && data.scenes.some((s) => s.shots.some((sh) => sh.tts?.trim()))) {
+        const ok = await confirm({ title: '配音服務離線', message: '配音服務（TTS）目前連不上，含旁白的鏡在生成影片時會失敗。要仍然繼續嗎？（純大字幕的鏡不受影響）', confirmLabel: '仍要生成' });
+        if (!ok) return;
+      }
     }
     lastGenRef.current = () => void genRender(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
