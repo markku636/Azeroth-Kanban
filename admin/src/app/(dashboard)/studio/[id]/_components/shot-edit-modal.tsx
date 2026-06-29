@@ -70,7 +70,8 @@ export function ShotEditModal({
   const [assistHint, setAssistHint] = useState('');
   const [assisting, setAssisting] = useState(false);
   // 單鏡欄位魔法棒：標記哪一欄潤飾中（per-field spinner + 並發鎖）。
-  const [wandBusy, setWandBusy] = useState<'visual' | 'tts' | null>(null);
+  type WandField = 'visual' | 'tts' | 'caption' | 'punchline';
+  const [wandBusy, setWandBusy] = useState<WandField | null>(null);
   // 角色指派（指派後 speaker/FaceID 連動，由後端 assignCharacterToShot 處理）
   const [characterId, setCharacterId] = useState(shot?.characterId ?? '');
   const [projectChars, setProjectChars] = useState<ProjectCharLite[]>([]);
@@ -170,18 +171,22 @@ export function ShotEditModal({
   };
 
   // 單鏡欄位「魔法棒」：用 AI 依故事脈絡＋同鏡其他欄位潤飾這一欄；結果預填讓使用者審核後再儲存（不落庫）。
-  const polish = async (field: 'visual' | 'tts') => {
+  const fieldValue = (f: WandField) => (f === 'visual' ? visual : f === 'tts' ? tts : f === 'caption' ? caption : punchline);
+  const setFieldValue = (f: WandField, v: string) => {
+    if (f === 'visual') setVisual(v); else if (f === 'tts') setTts(v); else if (f === 'caption') setCaption(v); else setPunchline(v);
+  };
+  const polish = async (field: WandField) => {
     setWandBusy(field);
     try {
       const res = await fetch('/api/v1/studio/shots/polish', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, field, text: field === 'visual' ? visual : tts, visual, tts, caption, punchline }),
+        body: JSON.stringify({ projectId, field, text: fieldValue(field), visual, tts, caption, punchline }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.message ?? 'AI 潤飾失敗');
       const out = json.data?.text as string | undefined;
       if (!out) throw new Error('AI 沒有產生內容');
-      if (field === 'visual') setVisual(out); else setTts(out);
+      setFieldValue(field, out);
       toast.success('已用 AI 潤飾，請檢視後儲存');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'AI 潤飾失敗');
@@ -189,7 +194,7 @@ export function ShotEditModal({
     setWandBusy(null);
   };
 
-  const wandBtn = (field: 'visual' | 'tts') => (
+  const wandBtn = (field: WandField) => (
     <button
       type="button"
       onClick={() => void polish(field)}
@@ -452,8 +457,20 @@ export function ShotEditModal({
               </label>
             </div>
             <div className="space-y-3">
-              <Input label="大字幕（setup）" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="鋪陳那句大字，全程顯示" variant="flat" />
-              <Input label="反轉下字幕（punchline）" value={punchline} onChange={(e) => setPunchline(e.target.value)} placeholder="反轉爆點，會在反轉點彈出（黃字）" variant="flat" />
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-gray-700">大字幕（setup）</span>
+                  {aiEnabled && wandBtn('caption')}
+                </div>
+                <Input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="鋪陳那句大字，全程顯示" variant="flat" />
+              </div>
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-gray-700">反轉下字幕（punchline）</span>
+                  {aiEnabled && wandBtn('punchline')}
+                </div>
+                <Input value={punchline} onChange={(e) => setPunchline(e.target.value)} placeholder="反轉爆點，會在反轉點彈出（黃字）" variant="flat" />
+              </div>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">卡點音效</label>
                 <select
