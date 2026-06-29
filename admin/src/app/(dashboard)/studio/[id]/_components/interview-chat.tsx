@@ -5,6 +5,7 @@ import { Button, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
 import { PiXBold, PiSparkleFill, PiLightningFill } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
+import { useConfirm } from '@/hooks/use-confirm';
 
 interface Msg {
   role: 'user' | 'assistant';
@@ -19,7 +20,8 @@ const STARTERS = [
   '外送員其實是隱退的武林高手，但這一單真的不好送',
 ];
 
-export function InterviewChat({ projectId, onClose, onDone }: { projectId: string; onClose: () => void; onDone: () => void }) {
+export function InterviewChat({ projectId, hasShots, onClose, onDone }: { projectId: string; hasShots?: boolean; onClose: () => void; onDone: () => void }) {
+  const confirm = useConfirm();
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: 'assistant', content: '嗨！想做什麼樣的短片？用一句話告訴我你的故事點子吧。' },
   ]);
@@ -72,6 +74,11 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
   const generateDirect = async () => {
     const idea = input.trim();
     if (!idea || busy) return;
+    // 直接生成是「新增」一份 AI 分鏡（不取代）→ 專案已有分鏡時先確認，避免重複疊加。
+    if (hasShots) {
+      const ok = await confirm({ title: '專案已有分鏡', message: '「直接生成」會新增一份 AI 分鏡（不會取代現有分鏡），可能造成重複。要繼續嗎？', confirmLabel: '繼續生成' });
+      if (!ok) return;
+    }
     setBusy(true);
     const t = toast.loading('AI 直接生成分鏡中…');
     try {

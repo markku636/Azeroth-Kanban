@@ -1119,6 +1119,7 @@ export default function StoryboardPage() {
       {chatOpen && (
         <InterviewChat
           projectId={projectId}
+          hasShots={totalShots > 0}
           onClose={() => setChatOpen(false)}
           onDone={() => {
             setChatOpen(false);
