@@ -118,19 +118,28 @@ export function ShotEditModal({
       punchZoom: punchZoom.trim() ? Number(punchZoom) : undefined,
     };
     try {
-      const res = isCreate
-        ? await fetch('/api/v1/studio/shots', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            // motion/emotion 僅在 Gemini 協助補完後才有值；空字串時不送，避免覆寫
-            body: JSON.stringify({ projectId, sceneId: createSceneId ?? null, visual, tts, subtitle: tts, branch, motion: motion || undefined, emotion: emotion || undefined, ...comedy }),
-          })
-        : await fetch(`/api/v1/studio/shots/${shot.id}`, {
-            method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-            // characterId 只在使用者實際變更時送出，避免每次儲存都重置 speaker/FaceID。
-            body: JSON.stringify({ visual, tts, subtitle: tts, branch, ...comedy, ...(characterId !== (shot.characterId ?? '') ? { characterId: characterId || null } : {}) }),
-          });
+      if (isCreate) {
+        const res = await fetch('/api/v1/studio/shots', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          // motion/emotion 僅在 Gemini 協助補完後才有值；空字串時不送，避免覆寫
+          body: JSON.stringify({ projectId, sceneId: createSceneId ?? null, visual, tts, subtitle: tts, branch, motion: motion || undefined, emotion: emotion || undefined, ...comedy }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.message ?? '新增失敗');
+        // createShot 不收 characterId → 新增後若選了角色，再 PATCH 指派（連動 speaker/FaceID）。
+        const newId = json.data?.id as string | undefined;
+        if (newId && characterId) {
+          await fetch(`/api/v1/studio/shots/${newId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ characterId }) });
+        }
+        return true;
+      }
+      const res = await fetch(`/api/v1/studio/shots/${shot.id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        // characterId 只在使用者實際變更時送出，避免每次儲存都重置 speaker/FaceID。
+        body: JSON.stringify({ visual, tts, subtitle: tts, branch, ...comedy, ...(characterId !== (shot.characterId ?? '') ? { characterId: characterId || null } : {}) }),
+      });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.message ?? (isCreate ? '新增失敗' : '更新失敗'));
+      if (!res.ok) throw new Error(json.message ?? '更新失敗');
       return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '操作失敗');
@@ -482,24 +491,20 @@ export function ShotEditModal({
             </select>
           </div>
 
-          {!isCreate && (
+          {projectChars.length > 0 ? (
             <div>
               <label className="mb-1.5 block text-sm font-medium text-gray-700">角色（指派後自動套用語音與 FaceID 一致臉）</label>
-              {projectChars.length > 0 ? (
-                <select
-                  aria-label="角色"
-                  value={characterId}
-                  onChange={(e) => setCharacterId(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">無（不指派角色）</option>
-                  {projectChars.map((pc) => <option key={pc.characterId} value={pc.characterId}>{pc.character.name}</option>)}
-                </select>
-              ) : (
-                <p className="text-xs text-gray-400">尚未指定專案角色 — 到「故事設定」分頁加入角色後即可指派。</p>
-              )}
+              <select
+                aria-label="角色"
+                value={characterId}
+                onChange={(e) => setCharacterId(e.target.value)}
+                className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">無（不指派角色）</option>
+                {projectChars.map((pc) => <option key={pc.characterId} value={pc.characterId}>{pc.character.name}</option>)}
+              </select>
             </div>
-          )}
+          ) : null}
 
           <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-gray-300">
             <div className="mb-2 flex items-center justify-between">
