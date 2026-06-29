@@ -53,3 +53,7 @@ yarn-error.log*
 google-credentials.json
 *-credentials.json
 .next
+
+# generated studio media (also a docker volume in prod)
+studio-storage/
+admin/studio-storage/
