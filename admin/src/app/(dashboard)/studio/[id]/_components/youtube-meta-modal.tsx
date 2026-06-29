@@ -30,6 +30,7 @@ export function YouTubeMetaModal({
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [thumbText, setThumbText] = useState('');
+  const [thumbPos, setThumbPos] = useState<'top' | 'center' | 'bottom'>('bottom');
   const [imgReady, setImgReady] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -73,33 +74,48 @@ export function YouTubeMetaModal({
     if (!ctx) return;
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(img, 0, 0, w, h);
-    // 底部深色漸層，提升大字可讀性
-    const grad = ctx.createLinearGradient(0, h * 0.55, 0, h);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,0.72)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, h * 0.55, w, h * 0.45);
 
+    // 先算字級與斷行（中文逐字），再依大字位置畫遮罩與文字。
     const text = thumbText.trim();
-    if (!text) return;
-    // 字級依畫布寬度等比；中文逐字斷行
     const fontSize = Math.round(w * 0.11);
     ctx.font = `900 ${fontSize}px "Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     const maxWidth = w * 0.9;
-    const chars = Array.from(text);
     const lines: string[] = [];
-    let cur = '';
-    for (const ch of chars) {
-      if (ch === '\n') { lines.push(cur); cur = ''; continue; }
-      const test = cur + ch;
-      if (ctx.measureText(test).width > maxWidth && cur) { lines.push(cur); cur = ch; }
-      else cur = test;
+    if (text) {
+      let cur = '';
+      for (const ch of Array.from(text)) {
+        if (ch === '\n') { lines.push(cur); cur = ''; continue; }
+        const test = cur + ch;
+        if (ctx.measureText(test).width > maxWidth && cur) { lines.push(cur); cur = ch; }
+        else cur = test;
+      }
+      if (cur) lines.push(cur);
     }
-    if (cur) lines.push(cur);
     const lineH = fontSize * 1.12;
-    let y = h - 0.06 * h - (lines.length - 1) * lineH;
+    const blockH = lines.length * lineH;
+
+    // 深色遮罩（提升大字可讀性）依位置而定
+    if (thumbPos === 'top') {
+      const g = ctx.createLinearGradient(0, 0, 0, h * 0.45);
+      g.addColorStop(0, 'rgba(0,0,0,0.72)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h * 0.45);
+    } else if (thumbPos === 'center') {
+      if (lines.length) { ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, Math.max(0, h / 2 - blockH / 2 - fontSize * 0.3), w, blockH + fontSize * 0.6); }
+    } else {
+      const g = ctx.createLinearGradient(0, h * 0.55, 0, h);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.72)');
+      ctx.fillStyle = g; ctx.fillRect(0, h * 0.55, w, h * 0.45);
+    }
+
+    if (!lines.length) return;
+    // 第一行 baseline（依位置）
+    let y = thumbPos === 'top'
+      ? 0.06 * h + fontSize
+      : thumbPos === 'center'
+        ? h / 2 - blockH / 2 + fontSize
+        : h - 0.06 * h - (lines.length - 1) * lineH;
     ctx.lineJoin = 'round';
     ctx.lineWidth = Math.max(4, fontSize * 0.16);
     for (const line of lines) {
@@ -109,7 +125,7 @@ export function YouTubeMetaModal({
       ctx.fillText(line, w / 2, y);
       y += lineH;
     }
-  }, [thumbText, imgReady]);
+  }, [thumbText, imgReady, thumbPos]);
 
   // 載入關鍵幀圖一次（同源，canvas 不會被污染）；只在 URL 變動時重載，不隨打字重抓。
   useEffect(() => {
@@ -233,6 +249,19 @@ export function YouTubeMetaModal({
                     placeholder="縮圖大字（可編輯）"
                     className="mt-2 w-full rounded-md border border-gray-200 bg-background px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-300"
                   />
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
+                    <span className="flex-none">大字位置</span>
+                    {(['top', 'center', 'bottom'] as const).map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setThumbPos(p)}
+                        className={thumbPos === p ? 'rounded bg-blue-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
+                      >
+                        {p === 'top' ? '上' : p === 'center' ? '中' : '下'}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               <Field label="置頂留言" hint="引導觀眾留言／分享，提高互動" value={meta.pinnedComment} onCopy={() => copy(meta.pinnedComment, '置頂留言')} multiline />
