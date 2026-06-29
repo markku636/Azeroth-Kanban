@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
@@ -69,17 +69,20 @@ export default function StudioProjectsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dupingId, setDupingId] = useState<string | null>(null);
 
+  const loadSeq = useRef(0);
   const load = useCallback(async () => {
+    const mine = ++loadSeq.current;
     setLoading(true);
     try {
       const res = await fetch('/api/v1/studio/projects');
       const json = await res.json();
+      if (mine !== loadSeq.current) return; // 較新的 load 已發出 → 丟棄舊回應
       if (res.ok) setProjects(json.data ?? []);
       else toast.error(json.message ?? '載入失敗');
     } catch {
-      toast.error('載入失敗');
+      if (mine === loadSeq.current) toast.error('載入失敗');
     }
-    setLoading(false);
+    if (mine === loadSeq.current) setLoading(false);
   }, []);
 
   useEffect(() => {
