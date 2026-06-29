@@ -30,6 +30,14 @@ const STATUS_META: Record<string, { color: BadgeColor; label: string }> = {
   export: { color: 'success', label: '已完成' },
 };
 
+// 空狀態的「起手式片名」：高概念、好笑、適合短影音，破解空白頁焦慮。點一下填入片名輸入框。
+const STARTER_TITLES = [
+  '中年阿智：最後一次挑戰道館',
+  '上班族倉鼠逃出辦公室',
+  '立志當網紅的厭世家貓',
+  '外送員其實是退休武林高手',
+];
+
 export default function StudioProjectsPage() {
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,9 +167,24 @@ export default function StudioProjectsPage() {
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center text-gray-400">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-gray-400">
           <PiFilmReelDuotone className="h-14 w-14 text-gray-300" />
-          <div className="text-sm">還沒有專案，在上方輸入名稱建立第一個吧。</div>
+          <div className="text-sm text-gray-500">還沒有專案。先取個片名建立專案，建立後用「✨ AI 訪談」一句話就能生成分鏡。</div>
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="text-xs text-gray-400">沒靈感？點一個試試（會填入上方片名）：</div>
+            <div className="flex max-w-xl flex-wrap justify-center gap-1.5">
+              {STARTER_TITLES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTitle(t)}
+                  className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs text-purple-700 transition-colors hover:border-purple-300 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-300"
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-gray-400">
