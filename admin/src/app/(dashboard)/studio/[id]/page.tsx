@@ -711,6 +711,10 @@ export default function StoryboardPage() {
   // 從最新 data 推導正在編輯的分鏡，讓 modal 在重新生成完成（load() 後）也能即時更新縮圖，與看板卡保持一致。
   const editingShot = editingShotId ? (data.scenes.flatMap((s) => s.shots).find((sh) => sh.id === editingShotId) ?? null) : null;
 
+  // 縮圖底圖＝第一個有關鍵幀的分鏡（通常是鉤子鏡），供 YouTube 文案的縮圖產生器疊大字。
+  const hookShot = data.scenes.flatMap((s) => s.shots).find((sh) => sh.keyframePath);
+  const hookKeyframeUrl = hookShot ? `/api/v1/studio/shots/${hookShot.id}/keyframe?v=${encodeURIComponent(hookShot.updatedAt)}` : undefined;
+
   return (
     <div className="flex h-full flex-col px-2 py-2 sm:p-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1003,7 +1007,7 @@ export default function StoryboardPage() {
         />
       )}
 
-      {ytOpen && <YouTubeMetaModal projectId={projectId} onClose={() => setYtOpen(false)} />}
+      {ytOpen && <YouTubeMetaModal projectId={projectId} hookKeyframeUrl={hookKeyframeUrl} onClose={() => setYtOpen(false)} />}
 
       {historyShot && (
         <HistoryModal

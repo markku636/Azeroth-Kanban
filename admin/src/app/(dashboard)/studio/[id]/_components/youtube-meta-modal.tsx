@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { PiXBold, PiCopyBold, PiArrowsClockwiseBold, PiYoutubeLogoFill, PiWarningCircleBold } from 'react-icons/pi';
+import { PiXBold, PiCopyBold, PiArrowsClockwiseBold, PiYoutubeLogoFill, PiWarningCircleBold, PiDownloadSimpleBold, PiImageBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 
 interface YouTubeMeta {
@@ -17,10 +17,22 @@ interface YouTubeMeta {
  * 「YouTube 上架文案」：成片完成後一鍵產生會被點開的標題 / 縮圖大字 / 說明 / hashtags /
  * 置頂留言，每欄可一鍵複製，方便直接貼到 YouTube / 抖音。不落庫（每次重新生成）。
  */
-export function YouTubeMetaModal({ projectId, onClose }: { projectId: string; onClose: () => void }) {
+export function YouTubeMetaModal({
+  projectId,
+  hookKeyframeUrl,
+  onClose,
+}: {
+  projectId: string;
+  hookKeyframeUrl?: string;
+  onClose: () => void;
+}) {
   const [meta, setMeta] = useState<YouTubeMeta | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [thumbText, setThumbText] = useState('');
+  const [imgReady, setImgReady] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const generate = useCallback(async () => {
     setLoading(true);
@@ -40,6 +52,87 @@ export function YouTubeMetaModal({ projectId, onClose }: { projectId: string; on
   useEffect(() => {
     void generate();
   }, [generate]);
+
+  // 縮圖文字預設帶入 AI 產生的 thumbnailText（之後可手動編輯）。
+  useEffect(() => {
+    if (meta?.thumbnailText) setThumbText(meta.thumbnailText);
+  }, [meta?.thumbnailText]);
+
+  // 把關鍵幀畫到 canvas 並疊上大字（白字黑描邊 + 底部漸層），給縮圖預覽 / 下載用。
+  const drawThumb = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img || !img.complete || !img.naturalWidth) return;
+    // 限制最長邊 1280，避免過大；維持原圖比例。
+    const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * scale);
+    const h = Math.round(img.naturalHeight * scale);
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    // 底部深色漸層，提升大字可讀性
+    const grad = ctx.createLinearGradient(0, h * 0.55, 0, h);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.72)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, h * 0.55, w, h * 0.45);
+
+    const text = thumbText.trim();
+    if (!text) return;
+    // 字級依畫布寬度等比；中文逐字斷行
+    const fontSize = Math.round(w * 0.11);
+    ctx.font = `900 ${fontSize}px "Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const maxWidth = w * 0.9;
+    const chars = Array.from(text);
+    const lines: string[] = [];
+    let cur = '';
+    for (const ch of chars) {
+      if (ch === '\n') { lines.push(cur); cur = ''; continue; }
+      const test = cur + ch;
+      if (ctx.measureText(test).width > maxWidth && cur) { lines.push(cur); cur = ch; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    const lineH = fontSize * 1.12;
+    let y = h - 0.06 * h - (lines.length - 1) * lineH;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(4, fontSize * 0.16);
+    for (const line of lines) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.92)';
+      ctx.strokeText(line, w / 2, y);
+      ctx.fillStyle = '#ffef3a';
+      ctx.fillText(line, w / 2, y);
+      y += lineH;
+    }
+  }, [thumbText, imgReady]);
+
+  // 載入關鍵幀圖一次（同源，canvas 不會被污染）；只在 URL 變動時重載，不隨打字重抓。
+  useEffect(() => {
+    if (!hookKeyframeUrl) return;
+    setImgReady(false);
+    const img = new Image();
+    img.onload = () => { imgRef.current = img; setImgReady(true); };
+    img.onerror = () => { imgRef.current = null; setImgReady(false); };
+    img.src = hookKeyframeUrl;
+  }, [hookKeyframeUrl]);
+
+  // 圖載入完成或文字變動時重畫
+  useEffect(() => { drawThumb(); }, [drawThumb]);
+
+  const downloadThumb = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !canvas.width) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'thumbnail.png';
+    a.click();
+    toast.success('縮圖已下載');
+  };
 
   const copy = (text: string, label: string) => {
     if (!text) return;
@@ -115,6 +208,27 @@ export function YouTubeMetaModal({ projectId, onClose }: { projectId: string; on
                       </span>
                     ))}
                   </div>
+                </div>
+              )}
+              {hookKeyframeUrl && (
+                <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-300">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                      <PiImageBold className="h-3.5 w-3.5" /> 縮圖 · 用首鏡關鍵幀疊大字（縮圖決定點擊率）
+                    </span>
+                    <button type="button" onClick={downloadThumb} className="flex flex-none items-center gap-1 text-xs text-gray-400 hover:text-primary" title="下載縮圖 PNG">
+                      <PiDownloadSimpleBold className="h-3.5 w-3.5" /> 下載 PNG
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-center rounded bg-black/90 p-1">
+                    <canvas ref={canvasRef} className="max-h-72 w-auto max-w-full rounded" />
+                  </div>
+                  <input
+                    value={thumbText}
+                    onChange={(e) => setThumbText(e.target.value)}
+                    placeholder="縮圖大字（可編輯）"
+                    className="mt-2 w-full rounded-md border border-gray-200 bg-background px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:border-primary dark:border-gray-300"
+                  />
                 </div>
               )}
               <Field label="置頂留言" hint="引導觀眾留言／分享，提高互動" value={meta.pinnedComment} onCopy={() => copy(meta.pinnedComment, '置頂留言')} multiline />
