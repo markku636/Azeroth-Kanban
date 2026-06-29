@@ -212,7 +212,7 @@ export function YouTubeMetaModal({
           {meta && (
             <div className="flex flex-col gap-4">
               <Field label="標題" hint="貼到 YouTube 標題列；前段就有鉤子" value={meta.title} onCopy={() => copy(meta.title, '標題')} big warnLen={70} />
-              <Field label="縮圖大字" hint="放在封面圖上的超大字" value={meta.thumbnailText} onCopy={() => copy(meta.thumbnailText, '縮圖大字')} />
+              <Field label="縮圖大字" hint="放在封面圖上的超大字" value={meta.thumbnailText} onCopy={() => copy(meta.thumbnailText, '縮圖大字')} warnLen={12} />
               <Field label="影片說明" hint="第 1 行是最強鉤子" value={meta.description} onCopy={() => copy(meta.description, '說明')} multiline />
               {meta.hashtags.length > 0 && (
                 <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-300">
