@@ -93,7 +93,7 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
                         title={`點擊放大 · ${fmt(v.createdAt)}`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={fileUrl(v)} alt={`版本 ${fmt(v.createdAt)}`} className="aspect-video w-full object-cover transition-transform group-hover:scale-105" />
+                        <img src={fileUrl(v)} alt={`版本 ${fmt(v.createdAt)}`} className="aspect-[3/4] w-full bg-gray-100 object-contain transition-transform group-hover:scale-105 dark:bg-gray-100" />
                         <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5 text-[10px] text-white">
                           {i === 0 ? '最新 · ' : ''}{fmt(v.createdAt)}
                         </span>
