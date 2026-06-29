@@ -214,6 +214,7 @@ export default function StoryboardPage() {
   const [busy, setBusy] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [engineDown, setEngineDown] = useState(false);
+  const [ttsDown, setTtsDown] = useState(false);
   const [queuedAhead, setQueuedAhead] = useState<number | null>(null);
 
   const [gen, setGen] = useState<Gen>('idle');
@@ -332,6 +333,8 @@ export default function StoryboardPage() {
       const reachable = Boolean(comfy?.reachable);
       // 只有「明確連不上」才亮紅燈；端點本身錯誤/未設定則不擾民。
       setEngineDown(comfy?.configured ? !reachable : false);
+      const tts = json?.data?.tts;
+      setTtsDown(tts?.configured ? !tts.reachable : false);
       return comfy?.configured ? reachable : true;
     } catch {
       return true;
@@ -958,6 +961,13 @@ export default function StoryboardPage() {
         <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           <PiWarningCircleBold className="mt-0.5 h-4 w-4 flex-none" />
           <span>影像生成引擎（ComfyUI）目前連不上。現在按生成會卡在佇列無法完成——請先在主機啟動 ComfyUI，並避免主機進入睡眠。</span>
+        </div>
+      )}
+
+      {ttsDown && (
+        <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+          <PiWarningCircleBold className="mt-0.5 h-4 w-4 flex-none" />
+          <span>配音服務（Seal-TTS）目前連不上：含「旁白」的分鏡會生成失敗。可先啟動 TTS 服務，或用純大字幕（喜劇）鏡——它們不需配音。</span>
         </div>
       )}
 

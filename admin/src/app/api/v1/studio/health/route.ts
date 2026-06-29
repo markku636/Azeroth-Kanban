@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 // 生成 job 會在佇列裡無聲地卡住。前端用此端點在生成前/旁邊提示「引擎尚未就緒」。
 // 保留原本的 scheme（若設成 https 的 ComfyUI 也能正確探測，不會被降級成 http）。
 const COMFY_URL = (process.env.COMFYUI_URL ?? '').replace(/\/+$/, '');
+const TTS_URL = (process.env.SEAL_TTS_URL ?? '').replace(/\/+$/, '');
 
 async function probeComfy(): Promise<{ configured: boolean; reachable: boolean; vramFreeGB?: number }> {
   if (!COMFY_URL) return { configured: false, reachable: false };
@@ -26,10 +27,25 @@ async function probeComfy(): Promise<{ configured: boolean; reachable: boolean; 
   }
 }
 
-// GET：回 { comfyui: { configured, reachable, vramFreeGB? } }。登入即可查（不分專案）。
+// 配音服務（Seal-TTS）就緒檢查。含旁白(tts)的鏡在 TTS 掛時會生成失敗；/healthz 免金鑰。
+async function probeTts(): Promise<{ configured: boolean; reachable: boolean }> {
+  if (!TTS_URL) return { configured: false, reachable: false };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 3000);
+  try {
+    const r = await fetch(`${TTS_URL}/healthz`, { signal: ctrl.signal, cache: 'no-store' });
+    return { configured: true, reachable: r.ok };
+  } catch {
+    return { configured: true, reachable: false };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// GET：回 { comfyui: {configured,reachable,vramFreeGB?}, tts: {configured,reachable} }。登入即可查。
 export async function GET() {
   const session = await auth();
   if (!session?.user?.memberId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
-  const comfyui = await probeComfy();
-  return ApiResponse.ok({ comfyui }, 'ok');
+  const [comfyui, tts] = await Promise.all([probeComfy(), probeTts()]);
+  return ApiResponse.ok({ comfyui, tts }, 'ok');
 }
