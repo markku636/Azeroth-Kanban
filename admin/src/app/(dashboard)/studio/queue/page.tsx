@@ -195,7 +195,7 @@ export default function StudioQueuePage() {
       )}
 
       {loading && !data ? (
-        <div className="flex flex-1 items-center justify-center">
+        <div role="status" aria-label="載入佇列中" className="flex flex-1 items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-r-transparent" />
         </div>
       ) : (

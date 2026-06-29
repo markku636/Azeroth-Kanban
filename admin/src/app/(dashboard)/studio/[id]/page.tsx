@@ -864,7 +864,7 @@ export default function StoryboardPage() {
   };
 
   if (loading) {
-    return <div className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-r-transparent" /></div>;
+    return <div role="status" aria-label="載入分鏡看板中" className="flex h-full items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-r-transparent" /></div>;
   }
   if (error) return <div className="p-6 text-red-600">{error}</div>;
   if (!data) return null;
