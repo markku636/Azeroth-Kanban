@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import { Badge, Button, Input } from 'rizzui';
 import toast from 'react-hot-toast';
@@ -47,6 +48,7 @@ const STARTER_TITLES = [
 
 export default function StudioProjectsPage() {
   const confirm = useConfirm();
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
@@ -88,6 +90,9 @@ export default function StudioProjectsPage() {
       if (res.ok) {
         setTitle('');
         toast.success('專案已建立');
+        // 直接進入新專案，馬上能用 AI 訪談／直接生成（建立後最常見的下一步）。
+        const id = json.data?.id as string | undefined;
+        if (id) { setCreating(false); router.push(`/studio/${id}`); return; }
         await load();
       } else {
         toast.error(json.message ?? '建立失敗');
