@@ -11,6 +11,14 @@ interface Msg {
   content: string;
 }
 
+// 起手式：高概念、好笑、適合短影音的故事點子範例。點一下填入輸入框，破解「空白頁焦慮」並示範什麼叫吸睛點子。
+const STARTERS = [
+  '中年阿智：30 年沒拿過冠軍，禿頭大叔帶著胖皮卡丘最後一次挑戰道館',
+  '上班族倉鼠受夠了滾輪人生，決定逃出辦公室大樓',
+  '一隻覺得自己被嚴重低估的家貓，立志成為頂流網紅',
+  '外送員其實是隱退的武林高手，但這一單真的不好送',
+];
+
 export function InterviewChat({ projectId, onClose, onDone }: { projectId: string; onClose: () => void; onDone: () => void }) {
   const [msgs, setMsgs] = useState<Msg[]>([
     { role: 'assistant', content: '嗨！想做什麼樣的短片？用一句話告訴我你的故事點子吧。' },
@@ -82,6 +90,23 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
               </div>
             </div>
           ))}
+          {msgs.length === 1 && !busy && (
+            <div className="flex flex-col gap-1.5 pt-1">
+              <div className="text-xs text-gray-400">沒靈感？點一個範例試試（可再修改）：</div>
+              <div className="flex flex-wrap gap-1.5">
+                {STARTERS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setInput(s)}
+                    className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-left text-xs text-purple-700 transition-colors hover:border-purple-300 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-300"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {busy && (
             <div className="flex items-center gap-1 text-xs text-gray-400">
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-300 [animation-delay:-0.2s]" />
