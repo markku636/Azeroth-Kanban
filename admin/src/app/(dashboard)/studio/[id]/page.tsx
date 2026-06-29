@@ -539,6 +539,7 @@ export default function StoryboardPage() {
   const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); };
   const bulkGen = async (kind: 'keyframes' | 'render') => {
     const ids = Array.from(selectedIds); if (!ids.length) return;
+    lastGenRef.current = null; // 批次後會清掉選取 → 無法乾淨重試，故不提供（避免錯誤橫幅誤觸到上一個全片動作）
     setShotProg({}); setGen(kind === 'keyframes' ? 'running' : 'generating'); setOverall(`批次${kind === 'keyframes' ? '生圖' : '生片'} ${ids.length} 鏡…`);
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shotIds: ids }) });
