@@ -751,6 +751,9 @@ export default function StoryboardPage() {
 
   const totalShots = data?.scenes.reduce((a, s) => a + s.shots.length, 0) ?? 0;
   const estSeconds = data ? data.scenes.reduce((a, s) => a + s.shots.reduce((b, sh) => b + estShotSeconds(sh), 0), 0) : 0;
+  // 生成進度：已生關鍵幀 / 已生單鏡影片的分鏡數（讓使用者一眼知道還差多少，不必逐卡看）。
+  const withKf = data ? data.scenes.reduce((a, s) => a + s.shots.filter((sh) => sh.keyframePath).length, 0) : 0;
+  const withClip = data ? data.scenes.reduce((a, s) => a + s.shots.filter((sh) => sh.hasClip ?? (sh.status === 'VIDEO' || sh.status === 'READY')).length, 0) : 0;
   const doneShots = Object.values(shotProg).filter((p) => p.status === 'done').length;
 
   const shotLabel = (s: ShotDto): string => {
@@ -842,6 +845,11 @@ export default function StoryboardPage() {
                 className={estSeconds > 75 || estSeconds < 15 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500'}
               >
                 · 約 {fmtDur(estSeconds * 1000)}{estSeconds > 75 ? '（偏長）' : estSeconds < 15 ? '（偏短）' : ''}
+              </span>
+            )}
+            {totalShots > 0 && (
+              <span className="text-gray-500" title="生成進度：已生關鍵幀／已生影片的分鏡數">
+                · 生圖 {withKf}/{totalShots}{withClip > 0 ? ` · 生片 ${withClip}/${totalShots}` : ''}
               </span>
             )}
             {overall && <Badge color="info" variant="flat" size="sm">{overall}</Badge>}
