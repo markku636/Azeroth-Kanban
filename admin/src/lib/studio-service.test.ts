@@ -5,7 +5,7 @@ vi.mock('@/lib/prisma', () => ({
   prisma: { studioProject: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() } },
 }));
 
-import { updateProject } from './studio-service';
+import { updateProject, createProject } from './studio-service';
 import { prisma } from '@/lib/prisma';
 import { ApiReturnCode } from '@/lib/api-response';
 
@@ -47,5 +47,25 @@ describe('updateProject 輸入驗證（DB 之前）', () => {
     expect(r0.code).not.toBe(ApiReturnCode.VALIDATION_ERROR);
     expect(r1.code).not.toBe(ApiReturnCode.VALIDATION_ERROR);
     expect(prisma.studioProject.findFirst).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('createProject 標題驗證（DB 之前）', () => {
+  it('空標題 → VALIDATION_ERROR 且不建立', async () => {
+    const r = await createProject('owner', { title: '' });
+    expect(r.code).toBe(ApiReturnCode.VALIDATION_ERROR);
+    expect(prisma.studioProject.create).not.toHaveBeenCalled();
+  });
+
+  it('只有空白的標題 → VALIDATION_ERROR', async () => {
+    const r = await createProject('owner', { title: '   ' });
+    expect(r.code).toBe(ApiReturnCode.VALIDATION_ERROR);
+    expect(prisma.studioProject.create).not.toHaveBeenCalled();
+  });
+
+  it('標題超過 120 字 → VALIDATION_ERROR', async () => {
+    const r = await createProject('owner', { title: 'x'.repeat(121) });
+    expect(r.code).toBe(ApiReturnCode.VALIDATION_ERROR);
+    expect(prisma.studioProject.create).not.toHaveBeenCalled();
   });
 });
