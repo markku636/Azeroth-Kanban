@@ -545,6 +545,9 @@ export function ShotEditModal({
                   {aiEnabled && wandBtn('caption')}
                 </div>
                 <Input value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="鋪陳那句大字，全程顯示" variant="flat" />
+                {caption.trim().length > 18 && (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">大字幕偏長，放大顯示時可能放不下或字變小，建議精簡成一句。</p>
+                )}
               </div>
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -552,6 +555,9 @@ export function ShotEditModal({
                   {aiEnabled && wandBtn('punchline')}
                 </div>
                 <Input value={punchline} onChange={(e) => setPunchline(e.target.value)} placeholder="反轉爆點，會在反轉點彈出（黃字）" variant="flat" />
+                {punchline.trim().length > 18 && (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">爆點字偏長，彈出時可能放不下，建議精簡成一句。</p>
+                )}
               </div>
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-2">
