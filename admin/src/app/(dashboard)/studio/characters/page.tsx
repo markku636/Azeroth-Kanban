@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button, Input } from 'rizzui';
 import toast from 'react-hot-toast';
@@ -15,15 +15,18 @@ export default function CharacterLibraryPage() {
   const [editing, setEditing] = useState<CharacterDto | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const loadSeq = useRef(0);
   const load = useCallback(async () => {
+    const mine = ++loadSeq.current;
     setLoading(true);
     try {
       const res = await fetch(`/api/v1/studio/characters${includeArchived ? '?includeArchived=1' : ''}`);
       const j = await res.json();
+      if (mine !== loadSeq.current) return; // 較新的 load 已發出 → 丟棄舊回應
       if (res.ok && Array.isArray(j.data)) setChars(j.data as CharacterDto[]);
       else toast.error(j.message ?? '載入角色庫失敗');
-    } catch { toast.error('載入角色庫失敗'); }
-    setLoading(false);
+    } catch { if (mine === loadSeq.current) toast.error('載入角色庫失敗'); }
+    if (mine === loadSeq.current) setLoading(false);
   }, [includeArchived]);
 
   useEffect(() => { void load(); }, [load]);
