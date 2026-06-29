@@ -569,6 +569,11 @@ export default function StoryboardPage() {
         const ok = await confirm({ title: '尚有分鏡未生圖', message: `選取的分鏡有 ${missing} 個還沒有關鍵幀，直接生片可能沒有畫面。建議先生圖。要繼續嗎？`, confirmLabel: '仍要生成' });
         if (!ok) return;
       }
+      // TTS 離線且選取中有含旁白的鏡 → 生片會失敗，先確認（對齊整片 R81）。
+      if (ttsDown && data && data.scenes.some((s) => s.shots.some((sh) => selectedIds.has(sh.id) && sh.tts?.trim()))) {
+        const ok = await confirm({ title: '配音服務離線', message: '配音服務（TTS）目前連不上，選取的含旁白鏡在生片時會失敗。要仍然繼續嗎？（純大字幕的鏡不受影響）', confirmLabel: '仍要生成' });
+        if (!ok) return;
+      }
     }
     lastGenRef.current = null; // 批次後會清掉選取 → 無法乾淨重試，故不提供（避免錯誤橫幅誤觸到上一個全片動作）
     setShotProg({}); setGenTotal(ids.length); setGen(kind === 'keyframes' ? 'running' : 'generating'); setOverall(`批次${kind === 'keyframes' ? '生圖' : '生片'} ${ids.length} 鏡…`);
