@@ -39,7 +39,8 @@ const CJK_BOLD_FONTS = [
 ];
 function findBoldCjkFont(): string | undefined { return CJK_BOLD_FONTS.find((f) => existsSync(f)) ?? findCjkFont(); }
 // drawtext on Windows: forward slashes + double-backslash drive colon (two parser levels each eat one)
-function escDrawtext(p: string): string { return p.replace(/\\/g, "/").replace(/:/g, "\\\\:"); }
+// 把路徑塞進 ffmpeg drawtext 前的轉義（Windows 字型/字幕檔路徑的 \ 與 : 是 filter 特殊字元）。exported for testing; pure。
+export function escDrawtext(p: string): string { return p.replace(/\\/g, "/").replace(/:/g, "\\\\:"); }
 // soft-wrap CJK so a subtitle line isn't wider than the frame (exported for unit testing; pure)
 export function wrapCjk(text: string, max = 13): string {
   const out: string[] = [];

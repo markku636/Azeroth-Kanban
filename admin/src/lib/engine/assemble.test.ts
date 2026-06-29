@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wrapCjk } from './assemble';
+import { wrapCjk, escDrawtext } from './assemble';
 
 // 字幕 CJK 軟換行：避免單行寬過畫面；句末標點提早斷行讓字幕更好讀。
 describe('wrapCjk', () => {
@@ -25,5 +25,19 @@ describe('wrapCjk', () => {
 
   it('可自訂每行上限', () => {
     expect(wrapCjk('一二三四五', 3)).toBe('一二三\n四五');
+  });
+});
+
+describe('escDrawtext（ffmpeg drawtext 路徑轉義）', () => {
+  it('反斜線轉成正斜線、磁碟機冒號轉義（Windows 路徑）', () => {
+    expect(escDrawtext('C:\\fonts\\a.ttf')).toBe('C\\\\:/fonts/a.ttf');
+  });
+
+  it('沒有特殊字元的路徑原樣保留', () => {
+    expect(escDrawtext('/tmp/sub.txt')).toBe('/tmp/sub.txt');
+  });
+
+  it('結果不再有原始反斜線分隔', () => {
+    expect(escDrawtext('D:\\a\\b\\c.txt')).not.toContain('\\a');
   });
 });
