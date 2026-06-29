@@ -25,6 +25,8 @@ export function VideoModal({
 }) {
   const [err, setErr] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [meta, setMeta] = useState<{ w: number; h: number; dur: number } | null>(null);
+  const fmtDur = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
   const doExport = async (fmt: 'gif' | 'webm') => {
     if (!exportProjectId || exporting) return;
@@ -50,7 +52,10 @@ export function VideoModal({
     <Modal isOpen onClose={onClose} size="lg">
       <div className="flex flex-col overflow-hidden rounded-xl">
         <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-300">
-          <div className="min-w-0 truncate font-semibold text-gray-900">{title}</div>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="min-w-0 truncate font-semibold text-gray-900">{title}</span>
+            {meta && <span className="flex-none text-xs font-normal text-gray-400">{meta.w}×{meta.h} · {fmtDur(meta.dur)}</span>}
+          </div>
           <div className="flex flex-none items-center gap-3">
             {!err && exportProjectId && (
               <>
