@@ -166,11 +166,11 @@ function SortableShotCard({ shot, label, active, pct, disabled, rowIndex, minHei
           )}
         </div>
       )}
-      <div className="mt-1 cursor-pointer text-gray-700 hover:text-blue-600 dark:text-gray-700" onClick={onEdit}>
+      <div className="mt-1 line-clamp-3 cursor-pointer text-gray-700 hover:text-blue-600 dark:text-gray-700" onClick={onEdit} title={shot.visual ?? undefined}>
         {shot.visual || <span className="text-gray-300">（點此編輯畫面／台詞）</span>}
       </div>
       {shot.tts && (
-        <div className="mt-1 cursor-pointer text-xs text-gray-500 hover:text-blue-600" onClick={onEdit}>🎙 {shot.tts}</div>
+        <div className="mt-1 line-clamp-2 cursor-pointer text-xs text-gray-500 hover:text-blue-600" onClick={onEdit} title={shot.tts}>🎙 {shot.tts}</div>
       )}
       {characterName && shot.characterId && (
         <div className="mt-1 flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400" title="已指派角色（套用語音與 FaceID 一致臉）">
