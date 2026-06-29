@@ -703,6 +703,14 @@ export default function StoryboardPage() {
 
   // 階段②：依關鍵幀生影片並合成整支。shotIds 省略=全部；給定=改完重生那些鏡。
   const genRender = async (shotIds?: string[]) => {
+    // 整支生成前置檢查：尚有分鏡沒關鍵幀 → 直接生片那些鏡會無畫面，先提醒（per-shot 重生不檢查）。
+    if (!shotIds && data) {
+      const missing = data.scenes.reduce((a, s) => a + s.shots.filter((sh) => !sh.keyframePath).length, 0);
+      if (missing > 0) {
+        const ok = await confirm({ title: '尚有分鏡未生圖', message: `有 ${missing} 個分鏡還沒有關鍵幀圖片，直接生成影片這些鏡可能沒有畫面。建議先按「① 生成圖片」。要仍然繼續嗎？`, confirmLabel: '仍要生成' });
+        if (!ok) return;
+      }
+    }
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
     try {
