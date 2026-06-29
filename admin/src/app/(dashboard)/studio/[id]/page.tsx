@@ -810,7 +810,7 @@ export default function StoryboardPage() {
               <PiPencilSimpleLineBold className="h-4 w-4" />
             </button>
           </h1>
-          <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-500">
             <select
               aria-label="畫幅比例"
               value={data.project.aspect}
