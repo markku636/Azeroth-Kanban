@@ -5,7 +5,8 @@ import Link from 'next/link';
 import dayjs from 'dayjs';
 import { Badge, Button, Input } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiFilmReelDuotone, PiPlusBold, PiCpuDuotone, PiPlayFill, PiCheckCircleFill, PiMagnifyingGlassBold, PiUsersThreeDuotone } from 'react-icons/pi';
+import { PiFilmReelDuotone, PiPlusBold, PiCpuDuotone, PiPlayFill, PiCheckCircleFill, PiMagnifyingGlassBold, PiUsersThreeDuotone, PiTrashBold } from 'react-icons/pi';
+import { useConfirm } from '@/hooks/use-confirm';
 import { VideoModal } from './_components/video-modal';
 
 interface ProjectDto {
@@ -41,6 +42,7 @@ const STARTER_TITLES = [
 ];
 
 export default function StudioProjectsPage() {
+  const confirm = useConfirm();
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
@@ -48,6 +50,7 @@ export default function StudioProjectsPage() {
   const [newAspect, setNewAspect] = useState('9:16');
   const [q, setQ] = useState('');
   const [preview, setPreview] = useState<{ id: string; title: string; v: string } | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,6 +90,30 @@ export default function StudioProjectsPage() {
       toast.error('建立失敗');
     }
     setCreating(false);
+  };
+
+  // 刪除專案：不可復原（連帶刪除分鏡／已生成的圖片與影片成品）。以明確危險確認把關。
+  const remove = async (p: ProjectDto) => {
+    const ok = await confirm({
+      title: '刪除專案',
+      message: `確定刪除「${p.title}」？此操作無法復原，會一併刪除所有分鏡、已生成的圖片與影片成品。`,
+      type: 'danger',
+      confirmLabel: '永久刪除',
+    });
+    if (!ok) return;
+    setDeletingId(p.id);
+    // 樂觀移除：先從列表拿掉，失敗再還原。
+    const snapshot = projects;
+    setProjects((list) => list.filter((x) => x.id !== p.id));
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${p.id}`, { method: 'DELETE' });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '刪除失敗'); }
+      toast.success('專案已刪除');
+    } catch (e) {
+      setProjects(snapshot);
+      toast.error(e instanceof Error ? e.message : '刪除失敗');
+    }
+    setDeletingId(null);
   };
 
   const finished = projects.filter((p) => p.hasOutput).length;
@@ -248,15 +275,27 @@ export default function StudioProjectsPage() {
                   ) : (
                     <span className="text-xs text-gray-300">尚無成片</span>
                   )}
-                  {p.hasOutput && (
+                  <div className="pointer-events-auto flex items-center gap-1">
+                    {p.hasOutput && (
+                      <button
+                        type="button"
+                        onClick={() => setPreview({ id: p.id, title: p.title, v: p.outputUpdatedAt ?? '' })}
+                        className="flex items-center gap-1 rounded-md border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                      >
+                        <PiPlayFill className="h-3 w-3" /> 預覽
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setPreview({ id: p.id, title: p.title, v: p.outputUpdatedAt ?? '' })}
-                      className="pointer-events-auto flex items-center gap-1 rounded-md border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                      onClick={() => void remove(p)}
+                      disabled={deletingId === p.id}
+                      aria-label={`刪除專案 ${p.title}`}
+                      title="刪除專案（無法復原）"
+                      className="flex items-center justify-center rounded-md border border-transparent p-1 text-gray-300 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:border-red-900 dark:hover:bg-red-950/30 sm:opacity-0 sm:group-hover:opacity-100"
                     >
-                      <PiPlayFill className="h-3 w-3" /> 預覽
+                      <PiTrashBold className="h-3.5 w-3.5" />
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
             );

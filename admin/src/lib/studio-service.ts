@@ -2,7 +2,8 @@ import type { Character, Member, Prisma, ProjectCharacter, Scene, Shot, ShotStat
 import { prisma } from '@/lib/prisma';
 import { ApiResponse, ApiReturnCode, type ApiResult } from '@/lib/api-response';
 import { createAuditLog } from '@/lib/audit-log-service';
-import { projectOutputInfo, sceneOutputInfo, shotHasClip } from '@/lib/studio/storage';
+import { projectOutputInfo, sceneOutputInfo, shotHasClip, projectDir } from '@/lib/studio/storage';
+import { rm } from 'node:fs/promises';
 
 // 分鏡看板與 kanban 同演算法：scene = 欄，shot = 卡；sortOrder 走 SORT_GAP 分數插入 + normalize。
 const SORT_GAP = 1000;
@@ -207,6 +208,31 @@ export async function updateProject(
   } catch (e) {
     console.error('[StudioService.updateProject]', { ownerId, id }, e);
     return ApiResponse.error(ApiReturnCode.INTERNAL_ERROR, '更新專案失敗', ERR_DB);
+  }
+}
+
+/**
+ * 刪除整個專案。DB 端的場景／分鏡／版本／選角／工作皆 onDelete:Cascade 連帶刪除；
+ * 磁碟成品目錄（關鍵幀／單鏡影片／成片）best-effort 清除，清理失敗不影響刪除結果。
+ * 這是不可復原的操作（成品檔無法還原），UI 端應以明確的危險確認把關。
+ */
+export async function deleteProject(
+  ownerId: string, id: string, actor?: StudioActor, options?: StudioOpOptions,
+): Promise<ApiResult<{ id: string }>> {
+  try {
+    const existing = await prisma.studioProject.findFirst({ where: ownerWhere(id, ownerId, options) as Prisma.StudioProjectWhereInput });
+    if (!existing) return ApiResponse.error(ApiReturnCode.NOT_FOUND, '找不到此專案', 'studio.project_not_found');
+    await prisma.studioProject.delete({ where: { id } });
+    try { await rm(projectDir(id), { recursive: true, force: true }); } catch { /* 磁碟清理失敗不致命，DB 已刪 */ }
+    await createAuditLog({
+      actorId: actor?.id, actorEmail: actor?.email ?? undefined, actorName: actor?.name ?? undefined,
+      entityType: 'StudioProject', entityId: id, action: 'delete',
+      oldValue: { title: existing.title }, ipAddress: actor?.ipAddress,
+    });
+    return ApiResponse.success({ id }, '專案已刪除');
+  } catch (e) {
+    console.error('[StudioService.deleteProject]', { ownerId, id }, e);
+    return ApiResponse.error(ApiReturnCode.INTERNAL_ERROR, '刪除專案失敗', ERR_DB);
   }
 }
 

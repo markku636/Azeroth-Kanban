@@ -5,7 +5,7 @@ import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import { withPermission } from '@/lib/with-permission';
 import { hasPermission } from '@/lib/permission-service';
 import { PERMISSIONS } from '@/config/permissions';
-import { getProject, updateProject, type StudioActor } from '@/lib/studio-service';
+import { getProject, updateProject, deleteProject, type StudioActor } from '@/lib/studio-service';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 
 function buildActor(session: Session, request: NextRequest): StudioActor {
@@ -62,5 +62,17 @@ export const PATCH = withPermission(
         { bypassOwnership: bypass },
       ),
     );
+  },
+);
+
+export const DELETE = withPermission(
+  PERMISSIONS.STUDIO_DELETE,
+  async (request: NextRequest, { params }: { params: Promise<Record<string, string>> }) => {
+    const session = await auth();
+    const memberId = session?.user?.memberId;
+    if (!memberId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+    const { id } = await params;
+    const bypass = await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_DELETE_ALL);
+    return ApiResponse.json(await deleteProject(memberId, id, buildActor(session, request), { bypassOwnership: bypass }));
   },
 );
