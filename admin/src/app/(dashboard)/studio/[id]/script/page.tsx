@@ -29,9 +29,9 @@ function Spinner({ className = '' }: { className?: string }) {
 
 /** 單張「故事場景」卡：標題／劇情概要／台詞可就地編輯（blur 時存檔），可拖曳排序、展開分鏡、刪除。 */
 function SceneCard({
-  scene, index, disabled, onSave, onExpand, onDelete,
+  scene, index, disabled, aiEnabled, onSave, onExpand, onDelete,
 }: {
-  scene: SceneDto; index: number; disabled: boolean;
+  scene: SceneDto; index: number; disabled: boolean; aiEnabled: boolean;
   onSave: (patch: { title?: string; synopsis?: string; dialogue?: string }) => Promise<void>;
   onExpand: () => void; onDelete: () => void;
 }) {
@@ -41,6 +41,25 @@ function SceneCard({
   const [synopsis, setSynopsis] = useState(scene.synopsis ?? '');
   const [dialogue, setDialogue] = useState(scene.dialogue ?? '');
   const [saving, setSaving] = useState(false);
+  const [wandBusy, setWandBusy] = useState(false);
+
+  // 劇情概要 AI 潤飾（synopsis 是展開分鏡的種子）：潤飾後直接套用並存檔。
+  const polishSynopsis = async () => {
+    setWandBusy(true);
+    try {
+      const res = await fetch(`/api/v1/studio/scenes/${scene.id}/polish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field: 'synopsis', text: synopsis }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.message ?? 'AI 潤飾失敗');
+      const out = j.data?.text as string | undefined;
+      if (!out) throw new Error('AI 沒有產生內容');
+      setSynopsis(out);
+      await onSave({ synopsis: out });
+      toast.success('已用 AI 潤飾並儲存');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'AI 潤飾失敗'); }
+    setWandBusy(false);
+  };
 
   // props 變動（例如 reload 後）時同步本地值
   useEffect(() => { setTitle(scene.title); setSynopsis(scene.synopsis ?? ''); setDialogue(scene.dialogue ?? ''); }, [scene.id, scene.title, scene.synopsis, scene.dialogue]);
@@ -69,8 +88,21 @@ function SceneCard({
         <Badge color="secondary" variant="flat" size="sm" className="whitespace-nowrap">{scene.shots.length} 分鏡</Badge>
         {saving && <Spinner className="h-3 w-3 text-blue-500" />}
       </div>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-gray-700">劇情概要</span>
+        {aiEnabled && (
+          <button
+            type="button"
+            onClick={() => void polishSynopsis()}
+            disabled={wandBusy || disabled}
+            title="用 AI 潤飾劇情概要（依故事脈絡改寫並儲存，能拉高展開分鏡的品質）"
+            className="flex items-center gap-1 rounded-md border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-50 disabled:opacity-40 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/20"
+          >
+            <PiSparkleFill className="h-3 w-3" /> {wandBusy ? '潤飾中…' : '潤飾'}
+          </button>
+        )}
+      </div>
       <Textarea
-        label="劇情概要"
         value={synopsis}
         onChange={(e) => setSynopsis(e.target.value)}
         onBlur={() => { if (synopsis !== (scene.synopsis ?? '')) void save({ synopsis }); }}
@@ -365,6 +397,7 @@ export default function ScriptPage() {
                     scene={sc}
                     index={i}
                     disabled={busy}
+                    aiEnabled={aiEnabled}
                     onSave={(patch) => saveScene(sc.id, patch)}
                     onExpand={() => void expandScene(sc)}
                     onDelete={() => void deleteScene(sc)}
