@@ -507,8 +507,18 @@ export function ShotEditModal({
           ) : null}
 
           <div className="rounded-lg border border-dashed border-gray-200 p-3 dark:border-gray-300">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">🎬 喜劇（迷因吐槽，可留空）</span>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">🎬 喜劇（迷因吐槽，可留空）</span>
+                <button
+                  type="button"
+                  onClick={() => { setPunch(true); setSfx('vineboom'); if (!punchAtFrac.trim()) setPunchAtFrac('0.55'); if (!punchZoom.trim()) setPunchZoom('1.9'); }}
+                  title="一鍵套用反轉爆點預設：反轉鏡 + vineboom 音效 + 0.55 反轉點 + 1.9 倍放大"
+                  className="rounded-md border border-amber-300 px-2 py-0.5 text-xs font-medium text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-300"
+                >
+                  反轉預設
+                </button>
+              </div>
               <label className="flex items-center gap-1.5 text-xs text-gray-600">
                 <input type="checkbox" checked={punch} onChange={(e) => setPunch(e.target.checked)} className="rounded" />
                 反轉鏡（punch-zoom）
