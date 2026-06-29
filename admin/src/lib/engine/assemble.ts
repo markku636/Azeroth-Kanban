@@ -208,8 +208,10 @@ export class Compositor {
    * `fades` overrides the fade per seam (seam i = between clip i and i+1); a value <=0 means
    * a HARD CUT (rendered as a minimal 0.02s xfade so one uniform filtergraph still applies) —
    * use 0 at the punchline seam for comedic snap.
+   * `transitions` picks the xfade video transition per seam (default 'fade' = crossfade). Use
+   * 'fadeblack' at scene changes for a cinematic dip-to-black; audio always uses acrossfade.
    */
-  async stitch(o: { clips: string[]; out: string; fade?: number; fades?: number[] }): Promise<string> {
+  async stitch(o: { clips: string[]; out: string; fade?: number; fades?: number[]; transitions?: string[] }): Promise<string> {
     const { clips } = o;
     if (clips.length === 0) throw new Error("stitch: no clips");
     if (clips.length === 1) {
@@ -231,13 +233,14 @@ export class Compositor {
     const args = ["-y"];
     for (const c of clips) args.push("-i", c);
 
+    const trans = (seam: number): string => o.transitions?.[seam] ?? "fade";
     const fc: string[] = [];
     let vlabel = "0:v", running = durs[0];
     for (let i = 1; i < clips.length; i++) {
       const fade = seamFade(i - 1);
       const offset = running - fade;
       const out = i === clips.length - 1 ? "vout" : `v${i}`;
-      fc.push(`[${vlabel}][${i}:v]xfade=transition=fade:duration=${fade.toFixed(3)}:offset=${offset.toFixed(3)}[${out}]`);
+      fc.push(`[${vlabel}][${i}:v]xfade=transition=${trans(i - 1)}:duration=${fade.toFixed(3)}:offset=${offset.toFixed(3)}[${out}]`);
       vlabel = out;
       running = running + durs[i] - fade;
     }

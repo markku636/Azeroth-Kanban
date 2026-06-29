@@ -417,10 +417,20 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   const present = shots.filter((s) => existsSync(shotClip(projectId, s.id)));
   const clips = present.map((s) => shotClip(projectId, s.id));
   if (clips.length === 0) throw new Error('assemble: 沒有任何分鏡 clip（請先生成影片）');
-  const fades = present.slice(1).map((s) => (s.punch || s.punchline ? 0 : 0.25));
+  // Scene-aware seam transitions: hard cut at a punchline (comedic snap); a cinematic dip-to-black
+  // when the scene changes (clear story-beat delineation); gentle crossfade within a scene. The fades
+  // array keeps the same length/semantics as before so the SFX-start math below is unaffected.
+  const fades: number[] = [];
+  const transitions: string[] = [];
+  for (let i = 1; i < present.length; i++) {
+    const prev = present[i - 1], cur = present[i];
+    if (cur.punch || cur.punchline) { fades.push(0); transitions.push('fade'); }       // comedic snap
+    else if (prev.sceneId !== cur.sceneId) { fades.push(0.5); transitions.push('fadeblack'); } // scene change
+    else { fades.push(0.25); transitions.push('fade'); }                                // within scene
+  }
 
   const body = join(outDir, 'body.mp4');
-  await comp.stitch({ clips, out: body, fades });
+  await comp.stitch({ clips, out: body, fades, transitions });
 
   let videoOut = body;
   if (present.some((s) => s.sfx && s.sfx !== 'none')) {
