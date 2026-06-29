@@ -482,9 +482,10 @@ export default function StoryboardPage() {
 
   // 批次快速建立 n 個空白分鏡（之後可逐一編輯）
   const addManyShots = async (sceneId: string | null) => {
-    const raw = await prompt({ title: '批次新增分鏡', message: '要新增幾個空白分鏡？', placeholder: '3', defaultValue: '3', confirmLabel: '新增' });
+    const raw = await prompt({ title: '批次新增分鏡', message: '要新增幾個空白分鏡？（一次最多 50）', placeholder: '3', defaultValue: '3', confirmLabel: '新增' });
     const n = parseInt(raw ?? '0', 10);
     if (!(n > 0)) return;
+    if (n > 50) { toast.error('一次最多新增 50 個分鏡'); return; }
     setBusy(true);
     try {
       for (let i = 0; i < n; i++) {
