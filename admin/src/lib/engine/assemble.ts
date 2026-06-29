@@ -128,25 +128,44 @@ const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() === "off"
   ? ""
   : `,${GRADE_STYLES[(process.env.STUDIO_GRADE_STYLE ?? "teal").toLowerCase()] ?? GRADE_STYLES.teal}`;
 
-/** 產生字幕 drawtext filter + 寫好的暫存字幕檔（呼叫端負責 unlink）。canvasH 用來等比縮放字級/位置。 */
-function subDrawtext(text: string, style: SubStyle | undefined, font: string, canvasH?: number): { filter: string; subFile: string } {
-  const subFile = join(tmpdir(), `sub_${randomUUID()}.txt`);
-  writeFileSync(subFile, wrapCjk(text), 'utf8');
+/**
+ * 產生字幕 drawtext filter + 寫好的暫存字幕檔（呼叫端負責 unlink 全部）。canvasH 用來等比縮放字級/位置。
+ * 每一行各自一個 drawtext 並垂直堆疊，**刻意不在單一 textfile 裡放換行** —— ffmpeg 8.x 的 drawtext
+ * 會把 textfile 中的換行算成 .notdef 方塊（□）顯示在每行行尾（已實證）。逐行 drawtext 即可避開。
+ */
+function subDrawtext(text: string, style: SubStyle | undefined, font: string, canvasH?: number): { filter: string; subFiles: string[] } {
+  const lines = wrapCjk(text).split('\n').filter((l) => l.length > 0);
   const s = capScale(canvasH);
   const base = typeof style?.fontSize === 'number' && style.fontSize > 0 ? style.fontSize : 42;
   const fontsize = Math.round(base * s);
   const border = Math.max(2, Math.round(3 * s));
   const ls = Math.round(12 * s);
   const color = (style?.color ?? 'white').replace(/[^#\w@.]/g, '') || 'white'; // 防注入：只留色名/hex 合法字元
-  const y = style?.position === 'top' ? `${Math.round(180 * s)}` : style?.position === 'center' ? '(h-text_h)/2' : `h-${Math.round(240 * s)}`;
   const sh = Math.max(1, Math.round(2 * s)); // 柔和投影位移（等比縮放）：搭配描邊在雜亂背景上更清晰
-  const filter =
-    `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(subFile)}:` +
-    `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
-    `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
-    // gentle 0.35s alpha fade-in so the narration subtitle glides in rather than popping (commas escaped)
-    `x=(w-text_w)/2:y=${y}:line_spacing=${ls}:alpha='if(lt(t\\,0.35)\\,t/0.35\\,1)'`;
-  return { filter, subFile };
+  const lineH = fontsize + ls;
+  const n = Math.max(1, lines.length);
+  // 整塊字幕的頂端 y（之後每行往下堆 i*lineH）。bottom 維持原本 h-240 錨點＝零回歸。
+  const baseTop =
+    style?.position === 'top'
+      ? `${Math.round(180 * s)}`
+      : style?.position === 'center'
+        ? `(h-${n * lineH})/2`
+        : `h-${Math.round(240 * s)}`;
+  const subFiles: string[] = [];
+  const filters = lines.map((ln, i) => {
+    const f = join(tmpdir(), `sub_${randomUUID()}.txt`);
+    writeFileSync(f, ln, 'utf8');
+    subFiles.push(f);
+    const y = `${baseTop}+${i * lineH}`;
+    return (
+      `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
+      `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
+      `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
+      // gentle 0.35s alpha fade-in so the narration subtitle glides in rather than popping (commas escaped)
+      `x=(w-text_w)/2:y=${y}:alpha='if(lt(t\\,0.35)\\,t/0.35\\,1)'`
+    );
+  });
+  return { filter: filters.join(','), subFiles };
 }
 
 /**
@@ -211,10 +230,10 @@ export class Compositor {
       `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +
       `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
-    let subFile: string | undefined;
+    let subFiles: string[] = [];
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
-      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H); subFile = sd.subFile; vf += `,${sd.filter}`; }
+      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
 
     // Always carry an audio track (voice, or a silent bed when there's none) so every clip is a
@@ -226,7 +245,7 @@ export class Compositor {
     args.push(...VIDEO_ARGS, "-t", dur.toFixed(3), o.out);
 
     const { code, stderr } = await run(FFMPEG, args);
-    if (subFile) { try { unlinkSync(subFile); } catch { /* ignore */ } }
+    for (const f of subFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg failed (${code}): ${stderr.slice(-800)}`);
     return o.out;
   }
@@ -325,10 +344,10 @@ export class Compositor {
     const adur = o.voice ? await probeDuration(o.voice) : (o.fallbackDur ?? 4.0);
     const dur = adur + pad;
     let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${GRADE}`;
-    let subFile: string | undefined;
+    let subFiles: string[] = [];
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
-      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H); subFile = sd.subFile; vf += `,${sd.filter}`; }
+      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
     if (o.voice) args.push("-i", o.voice);
@@ -337,7 +356,7 @@ export class Compositor {
       ...VIDEO_ARGS, "-c:a", "aac", "-b:a", "160k",
       "-t", dur.toFixed(3), o.out);
     const { code, stderr } = await run(FFMPEG, args);
-    if (subFile) { try { unlinkSync(subFile); } catch { /* ignore */ } }
+    for (const f of subFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg motionShot failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
