@@ -245,6 +245,7 @@ export function YouTubeMetaModal({
                     <canvas ref={canvasRef} className="max-h-72 w-auto max-w-full rounded" />
                   </div>
                   <input
+                    aria-label="縮圖大字"
                     value={thumbText}
                     onChange={(e) => setThumbText(e.target.value)}
                     placeholder="縮圖大字（可編輯）"
@@ -256,6 +257,7 @@ export function YouTubeMetaModal({
                       <button
                         key={p}
                         type="button"
+                        aria-pressed={thumbPos === p}
                         onClick={() => setThumbPos(p)}
                         className={thumbPos === p ? 'rounded bg-blue-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
                       >
@@ -267,6 +269,7 @@ export function YouTubeMetaModal({
                       <button
                         key={c}
                         type="button"
+                        aria-pressed={thumbColor === c}
                         onClick={() => setThumbColor(c)}
                         className={thumbColor === c ? 'rounded bg-blue-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
                       >

@@ -160,6 +160,7 @@ export function InterviewChat({ projectId, hasShots, onClose, onDone }: { projec
             <button
               key={n}
               type="button"
+              aria-pressed={directLen === n}
               onClick={() => setDirectLen(n)}
               className={directLen === n ? 'rounded bg-purple-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
             >

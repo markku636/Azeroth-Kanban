@@ -40,6 +40,7 @@ export function MediaModal({
       <button
         type="button"
         disabled={disabled}
+        aria-pressed={isActive}
         onClick={() => setTab(key)}
         className={
           isActive
