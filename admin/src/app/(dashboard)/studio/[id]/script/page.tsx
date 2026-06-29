@@ -13,7 +13,7 @@ import { Badge, Button, Input, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
 import {
   PiSparkleFill, PiPlusBold, PiCaretLeftBold, PiFilmReelBold, PiTrashBold,
-  PiDotsSixVerticalBold, PiFilmSlateDuotone, PiArrowRightBold,
+  PiDotsSixVerticalBold, PiFilmSlateDuotone, PiArrowRightBold, PiCopyBold,
 } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -306,6 +306,22 @@ export default function ScriptPage() {
     setBusy(false);
   };
 
+  // 複製整份腳本（片名＋logline＋題材＋各場 synopsis/台詞）為 markdown，供審稿／分享外用。
+  const copyScript = () => {
+    const scs = (data?.scenes ?? []).filter((s) => s.id !== '__unassigned__');
+    if (!logline.trim() && !premise.trim() && scs.length === 0) { toast('沒有腳本可複製'); return; }
+    const parts: string[] = [];
+    if (data?.project.title) parts.push(`# ${data.project.title}`);
+    if (logline.trim()) parts.push(`**Logline：** ${logline.trim()}`);
+    if (premise.trim()) parts.push(`**題材：** ${premise.trim()}`);
+    scs.forEach((s, i) => {
+      parts.push(`\n## ${i + 1}. ${s.title}`);
+      if (s.synopsis?.trim()) parts.push(s.synopsis.trim());
+      if (s.dialogue?.trim()) parts.push(`台詞：${s.dialogue.trim()}`);
+    });
+    navigator.clipboard.writeText(parts.join('\n')).then(() => toast.success('已複製腳本'), () => toast.error('複製失敗'));
+  };
+
   const onDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id || !data) return;
@@ -337,6 +353,9 @@ export default function ScriptPage() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold text-gray-900">✍ 腳本 · {data.project.title}</h1>
           <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={copyScript} disabled={busy} title="複製整份腳本（片名／logline／各場大綱）">
+              <PiCopyBold className="me-1.5 h-4 w-4" /> 複製腳本
+            </Button>
             <Button variant="outline" onClick={() => void genScript()} disabled={busy} title={aiEnabled ? '用 AI 從題材生成 logline 與分場' : '需設定 AI 憑證'}>
               <PiSparkleFill className="me-1.5 h-4 w-4 text-purple-500" /> AI 生成腳本
             </Button>
