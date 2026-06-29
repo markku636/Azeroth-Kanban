@@ -236,6 +236,11 @@ export function ShotEditModal({
   // 先存目前編輯，再排入單鏡生成（① 生圖 / ② 生片），關閉後在看板看進度。
   const genThis = async (kind: 'keyframes' | 'render') => {
     if (!shot) return;
+    // 生片前若這一鏡還沒關鍵幀 → 會生出沒畫面的片，先提醒（與看板整支生成的前置檢查一致）。
+    if (kind === 'render' && !imgOk) {
+      const ok = await confirm({ title: '尚無關鍵幀', message: '這一鏡還沒有關鍵幀圖片，直接生片可能沒有畫面。建議先按「① 生圖」。仍要生片嗎？', confirmLabel: '仍要生片' });
+      if (!ok) return;
+    }
     setBusy(true);
     if (!(await persist())) { setBusy(false); return; }
     try {
