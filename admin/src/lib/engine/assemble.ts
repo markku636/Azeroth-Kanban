@@ -144,13 +144,14 @@ function subDrawtext(text: string, style: SubStyle | undefined, font: string, ca
   const sh = Math.max(1, Math.round(2 * s)); // 柔和投影位移（等比縮放）：搭配描邊在雜亂背景上更清晰
   const lineH = fontsize + ls;
   const n = Math.max(1, lines.length);
-  // 整塊字幕的頂端 y（之後每行往下堆 i*lineH）。bottom 維持原本 h-240 錨點＝零回歸。
+  // 整塊字幕的頂端 y（之後每行往下堆 i*lineH）。bottom 以「最後一行」對齊 h-240 底邊距 → 多行往上長、
+  // 底邊距一致（單行 n=1 時 baseTop = h-240，與原本相同＝零回歸；多行不再把首行釘在 h-240 而把整塊往下擠）。
   const baseTop =
     style?.position === 'top'
       ? `${Math.round(180 * s)}`
       : style?.position === 'center'
         ? `(h-${n * lineH})/2`
-        : `h-${Math.round(240 * s)}`;
+        : `h-${Math.round(240 * s) + (n - 1) * lineH}`;
   const subFiles: string[] = [];
   const filters = lines.map((ln, i) => {
     const f = join(tmpdir(), `sub_${randomUUID()}.txt`);
