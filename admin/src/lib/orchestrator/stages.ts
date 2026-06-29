@@ -454,8 +454,21 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   } else {
     writeFileSync(bgm, makePad(dur + 0.5, { gain: 0.8 })); // 預設：程序化 pad
   }
+  // Opt-in cinematic wrapper: opening title (over a darkened/blurred first keyframe) + 「完」end card,
+  // joined to the film with dip-to-black. Gated by STUDIO_TITLECARD (default off → zero regression). The
+  // served file is always output/final.mp4, so when on we mix to an intermediate then wrap into final.
+  const titleOn = (process.env.STUDIO_TITLECARD ?? 'off').toLowerCase() !== 'off' && Boolean(project?.title);
   const final = join(outDir, 'final.mp4');
-  await comp.mixBgm({ video: videoOut, bgm, out: final, bgmGain: project?.bgmGain ?? 0.15 });
+  const mixOut = titleOn ? join(outDir, 'film_core.mp4') : final;
+  await comp.mixBgm({ video: videoOut, bgm, out: mixOut, bgmGain: project?.bgmGain ?? 0.15 });
+  if (titleOn && project) {
+    const { cw, ch } = await projectDims(projectId);
+    const titleClip = join(outDir, 'title.mp4');
+    await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8 });
+    const endClip = join(outDir, 'end.mp4');
+    await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: '完', dur: 2.4 });
+    await comp.stitch({ clips: [titleClip, mixOut, endClip], out: final, fades: [0.6, 0.6], transitions: ['fadeblack', 'fadeblack'] });
+  }
   return final;
 }
 

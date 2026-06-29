@@ -510,4 +510,59 @@ export class Compositor {
     if (code !== 0) throw new Error(`ffmpeg freezeFrame failed (${code}): ${stderr.slice(-800)}`);
     return o.out;
   }
+
+  /**
+   * Title / end card: big bold text (+ optional subtitle) over either a darkened, blurred still — a
+   * cinematic title over the opening keyframe — or solid black, with a fade in/out and a silent audio
+   * bed so it stitches uniformly with the rest of the film. Used to wrap a film with an opening title
+   * and an end card. Sizes scale with canvas height (capScale).
+   */
+  async cardClip(o: {
+    out: string; width?: number; height?: number; fps?: number; dur?: number;
+    bgImage?: string; bigText?: string; smallText?: string; fontfile?: string;
+  }): Promise<string> {
+    const W = o.width ?? 720, H = o.height ?? 1280, fps = o.fps ?? 30, dur = o.dur ?? 2.6;
+    const s = capScale(H);
+    const fadeOut = Math.max(0, dur - 0.5);
+    const font = o.fontfile ?? findBoldCjkFont();
+    const tmpFiles: string[] = [];
+    const draws: string[] = [];
+    if (font && o.bigText) {
+      const f = join(tmpdir(), `card_big_${randomUUID()}.txt`);
+      writeFileSync(f, wrapCjk(o.bigText, 12), "utf8"); tmpFiles.push(f);
+      draws.push(
+        `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white:` +
+        `fontsize=${Math.round(74 * s)}:borderw=${Math.max(2, Math.round(4 * s))}:bordercolor=black@0.6:` +
+        `shadowcolor=black@0.5:shadowx=${Math.round(2 * s)}:shadowy=${Math.round(2 * s)}:` +
+        `x=(w-text_w)/2:y=h*0.42-text_h/2:line_spacing=${Math.round(12 * s)}`);
+    }
+    if (font && o.smallText) {
+      const f = join(tmpdir(), `card_small_${randomUUID()}.txt`);
+      writeFileSync(f, wrapCjk(o.smallText, 20), "utf8"); tmpFiles.push(f);
+      draws.push(
+        `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white@0.85:` +
+        `fontsize=${Math.round(34 * s)}:borderw=${Math.max(1, Math.round(2 * s))}:bordercolor=black@0.5:` +
+        `x=(w-text_w)/2:y=h*0.56-text_h/2:line_spacing=${Math.round(8 * s)}`);
+    }
+    const fade = `fade=t=in:st=0:d=0.5,fade=t=out:st=${fadeOut.toFixed(2)}:d=0.5`;
+    const args = ["-y"];
+    let bg: string;
+    if (o.bgImage) {
+      args.push("-loop", "1", "-t", dur.toFixed(3), "-i", o.bgImage);
+      // darken + desaturate + blur the still so the title reads clearly (cinematic title-over-image)
+      bg = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},` +
+        `eq=brightness=-0.18:saturation=0.55,gblur=sigma=${Math.round(14 * s)},setsar=1`;
+    } else {
+      args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", `color=black:s=${W}x${H}:r=${fps}`);
+      bg = `[0:v]setsar=1`;
+    }
+    args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100");
+    const vf = [bg, ...draws, fade].join(",") + "[v]";
+    args.push("-filter_complex", vf, "-map", "[v]", "-map", "1:a", "-c:a", "aac", "-b:a", "160k",
+      ...VIDEO_ARGS, "-r", String(fps), "-t", dur.toFixed(3), o.out);
+    const { code, stderr } = await run(FFMPEG, args);
+    for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
+    if (code !== 0) throw new Error(`ffmpeg cardClip failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
 }
