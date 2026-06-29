@@ -236,6 +236,90 @@ export async function deleteProject(
   }
 }
 
+/**
+ * 複製專案為新「副本」（owner = 呼叫者）。複製腳本層：題材／前提／故事聖經／畫幅／品質／字幕樣式，
+ * 連同所有場景（synopsis/dialogue/順序）、分鏡（所有文字欄位＋喜劇欄＋角色指派）與選角清單。
+ * 刻意「不」複製已生成的成品（關鍵幀／語音／影片）與磁碟相依欄位（refImage／BGM 檔）——
+ * 副本是「同劇本、重新生成」的乾淨起點，分鏡狀態回到 DRAFT。
+ */
+export async function duplicateProject(
+  ownerId: string, id: string, actor?: StudioActor, options?: StudioOpOptions,
+): Promise<ApiResult<ProjectDto>> {
+  try {
+    const src = await prisma.studioProject.findFirst({
+      where: ownerWhere(id, ownerId, options) as Prisma.StudioProjectWhereInput,
+      include: {
+        scenes: { orderBy: { sortOrder: 'asc' } },
+        shots: { orderBy: { sortOrder: 'asc' } },
+        projectCharacters: true,
+      },
+    });
+    if (!src) return ApiResponse.error(ApiReturnCode.NOT_FOUND, '找不到此專案', 'studio.project_not_found');
+
+    const newTitle = `${src.title} (副本)`.slice(0, 120);
+    const created = await prisma.$transaction(async (tx) => {
+      const proj = await tx.studioProject.create({
+        data: {
+          title: newTitle,
+          description: src.description, logline: src.logline,
+          premise: src.premise, worldSetting: src.worldSetting, styleGuide: src.styleGuide,
+          tone: src.tone, genre: src.genre, targetAudience: src.targetAudience,
+          bibleNotes: src.bibleNotes, agentProvider: src.agentProvider,
+          aspect: src.aspect, fps: src.fps, renderQuality: src.renderQuality, bgmGain: src.bgmGain,
+          ...(src.subtitleStyle != null ? { subtitleStyle: src.subtitleStyle as Prisma.InputJsonValue } : {}),
+          status: src.shots.length > 0 ? 'storyboard' : 'interview',
+          ownerId,
+        },
+      });
+      // 場景：逐一建立並建立 舊→新 id 對照（分鏡要靠它接回新場景）。
+      const sceneIdMap = new Map<string, string>();
+      for (const sc of src.scenes) {
+        const ns = await tx.scene.create({
+          data: { projectId: proj.id, title: sc.title, synopsis: sc.synopsis, dialogue: sc.dialogue, sortOrder: sc.sortOrder, ownerId },
+          select: { id: true },
+        });
+        sceneIdMap.set(sc.id, ns.id);
+      }
+      // 分鏡：批次建立。重置成品與磁碟相依欄位（status 省略→DB 預設 DRAFT）。
+      if (src.shots.length > 0) {
+        await tx.shot.createMany({
+          data: src.shots.map((s) => ({
+            projectId: proj.id,
+            sceneId: s.sceneId ? sceneIdMap.get(s.sceneId) ?? null : null,
+            shotNo: s.shotNo, sortOrder: s.sortOrder,
+            role: s.role, speaker: s.speaker, subtitle: s.subtitle,
+            tts: s.tts, visual: s.visual, motion: s.motion, emotion: s.emotion,
+            branch: s.branch, caption: s.caption, punchline: s.punchline, sfx: s.sfx,
+            punch: s.punch, punchAtFrac: s.punchAtFrac, punchZoom: s.punchZoom,
+            keyframeMode: 'sdxl',     // 不複製 refImage／上傳圖 → 回到文生圖
+            characterId: s.characterId, // 保留選角（驅動 speaker 與外觀一致性）
+            ownerId,
+          })),
+        });
+      }
+      // 選角清單
+      if (src.projectCharacters.length > 0) {
+        await tx.projectCharacter.createMany({
+          data: src.projectCharacters.map((pc) => ({
+            projectId: proj.id, characterId: pc.characterId, roleInStory: pc.roleInStory, sortOrder: pc.sortOrder, ownerId,
+          })),
+        });
+      }
+      return proj;
+    });
+
+    await createAuditLog({
+      actorId: actor?.id, actorEmail: actor?.email ?? undefined, actorName: actor?.name ?? undefined,
+      entityType: 'StudioProject', entityId: created.id, action: 'create',
+      newValue: { title: created.title, duplicatedFrom: id }, ipAddress: actor?.ipAddress,
+    });
+    return ApiResponse.success(projectToDto(created), '專案已複製');
+  } catch (e) {
+    console.error('[StudioService.duplicateProject]', { ownerId, id }, e);
+    return ApiResponse.error(ApiReturnCode.INTERNAL_ERROR, '複製專案失敗', ERR_DB);
+  }
+}
+
 // ─────────────────────────── Storyboard read ───────────────────────────
 
 export async function getStoryboard(

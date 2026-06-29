@@ -5,7 +5,7 @@ import Link from 'next/link';
 import dayjs from 'dayjs';
 import { Badge, Button, Input } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiFilmReelDuotone, PiPlusBold, PiCpuDuotone, PiPlayFill, PiCheckCircleFill, PiMagnifyingGlassBold, PiUsersThreeDuotone, PiTrashBold } from 'react-icons/pi';
+import { PiFilmReelDuotone, PiPlusBold, PiCpuDuotone, PiPlayFill, PiCheckCircleFill, PiMagnifyingGlassBold, PiUsersThreeDuotone, PiTrashBold, PiCopySimpleBold } from 'react-icons/pi';
 import { useConfirm } from '@/hooks/use-confirm';
 import { VideoModal } from './_components/video-modal';
 
@@ -51,6 +51,7 @@ export default function StudioProjectsPage() {
   const [q, setQ] = useState('');
   const [preview, setPreview] = useState<{ id: string; title: string; v: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [dupingId, setDupingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -114,6 +115,21 @@ export default function StudioProjectsPage() {
       toast.error(e instanceof Error ? e.message : '刪除失敗');
     }
     setDeletingId(null);
+  };
+
+  // 複製專案：建立同劇本的乾淨副本（不含已生成的圖／片），方便做變體。
+  const duplicate = async (p: ProjectDto) => {
+    setDupingId(p.id);
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${p.id}/duplicate`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message ?? '複製失敗');
+      toast.success('已建立副本（劇本已複製，請重新生成圖片與影片）');
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '複製失敗');
+    }
+    setDupingId(null);
   };
 
   const finished = projects.filter((p) => p.hasOutput).length;
@@ -285,6 +301,16 @@ export default function StudioProjectsPage() {
                         <PiPlayFill className="h-3 w-3" /> 預覽
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => void duplicate(p)}
+                      disabled={dupingId === p.id}
+                      aria-label={`複製專案 ${p.title}`}
+                      title="複製為新副本（同劇本，不含已生成的圖／片）"
+                      className="flex items-center justify-center rounded-md border border-transparent p-1 text-gray-300 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-40 dark:hover:border-blue-900 dark:hover:bg-blue-950/30 sm:opacity-0 sm:group-hover:opacity-100"
+                    >
+                      <PiCopySimpleBold className="h-3.5 w-3.5" />
+                    </button>
                     <button
                       type="button"
                       onClick={() => void remove(p)}
