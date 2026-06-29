@@ -723,6 +723,14 @@ export default function StoryboardPage() {
   const ENGINE_DOWN_MSG = '影像生成引擎（ComfyUI）尚未就緒，先在主機啟動 ComfyUI 再生成，否則會卡在佇列。';
 
   const genKeyframes = async (shotIds?: string[]) => {
+    // 整批生圖前：缺畫面描述（visual）的鏡生出來會隨機、不準（上傳當圖的鏡用自己的圖、不受影響）。先提醒補描述。
+    if (!shotIds && data) {
+      const noDesc = data.scenes.reduce((a, s) => a + s.shots.filter((sh) => !sh.visual?.trim() && sh.keyframeMode !== 'upload').length, 0);
+      if (noDesc > 0) {
+        const ok = await confirm({ title: '有分鏡缺畫面描述', message: `有 ${noDesc} 個分鏡沒有畫面描述（visual），生成的圖會比較隨機、不準。建議先補上描述（可用 ✨ 潤飾）。要仍然繼續嗎？`, confirmLabel: '仍要生成' });
+        if (!ok) return;
+      }
+    }
     lastGenRef.current = () => void genKeyframes(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setShotProg({}); setGenTotal(shotIds?.length ?? totalShots); setGen('running'); setOverall(shotIds ? `生成 ${shotIds.length} 鏡圖片…` : '生成全部圖片…');
