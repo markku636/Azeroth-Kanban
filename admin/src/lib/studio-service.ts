@@ -257,6 +257,9 @@ export async function duplicateProject(
     if (!src) return ApiResponse.error(ApiReturnCode.NOT_FOUND, '找不到此專案', 'studio.project_not_found');
 
     const newTitle = `${src.title} (副本)`.slice(0, 120);
+    // 角色為 owner-scoped。跨擁有者複製（管理者用 view_all 複製他人專案）時，原專案的角色不屬於新 owner，
+    // 沿用 characterId／選角會指向看不到的角色（頭像/指派失效）→ 跨擁有者時不複製選角、清掉 characterId。
+    const keepCasting = src.ownerId === ownerId;
     const created = await prisma.$transaction(async (tx) => {
       const proj = await tx.studioProject.create({
         data: {
@@ -292,13 +295,13 @@ export async function duplicateProject(
             branch: s.branch, caption: s.caption, punchline: s.punchline, sfx: s.sfx,
             punch: s.punch, punchAtFrac: s.punchAtFrac, punchZoom: s.punchZoom,
             keyframeMode: 'sdxl',     // 不複製 refImage／上傳圖 → 回到文生圖
-            characterId: s.characterId, // 保留選角（驅動 speaker 與外觀一致性）
+            characterId: keepCasting ? s.characterId : null, // 跨擁有者複製時不沿用看不到的角色
             ownerId,
           })),
         });
       }
-      // 選角清單
-      if (src.projectCharacters.length > 0) {
+      // 選角清單（跨擁有者複製時略過——角色非新 owner 所有）
+      if (keepCasting && src.projectCharacters.length > 0) {
         await tx.projectCharacter.createMany({
           data: src.projectCharacters.map((pc) => ({
             projectId: proj.id, characterId: pc.characterId, roleInStory: pc.roleInStory, sortOrder: pc.sortOrder, ownerId,
