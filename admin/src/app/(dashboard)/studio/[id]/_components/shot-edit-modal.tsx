@@ -127,9 +127,15 @@ export function ShotEditModal({
         const json = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(json.message ?? '新增失敗');
         // createShot 不收 characterId → 新增後若選了角色，再 PATCH 指派（連動 speaker/FaceID）。
+        // 分鏡本身已建立成功；角色指派失敗只提示、不讓整個新增失敗（避免重複建立）。
         const newId = json.data?.id as string | undefined;
-        if (newId && characterId) {
-          await fetch(`/api/v1/studio/shots/${newId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ characterId }) });
+        if (characterId) {
+          if (!newId) {
+            toast('分鏡已新增，但未能指派角色（請在編輯內指派）', { icon: '⚠️' });
+          } else {
+            const cr = await fetch(`/api/v1/studio/shots/${newId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ characterId }) });
+            if (!cr.ok) toast('分鏡已新增，但角色指派失敗，可在編輯內重試', { icon: '⚠️' });
+          }
         }
         return true;
       }
