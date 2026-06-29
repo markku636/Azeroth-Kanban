@@ -42,10 +42,18 @@ async function probeTts(): Promise<{ configured: boolean; reachable: boolean }> 
   }
 }
 
+// 健康狀態是全域的（非每人不同）→ 短快取：多元件／多分頁同時輪詢時不重複探測，免打爆 ComfyUI/TTS。
+let healthCache: { comfyui: Awaited<ReturnType<typeof probeComfy>>; tts: Awaited<ReturnType<typeof probeTts>>; at: number } | null = null;
+const HEALTH_TTL_MS = 4000;
+
 // GET：回 { comfyui: {configured,reachable,vramFreeGB?}, tts: {configured,reachable} }。登入即可查。
 export async function GET() {
   const session = await auth();
   if (!session?.user?.memberId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
+  if (healthCache && Date.now() - healthCache.at < HEALTH_TTL_MS) {
+    return ApiResponse.ok({ comfyui: healthCache.comfyui, tts: healthCache.tts }, 'ok');
+  }
   const [comfyui, tts] = await Promise.all([probeComfy(), probeTts()]);
+  healthCache = { comfyui, tts, at: Date.now() };
   return ApiResponse.ok({ comfyui, tts }, 'ok');
 }
