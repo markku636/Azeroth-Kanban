@@ -1077,6 +1077,9 @@ export default function StoryboardPage() {
               </button>
             );
           })()}
+          <button type="button" onClick={() => setSelectedIds(new Set(data.scenes.flatMap((s) => s.shots).filter((sh) => !sh.keyframePath).map((sh) => sh.id)))} disabled={busy} title="選取尚未生成關鍵幀的分鏡（只補生缺少的，省 GPU 時間）" className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-300 dark:hover:bg-gray-100">
+            選未生圖
+          </button>
           {Object.keys(charNames).length > 0 && (
             <button type="button" onClick={() => setSelectedIds(new Set(data.scenes.flatMap((s) => s.shots).filter((sh) => !sh.characterId).map((sh) => sh.id)))} disabled={busy} title="選取尚未指派角色的分鏡（方便一次補上主角，提升人物一致性）" className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-300 dark:hover:bg-gray-100">
               選未指派角色
