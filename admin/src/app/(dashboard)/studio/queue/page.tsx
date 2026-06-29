@@ -67,6 +67,7 @@ export default function StudioQueuePage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState<Set<string>>(new Set()); // 正在取消中的 jobId
   const [vram, setVram] = useState<number | null>(null); // ComfyUI 可用顯存 GB（/health 已算出但別處沒用）
+  const [ttsUp, setTtsUp] = useState<boolean | null>(null); // 配音服務狀態（null=未設定不顯示）
   const confirm = useConfirm();
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const seq = useRef(0); // 防止較慢的舊請求覆蓋較新的（輪詢重疊時的倒退閃爍）
@@ -147,7 +148,10 @@ export default function StudioQueuePage() {
       try {
         const r = await fetch('/api/v1/studio/health', { cache: 'no-store' });
         const j = await r.json().catch(() => ({}));
-        if (!stop) setVram(typeof j?.data?.comfyui?.vramFreeGB === 'number' ? j.data.comfyui.vramFreeGB : null);
+        if (stop) return;
+        setVram(typeof j?.data?.comfyui?.vramFreeGB === 'number' ? j.data.comfyui.vramFreeGB : null);
+        const t = j?.data?.tts;
+        setTtsUp(t?.configured ? Boolean(t.reachable) : null);
       } catch { /* 顯存顯示是錦上添花，失敗忽略 */ }
     };
     void probe();
@@ -311,6 +315,7 @@ export default function StudioQueuePage() {
               <span>失敗 {data.counts.failed}</span>
               {data.comfy && <span>· ComfyUI：跑 {data.comfy.running} / 排 {data.comfy.pending}</span>}
               {vram != null && <span>· 顯存 {vram} GB 可用</span>}
+              {ttsUp != null && <span className={ttsUp ? '' : 'text-amber-600 dark:text-amber-400'}>· 配音 {ttsUp ? '連線' : '離線'}</span>}
             </section>
           )}
         </div>
