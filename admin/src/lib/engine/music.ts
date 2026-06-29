@@ -17,13 +17,19 @@ export function makePad(durationSec: number, opts: { sampleRate?: number; gain?:
   const roots = [110.00, 87.31, 130.81, 98.00]; // sub-bass root (one octave below) per chord, for weight
   const chordDur = durationSec / chords.length;
   const detune = 1.004; // ~7-cent L/R spread → stereo width without phasing
+  // Scale the swell/release windows to the bed length so a short film isn't crushed near-silent (the
+  // per-chord and global ramps would otherwise overlap and never reach full level). Long beds keep the
+  // original 1.1 / 2.5 / 2.0s feel.
+  const envRamp = Math.min(1.1, chordDur / 2.5);
+  const swellIn = Math.min(2.5, durationSec / 4);
+  const relOut = Math.min(2.0, durationSec / 4);
 
   for (let i = 0; i < n; i++) {
     const t = i / sr;
     const ci = Math.min(chords.length - 1, Math.floor(t / chordDur));
     const chord = chords[ci];
     const localT = t - ci * chordDur;
-    const env = Math.min(1, localT / 1.1) * Math.min(1, (chordDur - localT) / 1.1); // per-chord swell
+    const env = Math.min(1, localT / envRamp) * Math.min(1, (chordDur - localT) / envRamp); // per-chord swell
     const trem = 0.88 + 0.12 * Math.sin(2 * Math.PI * 0.12 * t);                    // slow tremolo
 
     let l = 0, r = 0;
@@ -38,7 +44,7 @@ export function makePad(durationSec: number, opts: { sampleRate?: number; gain?:
     r = r / (chord.length * 1.5) + sub * 0.5;
 
     // global swell in over ~2.5s, fade out over ~2s — cinematic build / release across the whole bed
-    const g = Math.min(1, t / 2.5) * Math.min(1, (durationSec - t) / 2.0);
+    const g = Math.min(1, t / swellIn) * Math.min(1, (durationSec - t) / relOut);
     const a = gain * env * trem * g;
     L[i] = Math.max(-1, Math.min(1, l * a));
     R[i] = Math.max(-1, Math.min(1, r * a));
