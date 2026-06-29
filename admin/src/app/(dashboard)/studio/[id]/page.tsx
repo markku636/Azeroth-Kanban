@@ -988,10 +988,10 @@ export default function StoryboardPage() {
               <PiGaugeBold className="me-1.5 h-4 w-4" /> 影片健檢
             </Button>
           )}
-          <Button variant="outline" onClick={() => void genKeyframes()} disabled={busy || generating || totalShots === 0} title="先生成每鏡關鍵幀圖片，檢視後再生影片" className="border-sky-300 text-sky-700 hover:border-sky-400 hover:text-sky-800 dark:border-sky-700 dark:text-sky-300">
+          <Button variant="outline" onClick={() => void genKeyframes()} disabled={busy || generating || totalShots === 0} title={totalShots === 0 ? '先用「✨ AI 訪談」或「新增場景」建立分鏡，才能生成圖片' : '先生成每鏡關鍵幀圖片，檢視後再生影片'} className="border-sky-300 text-sky-700 hover:border-sky-400 hover:text-sky-800 dark:border-sky-700 dark:text-sky-300">
             <PiImageSquareBold className="me-1.5 h-4 w-4" /> ① 生成圖片
           </Button>
-          <Button onClick={() => void genRender()} disabled={busy || generating || totalShots === 0} title="依關鍵幀生成影片並合成整支" className="bg-emerald-600 text-white hover:bg-emerald-700 dark:hover:bg-emerald-700">
+          <Button onClick={() => void genRender()} disabled={busy || generating || totalShots === 0} title={totalShots === 0 ? '先建立分鏡並「① 生成圖片」後，才能生成影片' : '依關鍵幀生成影片並合成整支'} className="bg-emerald-600 text-white hover:bg-emerald-700 dark:hover:bg-emerald-700">
             <PiPlayFill className="me-1.5 h-4 w-4" /> ② 生成影片
           </Button>
         </div>
