@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // interview.ts import './llm'（會拉進 LLM client）；parseShotArray 純函式，不需要 llm，故 stub 掉。
 vi.mock('./llm', () => ({ complete: vi.fn() }));
 
-import { parseShotArray } from './interview';
+import { parseShotArray, chatStoryboard } from './interview';
+import { complete } from './llm';
 
 describe('parseShotArray', () => {
   it('沒有 JSON 陣列時回傳空陣列', () => {
@@ -54,5 +55,39 @@ describe('parseShotArray', () => {
   it('解析多個分鏡，保序', () => {
     const shots = parseShotArray('[{"visual":"a"},{"visual":"b"},{"visual":"c"}]');
     expect(shots.map((s) => s.visual)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('chatStoryboard 狀態機', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  beforeEach(() => vi.mocked(complete as any).mockReset());
+
+  it('AI 仍在問問題（無 STORYBOARD）→ done:false + reply', async () => {
+    vi.mocked(complete as any).mockResolvedValue('你想做哪種類型的短片？');
+    const r = await chatStoryboard([{ role: 'user', content: '我想做影片' }]);
+    expect(r).toEqual({ done: false, reply: '你想做哪種類型的短片？' });
+  });
+
+  it('輸出 STORYBOARD + 有效分鏡 → done:true + shots', async () => {
+    vi.mocked(complete as any).mockResolvedValue('<STORYBOARD>[{"visual":"a","tts":"嗨"}]</STORYBOARD>');
+    const r = await chatStoryboard([{ role: 'user', content: '好了' }]);
+    expect(r.done).toBe(true);
+    if (r.done) {
+      expect(r.shots).toHaveLength(1);
+      expect(r.shots[0].visual).toBe('a');
+    }
+  });
+
+  it('STORYBOARD 但空陣列 → 視為未完成（done:false）', async () => {
+    vi.mocked(complete as any).mockResolvedValue('<STORYBOARD>[]</STORYBOARD>');
+    const r = await chatStoryboard([{ role: 'user', content: '好' }]);
+    expect(r.done).toBe(false);
+  });
+
+  it('reply 去掉殘留的 STORYBOARD 標籤', async () => {
+    vi.mocked(complete as any).mockResolvedValue('再給我一點細節 <STORYBOARD> 沒收尾');
+    const r = await chatStoryboard([{ role: 'user', content: '?' }]);
+    expect(r.done).toBe(false);
+    if (!r.done) expect(r.reply).not.toContain('STORYBOARD');
   });
 });
