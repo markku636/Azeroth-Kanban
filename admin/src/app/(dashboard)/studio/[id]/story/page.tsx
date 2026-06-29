@@ -263,16 +263,20 @@ export default function StoryPage() {
             ['迷因大黃', { fontSize: 64, color: '#FFE000', position: 'bottom' }],
             ['經典白字', { fontSize: 42, color: '#FFFFFF', position: 'bottom' }],
             ['置中大字', { fontSize: 56, color: '#FFFFFF', position: 'center' }],
-          ] as const).map(([label, preset]) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => saveSub({ ...preset })}
-              className="rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-white dark:border-gray-300 dark:hover:bg-gray-200"
-            >
-              {label}
-            </button>
-          ))}
+          ] as const).map(([label, preset]) => {
+            const active = sub.fontSize === preset.fontSize && sub.color.toUpperCase() === preset.color && sub.position === preset.position;
+            return (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={active}
+                onClick={() => saveSub({ ...preset })}
+                className={`rounded border px-2 py-0.5 ${active ? 'border-blue-400 bg-blue-50 font-medium text-blue-700 ring-1 ring-blue-300 dark:bg-blue-950/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-white dark:border-gray-300 dark:hover:bg-gray-200'}`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
