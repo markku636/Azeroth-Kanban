@@ -56,6 +56,12 @@ export default function StudioProjectsPage() {
   const [newAspect, setNewAspect] = useState('9:16');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<SortKey>('updated');
+  // 記住使用者的排序偏好（在 effect 內讀 localStorage，避免 SSR hydration 不一致）。
+  useEffect(() => {
+    const s = localStorage.getItem('studio:sort');
+    if (s === 'updated' || s === 'created' || s === 'title') setSort(s);
+  }, []);
+  const changeSort = (s: SortKey) => { setSort(s); try { localStorage.setItem('studio:sort', s); } catch { /* 隱私模式可能擋 localStorage */ } };
   const [preview, setPreview] = useState<{ id: string; title: string; v: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dupingId, setDupingId] = useState<string | null>(null);
@@ -186,7 +192,7 @@ export default function StudioProjectsPage() {
             <select
               aria-label="排序方式"
               value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
+              onChange={(e) => changeSort(e.target.value as SortKey)}
               title="專案排序方式"
               className="flex-none rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50"
             >
