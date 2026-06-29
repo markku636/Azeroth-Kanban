@@ -325,7 +325,7 @@ export function ShotEditModal({
                         disabled={busy}
                         className="border-violet-300 text-violet-700 hover:border-violet-400 hover:text-violet-800 dark:border-violet-700 dark:text-violet-300"
                       >
-                        <PiSparkleFill className="me-1.5 h-3.5 w-3.5" /> 🪄 洗圖（微調這張）
+                        <PiSparkleFill className="me-1.5 h-3.5 w-3.5" /> 洗圖（微調這張）
                       </Button>
                     )}
                   </div>

@@ -260,7 +260,7 @@ export function RefineModal({
                   disabled={working}
                   className="bg-violet-600 text-white hover:bg-violet-700 dark:hover:bg-violet-700"
                 >
-                  <PiSparkleFill className="me-1.5 h-4 w-4" /> {polling ? '生成中…' : busy ? '排入中…' : '🪄 洗圖'}
+                  <PiSparkleFill className="me-1.5 h-4 w-4" /> {polling ? '生成中…' : busy ? '排入中…' : '洗圖'}
                 </Button>
                 {polling && <p className="text-center text-[11px] text-gray-400">洗圖在 GPU 佇列中執行，完成後新版本會自動出現於下方並開啟比較。</p>}
               </div>
