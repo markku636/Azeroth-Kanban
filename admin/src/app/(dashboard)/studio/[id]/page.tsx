@@ -15,7 +15,7 @@ import {
   PiSparkleFill, PiPlusBold, PiPlayFill, PiPencilSimpleLineBold,
   PiDotsSixVerticalBold, PiFilmSlateDuotone, PiImageSquareBold, PiFilmReelBold, PiMusicNotesBold,
   PiCaretLeftBold, PiVideoFill, PiClockCounterClockwiseBold, PiCopySimpleBold, PiListChecksBold, PiTrashBold, PiSpeakerHighBold,
-  PiYoutubeLogoFill,
+  PiYoutubeLogoFill, PiWarningCircleBold,
 } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -185,6 +185,7 @@ export default function StoryboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
+  const [engineDown, setEngineDown] = useState(false);
 
   const [gen, setGen] = useState<Gen>('idle');
   const [overall, setOverall] = useState<string>('');
@@ -285,6 +286,27 @@ export default function StoryboardPage() {
       } catch { /* 預設視為可用 */ }
     })();
   }, []);
+
+  // 影像生成引擎（ComfyUI）就緒檢查。回傳「是否可生成」；檢查本身失敗時不阻擋（避免假警報）。
+  const checkHealth = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/v1/studio/health', { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      const comfy = json?.data?.comfyui;
+      const reachable = Boolean(comfy?.reachable);
+      // 只有「明確連不上」才亮紅燈；端點本身錯誤/未設定則不擾民。
+      setEngineDown(comfy?.configured ? !reachable : false);
+      return comfy?.configured ? reachable : true;
+    } catch {
+      return true;
+    }
+  }, []);
+
+  useEffect(() => {
+    void checkHealth();
+    const t = setInterval(() => { if (!document.hidden) void checkHealth(); }, 25000);
+    return () => clearInterval(t);
+  }, [checkHealth]);
 
   useEffect(() => {
     const es = new EventSource(`/api/v1/studio/projects/${projectId}/events`);
@@ -596,7 +618,11 @@ export default function StoryboardPage() {
   }, [generating]);
 
   // 階段①：生成關鍵幀圖片（先圖後片）。shotIds 省略=全部；給定=只生那些鏡。
+  // 生成前置檢查：ComfyUI 連不上就別讓 job 無聲卡在佇列，給清楚提示。
+  const ENGINE_DOWN_MSG = '影像生成引擎（ComfyUI）尚未就緒，先在主機啟動 ComfyUI 再生成，否則會卡在佇列。';
+
   const genKeyframes = async (shotIds?: string[]) => {
+    if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setShotProg({}); setGen('running'); setOverall(shotIds ? `生成 ${shotIds.length} 鏡圖片…` : '生成全部圖片…');
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/keyframes`, {
@@ -609,6 +635,7 @@ export default function StoryboardPage() {
 
   // 階段②：依關鍵幀生影片並合成整支。shotIds 省略=全部；給定=改完重生那些鏡。
   const genRender = async (shotIds?: string[]) => {
+    if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/render`, {
@@ -622,6 +649,7 @@ export default function StoryboardPage() {
   // 場景級：只生成並「單獨」合成這一幕的影片（不動到整支成片）。
   const genSceneRender = async (scene: SceneDto) => {
     if (scene.shots.length === 0) { toast('此幕尚無分鏡'); return; }
+    if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     setGen('generating'); setOverall(`生成「${scene.title}」影片…`);
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/render`, {
@@ -781,6 +809,13 @@ export default function StoryboardPage() {
       {!aiEnabled && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
           🔒 AI 訪談未啟用（後端未設定 <code>ANTHROPIC_API_KEY</code>）。你仍可用「+ 新增分鏡 / 批次」手動建立分鏡，再按「生成影片」。
+        </div>
+      )}
+
+      {engineDown && (
+        <div className="mb-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          <PiWarningCircleBold className="mt-0.5 h-4 w-4 flex-none" />
+          <span>影像生成引擎（ComfyUI）目前連不上。現在按生成會卡在佇列無法完成——請先在主機啟動 ComfyUI，並避免主機進入睡眠。</span>
         </div>
       )}
 
