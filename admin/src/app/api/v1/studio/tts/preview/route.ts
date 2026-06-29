@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { auth } from '@/auth';
+import { hasPermission } from '@/lib/permission-service';
+import { PERMISSIONS } from '@/config/permissions';
 import { SealTTSClient } from '@/lib/engine/voiceover';
 
 export const runtime = 'nodejs';
@@ -13,6 +15,10 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   const memberId = session?.user?.memberId;
   if (!memberId) return new Response(JSON.stringify({ message: '尚未登入' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // 需要 studio 權限：否則任何登入帳號都能用任意參數驅動 Seal-TTS GPU 伺服器。
+  if (!(await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_VIEW))) {
+    return new Response(JSON.stringify({ message: '沒有權限' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  }
 
   let body: { speaker?: unknown; text?: unknown; loraScale?: unknown; engine?: unknown; instruct?: unknown };
   try { body = await request.json(); } catch { return new Response(JSON.stringify({ message: '請求格式錯誤' }), { status: 400, headers: { 'Content-Type': 'application/json' } }); }

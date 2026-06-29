@@ -16,6 +16,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   const session = await auth();
   const memberId = session?.user?.memberId;
   if (!memberId) return new Response(JSON.stringify({ message: '尚未登入' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_VIEW))) {
+    return new Response(JSON.stringify({ message: '沒有權限' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  }
   const { id } = await params;
 
   const bypass = await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_VIEW_ALL);
