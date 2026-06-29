@@ -219,6 +219,7 @@ export default function StoryboardPage() {
   const [gen, setGen] = useState<Gen>('idle');
   const [overall, setOverall] = useState<string>('');
   const [shotProg, setShotProg] = useState<Record<string, Prog>>({});
+  const [genTotal, setGenTotal] = useState(0); // 本次生成的鏡數（部分生成時進度分母用，非整片總數）
   const [finalReady, setFinalReady] = useState(false);
   const [finalOpen, setFinalOpen] = useState(false);
   const [ytOpen, setYtOpen] = useState(false);
@@ -540,7 +541,7 @@ export default function StoryboardPage() {
   const bulkGen = async (kind: 'keyframes' | 'render') => {
     const ids = Array.from(selectedIds); if (!ids.length) return;
     lastGenRef.current = null; // 批次後會清掉選取 → 無法乾淨重試，故不提供（避免錯誤橫幅誤觸到上一個全片動作）
-    setShotProg({}); setGen(kind === 'keyframes' ? 'running' : 'generating'); setOverall(`批次${kind === 'keyframes' ? '生圖' : '生片'} ${ids.length} 鏡…`);
+    setShotProg({}); setGenTotal(ids.length); setGen(kind === 'keyframes' ? 'running' : 'generating'); setOverall(`批次${kind === 'keyframes' ? '生圖' : '生片'} ${ids.length} 鏡…`);
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shotIds: ids }) });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '排入失敗'); }
@@ -694,7 +695,7 @@ export default function StoryboardPage() {
   const genKeyframes = async (shotIds?: string[]) => {
     lastGenRef.current = () => void genKeyframes(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
-    setShotProg({}); setGen('running'); setOverall(shotIds ? `生成 ${shotIds.length} 鏡圖片…` : '生成全部圖片…');
+    setShotProg({}); setGenTotal(shotIds?.length ?? totalShots); setGen('running'); setOverall(shotIds ? `生成 ${shotIds.length} 鏡圖片…` : '生成全部圖片…');
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/keyframes`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(shotIds ? { shotIds } : {}),
@@ -717,7 +718,7 @@ export default function StoryboardPage() {
     lastGenRef.current = () => void genRender(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
     // 重設進度（否則沿用①生圖的 done 狀態 → 生片進度條一開始就顯示 100%）。
-    setShotProg({}); setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
+    setShotProg({}); setGenTotal(shotIds?.length ?? totalShots); setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/render`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(shotIds ? { shotIds } : {}),
@@ -737,7 +738,7 @@ export default function StoryboardPage() {
     }
     lastGenRef.current = () => void genSceneRender(scene);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
-    setGen('generating'); setOverall(`生成「${scene.title}」影片…`);
+    setShotProg({}); setGenTotal(scene.shots.length); setGen('generating'); setOverall(`生成「${scene.title}」影片…`);
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/render`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sceneId: scene.id }),
@@ -972,14 +973,14 @@ export default function StoryboardPage() {
           <div className="mb-1 flex items-center justify-between gap-2 text-xs text-gray-500">
             <span>{queuedAhead != null ? '排隊中…' : (overall || '生成中…')}{genStartRef.current ? ` · 已 ${fmtDur(nowTs - genStartRef.current)}` : ''}</span>
             <span className="flex-none">
-              {totalShots > 0 && `${doneShots} / ${totalShots} 鏡`}
-              {genStartRef.current > 0 && doneShots > 0 && doneShots < totalShots
-                ? ` · 約剩 ${Math.max(1, Math.ceil(((nowTs - genStartRef.current) / doneShots) * (totalShots - doneShots) / 60000))} 分`
-                : ''}
+              {(() => { const pt = genTotal || totalShots; return pt > 0 ? `${Math.min(doneShots, pt)} / ${pt} 鏡` : ''; })()}
+              {(() => { const pt = genTotal || totalShots; return genStartRef.current > 0 && doneShots > 0 && doneShots < pt
+                ? ` · 約剩 ${Math.max(1, Math.ceil(((nowTs - genStartRef.current) / doneShots) * (pt - doneShots) / 60000))} 分`
+                : ''; })()}
             </span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded bg-gray-100 dark:bg-gray-200">
-            <div className="h-full rounded bg-emerald-500 transition-[width] duration-500" style={{ width: `${totalShots > 0 ? Math.min(100, Math.round((doneShots / totalShots) * 100)) : 8}%` }} />
+            <div className="h-full rounded bg-emerald-500 transition-[width] duration-500" style={{ width: `${(genTotal || totalShots) > 0 ? Math.min(100, Math.round((doneShots / (genTotal || totalShots)) * 100)) : 8}%` }} />
           </div>
         </div>
       )}
