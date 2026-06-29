@@ -309,7 +309,7 @@ export async function duplicateProject(
         });
       }
       return proj;
-    });
+    }, { timeout: 15000 }); // 大專案(多場景序列建立)時放寬交易逾時，避免預設 5s 中途回滾
 
     await createAuditLog({
       actorId: actor?.id, actorEmail: actor?.email ?? undefined, actorName: actor?.name ?? undefined,
