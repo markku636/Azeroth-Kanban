@@ -31,6 +31,7 @@ export function YouTubeMetaModal({
   const [err, setErr] = useState<string | null>(null);
   const [thumbText, setThumbText] = useState('');
   const [thumbPos, setThumbPos] = useState<'top' | 'center' | 'bottom'>('bottom');
+  const [thumbColor, setThumbColor] = useState('#ffef3a'); // 縮圖大字色（黃高 CTR / 白較乾淨）
   const [imgReady, setImgReady] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -121,11 +122,11 @@ export function YouTubeMetaModal({
     for (const line of lines) {
       ctx.strokeStyle = 'rgba(0,0,0,0.92)';
       ctx.strokeText(line, w / 2, y);
-      ctx.fillStyle = '#ffef3a';
+      ctx.fillStyle = thumbColor;
       ctx.fillText(line, w / 2, y);
       y += lineH;
     }
-  }, [thumbText, imgReady, thumbPos]);
+  }, [thumbText, imgReady, thumbPos, thumbColor]);
 
   // 載入關鍵幀圖一次（同源，canvas 不會被污染）；只在 URL 變動時重載，不隨打字重抓。
   useEffect(() => {
@@ -259,6 +260,17 @@ export function YouTubeMetaModal({
                         className={thumbPos === p ? 'rounded bg-blue-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
                       >
                         {p === 'top' ? '上' : p === 'center' ? '中' : '下'}
+                      </button>
+                    ))}
+                    <span className="ms-2 flex-none">顏色</span>
+                    {([['#ffef3a', '黃'], ['#ffffff', '白']] as const).map(([c, label]) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setThumbColor(c)}
+                        className={thumbColor === c ? 'rounded bg-blue-600 px-2 py-0.5 font-medium text-white' : 'rounded border border-gray-300 px-2 py-0.5 text-gray-600 hover:bg-gray-50'}
+                      >
+                        {label}
                       </button>
                     ))}
                   </div>
