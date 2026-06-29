@@ -435,8 +435,16 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   let videoOut = body;
   if (present.some((s) => s.sfx && s.sfx !== 'none')) {
     const durs = await Promise.all(clips.map((c) => probeDuration(c)));
+    // SFX cue times must be measured on the SAME timeline stitch produces. stitch() collapses to a
+    // hard-cut concat only when EVERY seam is hard; otherwise it clamps each seam (incl. hard cuts) to
+    // ≥2 frames of xfade. Mirror that here, else zaps drift ~2/30s late per hard seam before the cue.
+    const allHard = fades.every((f) => f <= 0);
+    const minFade = 2 / 30;
     const starts = [0];
-    for (let i = 1; i < clips.length; i++) { const f = fades[i - 1] <= 0 ? 0 : fades[i - 1]; starts.push(starts[i - 1] + durs[i - 1] - f); }
+    for (let i = 1; i < clips.length; i++) {
+      const f = allHard ? 0 : Math.max(fades[i - 1], minFade);
+      starts.push(starts[i - 1] + durs[i - 1] - f);
+    }
     const cues = present
       .map((s, i) => ({ s, i }))
       .filter((x) => x.s.sfx && x.s.sfx !== 'none')
