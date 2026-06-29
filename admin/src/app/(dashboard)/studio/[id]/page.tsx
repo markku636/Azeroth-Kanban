@@ -716,7 +716,8 @@ export default function StoryboardPage() {
     }
     lastGenRef.current = () => void genRender(shotIds);
     if (!(await checkHealth())) { toast.error(ENGINE_DOWN_MSG, { duration: 7000 }); return; }
-    setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
+    // 重設進度（否則沿用①生圖的 done 狀態 → 生片進度條一開始就顯示 100%）。
+    setShotProg({}); setFinalReady(false); setGen('generating'); setOverall(shotIds ? `重生 ${shotIds.length} 鏡影片…` : '生成影片…');
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/render`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(shotIds ? { shotIds } : {}),
