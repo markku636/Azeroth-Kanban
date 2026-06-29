@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { PiXBold, PiImageSquareBold, PiFilmReelBold, PiPlayFill, PiClockCounterClockwiseBold } from 'react-icons/pi';
+import dayjs from 'dayjs';
 import { Modal } from '@/components/modal';
 import { VideoModal } from '../../_components/video-modal';
 
@@ -52,7 +53,7 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
   const fileUrl = (v: VersionDto) => `/api/v1/studio/versions/${v.id}/file`;
   const images = versions.filter((v) => v.stage === 'keyframe');
   const videos = versions.filter((v) => v.stage === 'video');
-  const fmt = (iso: string) => new Date(iso).toLocaleString('zh-TW', { hour12: false });
+  const fmt = (iso: string) => dayjs(iso).format('MM/DD HH:mm:ss'); // 與 gallery 一致的 MM/DD 風格；版本可能同分鐘內所以保留秒
 
   return (
     <>

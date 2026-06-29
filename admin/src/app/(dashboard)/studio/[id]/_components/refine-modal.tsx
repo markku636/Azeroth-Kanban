@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
 import { PiXBold, PiSparkleFill, PiClockCounterClockwiseBold, PiImageSquareBold } from 'react-icons/pi';
+import dayjs from 'dayjs';
 import { Modal } from '@/components/modal';
 
 interface VersionMeta { kind?: string; instruction?: string | null; hasMask?: boolean }
 interface VersionDto { id: string; stage: string; createdAt: string; selected?: boolean; meta?: VersionMeta | null }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-const fmt = (iso: string) => new Date(iso).toLocaleString('zh-TW', { hour12: false });
+const fmt = (iso: string) => dayjs(iso).format('MM/DD HH:mm:ss'); // 與 gallery/history 一致的 MM/DD 風格（保留秒以區分同分鐘版本）
 const kindLabel = (k?: string) =>
   k === 'inpaint' ? '局部重繪' : k === 'img2img' ? '洗圖' : k === 'upload' ? '上傳' : k === 'faceid' ? '參考重繪' : '生圖';
 
