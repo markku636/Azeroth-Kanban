@@ -17,6 +17,23 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
   const [versions, setVersions] = useState<VersionDto[]>([]);
   const [playing, setPlaying] = useState<VersionDto | null>(null);
   const [zoom, setZoom] = useState<VersionDto | null>(null);
+  const [applying, setApplying] = useState(false);
+
+  // 把某歷史關鍵幀版本設為現役關鍵幀（複製該版本→keyframe.png）；成功後發 studio:reload 讓看板刷新。
+  const useAsKeyframe = async (v: VersionDto) => {
+    setApplying(true);
+    try {
+      const res = await fetch(`/api/v1/studio/shots/${shotId}/select`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ versionId: v.id }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.message ?? '設定失敗');
+      toast.success('已設為關鍵幀，重生影片即套用');
+      window.dispatchEvent(new Event('studio:reload'));
+      setZoom(null);
+    } catch (e) { toast.error(e instanceof Error ? e.message : '設定失敗'); }
+    setApplying(false);
+  };
 
   useEffect(() => {
     void (async () => {
@@ -114,18 +131,30 @@ export function HistoryModal({ shotId, shotNo, onClose }: { shotId: string; shot
         </div>
       </Modal>
 
-      {/* 圖片放大 lightbox */}
+      {/* 圖片放大 lightbox（背景按鈕點擊關閉；採用鈕為其上的獨立可點元素，避免巢狀在按鈕內） */}
       {zoom && (
-        <button
-          type="button"
-          aria-label="關閉放大檢視"
-          onClick={() => setZoom(null)}
-          className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-2 bg-black/85 p-6"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={fileUrl(zoom)} alt={`版本 ${fmt(zoom.createdAt)}`} className="max-h-[80vh] max-w-full rounded object-contain" />
-          <span className="text-xs text-white/80">{fmt(zoom.createdAt)} · 點任意處關閉</span>
-        </button>
+        <div className="fixed inset-0 z-[60]">
+          <button
+            type="button"
+            aria-label="關閉放大檢視"
+            onClick={() => setZoom(null)}
+            className="absolute inset-0 flex items-center justify-center bg-black/85 p-6"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={fileUrl(zoom)} alt={`版本 ${fmt(zoom.createdAt)}`} className="pointer-events-none max-h-[78vh] max-w-full rounded object-contain" />
+          </button>
+          <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void useAsKeyframe(zoom)}
+              disabled={applying}
+              className="pointer-events-auto flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-lg transition-colors hover:bg-emerald-700 disabled:opacity-50"
+            >
+              <PiImageSquareBold className="h-4 w-4" /> {applying ? '套用中…' : '用這張當關鍵幀'}
+            </button>
+            <span className="text-xs text-white/80">{fmt(zoom.createdAt)} · 點背景關閉</span>
+          </div>
+        </div>
       )}
 
       {playing && (
