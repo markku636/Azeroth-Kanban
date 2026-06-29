@@ -114,9 +114,19 @@ const UNSHARP = (process.env.STUDIO_UNSHARP ?? "on").toLowerCase() !== "off" ? "
 // gentle so it enhances rather than restyles the image. Disable with STUDIO_GRADE=off. Applied after
 // any sharpening and before captions, so on-screen text keeps its intended colours. Each clip is graded
 // at build time so the whole film (including crossfades) reads uniformly.
-const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() !== "off"
-  ? ",eq=contrast=1.06:saturation=1.08:gamma=0.98,colorbalance=rs=-0.015:bs=0.025:rh=0.03:bh=-0.025"
-  : "";
+// Selectable cinematic colour grades. STUDIO_GRADE=off disables entirely; otherwise STUDIO_GRADE_STYLE
+// picks the look (default 'teal' = the original, byte-identical). Each is a gentle eq + colourbalance so
+// it enhances rather than restyles, and is a hook the UI can later expose as a per-project "look".
+const GRADE_STYLES: Record<string, string> = {
+  teal:  "eq=contrast=1.06:saturation=1.08:gamma=0.98,colorbalance=rs=-0.015:bs=0.025:rh=0.03:bh=-0.025",
+  warm:  "eq=contrast=1.05:saturation=1.10:gamma=0.99,colorbalance=rs=0.02:gs=0.008:rh=0.05:bh=-0.04",
+  cool:  "eq=contrast=1.06:saturation=1.04:gamma=0.98,colorbalance=rs=-0.04:bs=0.05:rh=-0.02:bh=0.04",
+  noir:  "eq=contrast=1.18:saturation=0.55:gamma=0.95",
+  vivid: "eq=contrast=1.10:saturation=1.22:gamma=0.99",
+};
+const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() === "off"
+  ? ""
+  : `,${GRADE_STYLES[(process.env.STUDIO_GRADE_STYLE ?? "teal").toLowerCase()] ?? GRADE_STYLES.teal}`;
 
 /** 產生字幕 drawtext filter + 寫好的暫存字幕檔（呼叫端負責 unlink）。canvasH 用來等比縮放字級/位置。 */
 function subDrawtext(text: string, style: SubStyle | undefined, font: string, canvasH?: number): { filter: string; subFile: string } {
