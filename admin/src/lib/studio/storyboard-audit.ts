@@ -17,6 +17,7 @@ export interface StoryboardAudit {
   strengths: string[];
   issues: AuditIssue[];
   suggestedTitle: string; // 順手給的更吸睛標題（可空）
+  truncated?: boolean; // 分鏡數超過評估上限，僅列出前 N 鏡（仍依全片總數評估長度）
 }
 
 const AUDIT_SYSTEM = `你是嚴格但實用的短影音編輯，專門把影片改到會在 YouTube Shorts／抖音爆紅。根據使用者這支影片的分鏡（順序、旁白、字幕、吐槽爆點），用下列黃金法則做健檢：
@@ -56,17 +57,24 @@ export async function auditStoryboard(projectId: string): Promise<StoryboardAudi
     buildStoryContext(projectId),
   ]);
 
-  const shots = await prisma.shot.findMany({
-    where: { projectId },
-    orderBy: { sortOrder: 'asc' },
-    select: { shotNo: true, visual: true, tts: true, caption: true, punchline: true, branch: true, punch: true },
-    take: MAX_SHOTS,
-  });
+  const [shots, totalShots] = await Promise.all([
+    prisma.shot.findMany({
+      where: { projectId },
+      orderBy: { sortOrder: 'asc' },
+      select: { shotNo: true, visual: true, tts: true, caption: true, punchline: true, branch: true, punch: true },
+      take: MAX_SHOTS,
+    }),
+    prisma.shot.count({ where: { projectId } }),
+  ]);
+  // 超過上限時，仍把「全片總鏡數」告訴 AI，否則它會誤判長度（以為片子比實際短）。
+  const truncated = totalShots > shots.length;
 
   const lines: string[] = [];
   if (story.preamble) lines.push(story.preamble, '');
   if (project?.logline) lines.push(`前提：${project.logline}`);
-  lines.push(`分鏡總數：${shots.length}`, '', '分鏡（依序）：');
+  lines.push(`全片分鏡總數：${totalShots}`);
+  if (truncated) lines.push(`（下面只列出前 ${MAX_SHOTS} 鏡供細看，但請依「全片共 ${totalShots} 鏡」評估整體長度與節奏）`);
+  lines.push('', '分鏡（依序）：');
   for (const s of shots) {
     const bits = [
       s.caption ? `字幕「${s.caption}」` : '',
@@ -88,11 +96,11 @@ export async function auditStoryboard(projectId: string): Promise<StoryboardAudi
     if (m) {
       try {
         const audit = normalize(JSON.parse(m[0]) as Record<string, unknown>);
-        if (audit.verdict || audit.issues.length) return audit;
+        if (audit.verdict || audit.issues.length) return { ...audit, truncated };
       } catch {
         /* 解析失敗 → 重試 */
       }
     }
   }
-  return { score: 0, verdict: '', strengths: [], issues: [], suggestedTitle: '' };
+  return { score: 0, verdict: '', strengths: [], issues: [], suggestedTitle: '', truncated };
 }

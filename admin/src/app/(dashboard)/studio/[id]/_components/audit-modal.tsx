@@ -6,7 +6,7 @@ import { PiXBold, PiArrowsClockwiseBold, PiGaugeBold, PiCheckCircleFill, PiWrenc
 import { Modal } from '@/components/modal';
 
 interface AuditIssue { area: string; problem: string; fix: string }
-interface Audit { score: number; verdict: string; strengths: string[]; issues: AuditIssue[]; suggestedTitle: string }
+interface Audit { score: number; verdict: string; strengths: string[]; issues: AuditIssue[]; suggestedTitle: string; truncated?: boolean }
 
 function scoreStyle(score: number): { ring: string; text: string; label: string } {
   if (score >= 80) return { ring: 'border-emerald-400', text: 'text-emerald-600', label: '很強，可以發了' };
@@ -108,6 +108,9 @@ export function AuditModal({ projectId, onClose }: { projectId: string; onClose:
                 <div className="min-w-0">
                   <div className={`text-sm font-semibold ${s.text}`}>{s.label}</div>
                   <p className="mt-0.5 text-sm text-gray-900">{audit.verdict}</p>
+                  {audit.truncated && (
+                    <p className="mt-1 text-xs text-gray-400">分鏡較多，已依全片長度評分；逐鏡建議聚焦在前 40 鏡。</p>
+                  )}
                 </div>
               </div>
 
