@@ -38,12 +38,12 @@ function fmtDur(ms: number): string {
 }
 
 /**
- * 粗估單鏡秒數（僅供抓短影音節奏，非精準）。有語音/字幕的鏡以字數估語速（中文約 4.5 字/秒）
- * 加一截尾巴；純畫面鏡用 fallback（i2v 真動態略長）。對齊引擎：voice 時 = 語音長度+pad，無 voice 時 = fallbackDur。
+ * 粗估單鏡秒數（僅供抓短影音節奏，非精準）。對齊引擎時長模型：有旁白(tts)時 = 語音長度(中文約 4.5 字/秒)+pad；
+ * 無旁白時(含純大字幕喜劇鏡)= fallbackDur(i2v 真動態略長)。大字幕長度「不」影響時長，故不納入估算。
  */
-function estShotSeconds(s: { tts: string | null; caption: string | null; punchline: string | null; branch: string }): number {
-  const text = (s.tts?.trim() || [s.caption, s.punchline].filter(Boolean).join('，')).trim();
-  if (text) return Math.min(12, Math.max(1.5, text.length / 4.5)) + 0.4;
+function estShotSeconds(s: { tts: string | null; branch: string }): number {
+  const tts = s.tts?.trim();
+  if (tts) return Math.min(12, Math.max(1.5, tts.length / 4.5)) + 0.4;
   return s.branch === 'i2v' ? 4.0 : 3.8;
 }
 
