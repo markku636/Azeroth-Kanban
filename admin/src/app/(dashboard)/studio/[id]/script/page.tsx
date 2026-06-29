@@ -159,6 +159,7 @@ export default function ScriptPage() {
   const [busy, setBusy] = useState(false);
   const [logline, setLogline] = useState('');
   const [premise, setPremise] = useState('');
+  const [loglineWandBusy, setLoglineWandBusy] = useState(false);
   const savedRef = useRef({ logline: '', premise: '' });
 
   const sensors = useSensors(
@@ -203,6 +204,23 @@ export default function ScriptPage() {
   };
 
   const saveLogline = () => { if (logline !== savedRef.current.logline) { savedRef.current.logline = logline; void patchProject({ logline }); } };
+
+  // logline AI 潤飾（複用 bible/polish 的 logline 欄位）：改寫成像會爆的影片標題，套用並存。
+  const polishLogline = async () => {
+    setLoglineWandBusy(true);
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${projectId}/bible/polish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field: 'logline', text: logline }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.message ?? 'AI 潤飾失敗');
+      const out = j.data?.text as string | undefined;
+      if (!out) throw new Error('AI 沒有產生內容');
+      setLogline(out); savedRef.current.logline = out; void patchProject({ logline: out });
+      toast.success('已用 AI 潤飾 logline');
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'AI 潤飾失敗'); }
+    setLoglineWandBusy(false);
+  };
   const savePremise = () => { if (premise !== savedRef.current.premise) { savedRef.current.premise = premise; void patchProject({ description: premise }); } };
 
   const saveScene = async (sceneId: string, patch: { title?: string; synopsis?: string; dialogue?: string }) => {
@@ -381,8 +399,21 @@ export default function ScriptPage() {
           placeholder="這支短片的題材、世界觀或設定…"
         />
         <div className="mt-2">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-gray-700">Logline（一句話前提）</span>
+            {aiEnabled && (
+              <button
+                type="button"
+                onClick={() => void polishLogline()}
+                disabled={loglineWandBusy || busy}
+                title="用 AI 把 logline 改寫成像會爆的影片標題（套用並儲存）"
+                className="flex items-center gap-1 rounded-md border border-purple-300 px-2 py-0.5 text-xs font-medium text-purple-700 transition-colors hover:border-purple-400 hover:bg-purple-50 disabled:opacity-40 dark:border-purple-700 dark:text-purple-300 dark:hover:bg-purple-950/20"
+              >
+                <PiSparkleFill className="h-3 w-3" /> {loglineWandBusy ? '潤飾中…' : '潤飾'}
+              </button>
+            )}
+          </div>
           <Input
-            label="Logline（一句話前提）"
             value={logline}
             onChange={(e) => setLogline(e.target.value)}
             onBlur={saveLogline}
