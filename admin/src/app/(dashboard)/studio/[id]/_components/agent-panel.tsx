@@ -63,10 +63,18 @@ export function AgentPanel({ projectId, open, onClose, onApplied }: { projectId:
       try {
         const [cRes, bRes] = await Promise.all([fetch('/api/v1/studio/config'), fetch(`/api/v1/studio/projects/${projectId}/bible`)]);
         const c = await cRes.json().catch(() => ({}));
-        if (cRes.ok && c.data?.providers) setAvail(c.data.providers as ProviderAvail);
+        const providers = cRes.ok ? (c.data?.providers as ProviderAvail | undefined) : undefined;
+        if (providers) setAvail(providers);
         const b = await bRes.json().catch(() => ({}));
         const ap = b?.data?.agentProvider as string | undefined;
-        if (ap === 'vertex' || ap === 'anthropic' || ap === 'claude-agent') setProvider(ap);
+        // 初始 provider：專案設定優先；但若該 provider 在此環境未設定（如純 Vertex 環境預設的 anthropic 不可用），
+        // 退到第一個可用的（vertex > anthropic > claude-agent），避免第一句就送到不可用的 provider 而失敗。
+        const isUp = (p: Provider) => p === 'vertex' ? !!providers?.vertex : p === 'anthropic' ? !!providers?.anthropic : !!providers?.claudeAgent;
+        let initial: Provider | null = (ap === 'vertex' || ap === 'anthropic' || ap === 'claude-agent') ? ap : null;
+        if (providers && (!initial || !isUp(initial))) {
+          initial = providers.vertex ? 'vertex' : providers.anthropic ? 'anthropic' : providers.claudeAgent ? 'claude-agent' : initial;
+        }
+        if (initial) setProvider(initial); // 不持久化退而求其次的選擇，保留使用者原設定
       } catch { /* 用預設 */ }
     })();
   }, [open, projectId]);
