@@ -170,19 +170,33 @@ function subDrawtext(text: string, style: SubStyle | undefined, font: string, ca
 
 /**
  * 迷因大字幕 drawtext。top = 白色 setup（全程顯示）；bottom = 黃色 punchline（給定 punchAt 時於該秒彈出）。
- * 字級/描邊/位置等比縮放至 canvasH（720p 時 = 原值，零回歸）。呼叫端先把文字寫進 textfile=f。
+ * 字級/描邊/位置等比縮放至 canvasH（720p 時 = 原值，零回歸）。
+ * 每行各自一個 drawtext 並垂直堆疊 —— 同 subDrawtext，避開 ffmpeg 8.x textfile 換行渲染成 □ 方塊的 bug。
+ * 回傳 filter ＋ 寫好的逐行暫存檔（呼叫端負責 unlink）。
  */
-function memeCaptionFilter(font: string, f: string, kind: "top" | "bottom", canvasH: number, punchAt?: number): string {
+function memeCaptionFilter(font: string, text: string, kind: "top" | "bottom", canvasH: number, punchAt?: number): { filter: string; files: string[] } {
   const s = capScale(canvasH);
   const border = Math.max(3, Math.round(6 * s)), ls = Math.round(12 * s);
-  const base = `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:`;
-  if (kind === "top") {
-    return base + `fontcolor=white:fontsize=${Math.round(62 * s)}:borderw=${border}:bordercolor=black:` +
-      `x=(w-text_w)/2:y=${Math.round(110 * s)}:line_spacing=${ls}`;
-  }
-  const enable = punchAt != null ? `:enable='gte(t\\,${punchAt.toFixed(2)})'` : "";
-  return base + `fontcolor=yellow:fontsize=${Math.round(66 * s)}:borderw=${border}:bordercolor=black:` +
-    `x=(w-text_w)/2:y=h-${Math.round(300 * s)}:line_spacing=${ls}${enable}`;
+  const lines = wrapCjk(text, 10).split('\n').filter((l) => l.length > 0);
+  const isTop = kind === "top";
+  const fontsize = Math.round((isTop ? 62 : 66) * s);
+  const color = isTop ? "white" : "yellow";
+  const lineH = fontsize + ls;
+  const enable = !isTop && punchAt != null ? `:enable='gte(t\\,${punchAt.toFixed(2)})'` : "";
+  // top 從 y=110 往下堆；bottom 從 y=h-300 往下堆（與原本 line_spacing 版位置等價）。
+  const baseTop = isTop ? `${Math.round(110 * s)}` : `h-${Math.round(300 * s)}`;
+  const files: string[] = [];
+  const filters = lines.map((ln, i) => {
+    const fp = join(tmpdir(), `cap_${randomUUID()}.txt`);
+    writeFileSync(fp, ln, "utf8");
+    files.push(fp);
+    return (
+      `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(fp)}:` +
+      `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black:` +
+      `x=(w-text_w)/2:y=${baseTop}+${i * lineH}${enable}`
+    );
+  });
+  return { filter: filters.join(","), files };
 }
 
 export interface StillOpts {
@@ -477,14 +491,12 @@ export class Compositor {
     const font = o.memeFont ?? findBoldCjkFont();
     const tmpFiles: string[] = [];
     if (font && o.topCaption) {
-      const f = join(tmpdir(), `cap_top_${randomUUID()}.txt`);
-      writeFileSync(f, wrapCjk(o.topCaption, 10), "utf8"); tmpFiles.push(f);
-      vf += `,${memeCaptionFilter(font, f, "top", H)}`;
+      const cap = memeCaptionFilter(font, o.topCaption, "top", H);
+      tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
     if (font && o.bottomCaption) {
-      const f = join(tmpdir(), `cap_bot_${randomUUID()}.txt`);
-      writeFileSync(f, wrapCjk(o.bottomCaption, 10), "utf8"); tmpFiles.push(f);
-      vf += `,${memeCaptionFilter(font, f, "bottom", H, o.punchAt)}`;
+      const cap = memeCaptionFilter(font, o.bottomCaption, "bottom", H, o.punchAt);
+      tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
 
     // always carry an audio track (voice, or a silent bed) so stitch/mixSfx see a uniform A/V clip
@@ -517,14 +529,12 @@ export class Compositor {
     const font = o.memeFont ?? findBoldCjkFont();
     const tmpFiles: string[] = [];
     if (font && o.topCaption) {
-      const f = join(tmpdir(), `cap_top_${randomUUID()}.txt`);
-      writeFileSync(f, wrapCjk(o.topCaption, 10), "utf8"); tmpFiles.push(f);
-      vf += `,${memeCaptionFilter(font, f, "top", H)}`;
+      const cap = memeCaptionFilter(font, o.topCaption, "top", H);
+      tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
     if (font && o.bottomCaption) {
-      const f = join(tmpdir(), `cap_bot_${randomUUID()}.txt`);
-      writeFileSync(f, wrapCjk(o.bottomCaption, 10), "utf8"); tmpFiles.push(f);
-      vf += `,${memeCaptionFilter(font, f, "bottom", H, o.punchAt)}`;
+      const cap = memeCaptionFilter(font, o.bottomCaption, "bottom", H, o.punchAt);
+      tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
     if (o.voice) args.push("-i", o.voice);
