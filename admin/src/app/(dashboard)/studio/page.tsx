@@ -17,6 +17,7 @@ interface ProjectDto {
   status: string;
   aspect: string;
   fps: number;
+  renderQuality?: string | null;
   hasOutput: boolean;
   outputUpdatedAt: string | null;
   shotCount?: number;
@@ -315,6 +316,7 @@ export default function StudioProjectsPage() {
                 <div className="pointer-events-none relative z-10 mt-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
                   <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.aspect}</span>
                   <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.fps}fps</span>
+                  <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.renderQuality === 'standard' ? '720p' : '1080p'}</span>
                   {p.shotCount != null && <span className="rounded-md bg-gray-100 px-1.5 py-0.5 font-medium dark:bg-gray-100">{p.shotCount} 個分鏡</span>}
                 </div>
                 {p.description && <div className="pointer-events-none relative z-10 mt-2 line-clamp-2 text-sm text-gray-600">{p.description}</div>}
