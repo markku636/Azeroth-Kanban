@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Textarea } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiXBold, PiSparkleFill } from 'react-icons/pi';
+import { PiXBold, PiSparkleFill, PiLightningFill } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 
 interface Msg {
@@ -63,6 +63,32 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
     } catch {
       toast.error('連線失敗，請稍後再試');
       setMsgs((m) => [...m, { role: 'assistant', content: '⚠ 連線失敗' }]);
+    }
+    setBusy(false);
+  };
+
+  // 快速路徑：一句話直接生成整份分鏡（跳過多輪對話），呼叫一次性 /interview。
+  const generateDirect = async () => {
+    const idea = input.trim();
+    if (!idea || busy) return;
+    setBusy(true);
+    const t = toast.loading('AI 直接生成分鏡中…');
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${projectId}/interview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea, count: 6 }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.code === 0) {
+        toast.success('已直接生成分鏡', { id: t });
+        setBusy(false);
+        onDone();
+        return;
+      }
+      toast.error(json.message ?? '生成失敗', { id: t });
+    } catch {
+      toast.error('連線失敗，請稍後再試', { id: t });
     }
     setBusy(false);
   };
@@ -131,9 +157,20 @@ export function InterviewChat({ projectId, onClose, onDone }: { projectId: strin
             textareaClassName="max-h-32 resize-none"
             placeholder="輸入回覆…（Enter 送出，Shift+Enter 換行）"
           />
-          <Button onClick={() => void send()} isLoading={busy} disabled={busy || !input.trim()}>
-            送出
-          </Button>
+          <div className="flex flex-col gap-1.5">
+            <Button onClick={() => void send()} isLoading={busy} disabled={busy || !input.trim()} size="sm">
+              送出
+            </Button>
+            <button
+              type="button"
+              onClick={() => void generateDirect()}
+              disabled={busy || !input.trim()}
+              title="跳過問答，依這句話直接生成整份分鏡（之後可再編輯）"
+              className="flex items-center gap-1 whitespace-nowrap rounded-md border border-purple-300 px-2.5 py-1 text-xs font-medium text-purple-700 transition-colors hover:bg-purple-50 disabled:opacity-40 dark:border-purple-800 dark:text-purple-300"
+            >
+              <PiLightningFill className="h-3 w-3" /> 直接生成
+            </button>
+          </div>
         </div>
       </div>
     </Modal>
