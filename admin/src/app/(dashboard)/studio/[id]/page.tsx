@@ -779,6 +779,8 @@ export default function StoryboardPage() {
   };
 
   const uploadBgm = async (file: File) => {
+    // 先擋大小（伺服器上限 50MB）→ 不必把超大檔整個傳上去才收到錯誤。
+    if (file.size > 50 * 1024 * 1024) { toast.error(`音檔過大（${Math.round(file.size / 1024 / 1024)}MB），上限 50MB`); return; }
     setBusy(true);
     try {
       const fd = new FormData(); fd.append('file', file);

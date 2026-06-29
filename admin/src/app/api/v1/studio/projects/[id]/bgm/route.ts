@@ -37,7 +37,7 @@ export const POST = withPermission(
     const file = form.get('file');
     if (!(file instanceof File)) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '缺少音檔');
     const ext = (extname(file.name) || '.mp3').toLowerCase();
-    if (!ALLOWED.has(ext)) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '僅支援 mp3/wav/m4a/ogg/flac');
+    if (!ALLOWED.has(ext)) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '僅支援 mp3/wav/m4a/ogg/aac/flac');
     if (file.size > 50 * 1024 * 1024) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '音檔不可超過 50MB');
 
     const dir = join(STORAGE, 'projects', id, 'bgm');
