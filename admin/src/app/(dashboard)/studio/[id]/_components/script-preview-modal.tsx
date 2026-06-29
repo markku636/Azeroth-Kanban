@@ -24,6 +24,8 @@ export function ScriptPreviewModal({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const lines = scenes.flatMap((s) => s.shots.filter((sh) => sh.tts?.trim()).map((sh) => ({ ...sh, sceneTitle: s.title })));
+  // 旁白總時長粗估（中文 ≈5 字/秒）：讓使用者一眼判斷整體旁白長度是否適合短影音。
+  const totalSec = Math.round(lines.reduce((a, ln) => a + (ln.tts?.trim().length ?? 0), 0) / 5);
 
   const playOne = async (shotId: string): Promise<boolean> => {
     setPlayingId(shotId);
@@ -75,7 +77,7 @@ export function ScriptPreviewModal({
       <div className="flex max-h-[85vh] flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3 dark:border-gray-300">
           <div className="flex items-center gap-2 font-semibold text-gray-900">
-            <PiSpeakerHighBold className="h-5 w-5 text-sky-500" /> 旁白預覽（{lines.length} 句）
+            <PiSpeakerHighBold className="h-5 w-5 text-sky-500" /> 旁白預覽（{lines.length} 句{totalSec > 0 ? ` · 約 ${totalSec} 秒` : ''}）
           </div>
           <div className="flex items-center gap-3">
             <button type="button" onClick={copyScript} disabled={lines.length === 0} title="複製整份旁白腳本" className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-primary disabled:opacity-40">
