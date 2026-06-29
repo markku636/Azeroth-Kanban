@@ -429,6 +429,7 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     else { fades.push(0.25); transitions.push('fade'); }                                // within scene
   }
 
+  await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：套用場景轉場…' });
   const body = join(outDir, 'body.mp4');
   await comp.stitch({ clips, out: body, fades, transitions });
 
@@ -449,6 +450,7 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
       .map((s, i) => ({ s, i }))
       .filter((x) => x.s.sfx && x.s.sfx !== 'none')
       .map((x) => ({ sfx: sfxFile(x.s.sfx as SfxName, join(outDir, 'sfx')), atSec: +(starts[x.i] + durs[x.i] * (x.s.punchAtFrac ?? 0.55)).toFixed(2), gain: 0.8 }));
+    await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：加入音效卡點…' });
     const withSfx = join(outDir, 'body_sfx.mp4');
     await comp.mixSfx({ video: body, cues, out: withSfx });
     videoOut = withSfx;
@@ -468,8 +470,10 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   const titleOn = (process.env.STUDIO_TITLECARD ?? 'off').toLowerCase() !== 'off' && Boolean(project?.title);
   const final = join(outDir, 'final.mp4');
   const mixOut = titleOn ? join(outDir, 'film_core.mp4') : final;
+  await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：混音配樂與響度…' });
   await comp.mixBgm({ video: videoOut, bgm, out: mixOut, bgmGain: project?.bgmGain ?? 0.15 });
   if (titleOn && project) {
+    await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：加片頭與片尾…' });
     const { cw, ch } = await projectDims(projectId);
     // generate a longer pad (its swell/env are tuned for long beds) and let cardClip trim to the card —
     // the opening seconds are the natural build-up, which suits a title swell.
