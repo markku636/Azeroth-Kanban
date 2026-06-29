@@ -59,6 +59,8 @@ export default function StudioProjectsPage() {
   useEffect(() => { const a = localStorage.getItem('studio:newAspect'); if (a === '9:16' || a === '16:9' || a === '1:1') setNewAspect(a); }, []);
   const changeAspect = (a: string) => { setNewAspect(a); try { localStorage.setItem('studio:newAspect', a); } catch { /* 隱私模式 */ } };
   const [q, setQ] = useState('');
+  // 狀態篩選：刻意不持久化（持久化會在重整後「藏住」專案讓人找不到，反而困惑）。
+  const [statusFilter, setStatusFilter] = useState<'all' | 'wip' | 'done'>('all');
   const [sort, setSort] = useState<SortKey>('updated');
   // 記住使用者的排序偏好（在 effect 內讀 localStorage，避免 SSR hydration 不一致）。
   useEffect(() => {
@@ -158,9 +160,11 @@ export default function StudioProjectsPage() {
   const finished = projects.filter((p) => p.hasOutput).length;
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
-    const base = kw
+    let base = kw
       ? projects.filter((p) => p.title.toLowerCase().includes(kw) || (p.description ?? '').toLowerCase().includes(kw))
       : projects;
+    if (statusFilter === 'done') base = base.filter((p) => p.hasOutput);
+    else if (statusFilter === 'wip') base = base.filter((p) => !p.hasOutput);
     const arr = [...base];
     if (sort === 'title') arr.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hant'));
     else {
@@ -168,7 +172,7 @@ export default function StudioProjectsPage() {
       arr.sort((a, b) => String(b[key] ?? '').localeCompare(String(a[key] ?? ''))); // ISO 字串遞減＝新到舊
     }
     return arr;
-  }, [projects, q, sort]);
+  }, [projects, q, statusFilter, sort]);
 
   return (
     <div className="flex h-full w-full max-w-6xl flex-col px-2 py-2 sm:p-6">
@@ -194,6 +198,19 @@ export default function StudioProjectsPage() {
               onClear={() => setQ('')}
               className="w-44 sm:w-56"
             />
+          )}
+          {finished > 0 && projects.length > finished && (
+            <select
+              aria-label="狀態篩選"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | 'wip' | 'done')}
+              title="依完成狀態篩選專案"
+              className="flex-none rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50"
+            >
+              <option value="all">全部</option>
+              <option value="wip">進行中</option>
+              <option value="done">已完成</option>
+            </select>
           )}
           {projects.length > 1 && (
             <select
@@ -279,7 +296,18 @@ export default function StudioProjectsPage() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-gray-400">
           <PiMagnifyingGlassBold className="h-10 w-10 text-gray-300" />
-          <div className="text-sm">找不到符合「{q}」的專案。</div>
+          <div className="text-sm">
+            {q
+              ? `找不到符合「${q}」的專案。`
+              : statusFilter === 'done'
+                ? '還沒有已完成的專案。'
+                : '沒有進行中的專案。'}
+          </div>
+          {statusFilter !== 'all' && (
+            <button type="button" onClick={() => setStatusFilter('all')} className="text-xs text-blue-600 hover:underline dark:text-blue-400">
+              顯示全部專案
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
