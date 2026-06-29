@@ -540,6 +540,13 @@ export default function StoryboardPage() {
   const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); };
   const bulkGen = async (kind: 'keyframes' | 'render') => {
     const ids = Array.from(selectedIds); if (!ids.length) return;
+    if (kind === 'render') {
+      const missing = data ? data.scenes.flatMap((s) => s.shots).filter((sh) => selectedIds.has(sh.id) && !sh.keyframePath).length : 0;
+      if (missing > 0) {
+        const ok = await confirm({ title: '尚有分鏡未生圖', message: `選取的分鏡有 ${missing} 個還沒有關鍵幀，直接生片可能沒有畫面。建議先生圖。要繼續嗎？`, confirmLabel: '仍要生成' });
+        if (!ok) return;
+      }
+    }
     lastGenRef.current = null; // 批次後會清掉選取 → 無法乾淨重試，故不提供（避免錯誤橫幅誤觸到上一個全片動作）
     setShotProg({}); setGenTotal(ids.length); setGen(kind === 'keyframes' ? 'running' : 'generating'); setOverall(`批次${kind === 'keyframes' ? '生圖' : '生片'} ${ids.length} 鏡…`);
     try {
