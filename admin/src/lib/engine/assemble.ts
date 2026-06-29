@@ -311,16 +311,38 @@ export class Compositor {
     return o.out;
   }
 
-  /** Mix a BGM bed under an existing video's audio (ducked); output length = video length. */
-  async mixBgm(o: { video: string; bgm: string; out: string; bgmGain?: number; voiceGain?: number }): Promise<string> {
+  /**
+   * Mix a BGM bed under an existing video's audio. With ducking (default; STUDIO_DUCK!=off) the music
+   * sits fuller in silent gaps and automatically dips under narration via sidechain compression keyed by
+   * the voice — the single biggest "scored film vs amateur" audio tell. Without ducking it falls back to
+   * the old constant-gain mix (set duck:false or STUDIO_DUCK=off). The final stage always loudness-
+   * normalizes the mix to ≈ -16 LUFS / -1.5 dBTP (STUDIO_LOUDNORM=off to skip). Output length = video.
+   */
+  async mixBgm(o: { video: string; bgm: string; out: string; bgmGain?: number; voiceGain?: number; duck?: boolean; duckGain?: number }): Promise<string> {
     const bg = o.bgmGain ?? 0.18, vg = o.voiceGain ?? 1.0;
+    const duckOn = o.duck ?? (process.env.STUDIO_DUCK ?? "on").toLowerCase() !== "off";
     // Loudness-normalize the final mix to a social-friendly target (≈ -16 LUFS, true-peak -1.5 dBTP)
     // so every export plays back at a consistent, broadcast-sane volume instead of "too quiet / clipped".
     // This is the last audio stage (final.mp4 always goes through mixBgm). Disable via STUDIO_LOUDNORM=off.
     const normOn = (process.env.STUDIO_LOUDNORM ?? "on").toLowerCase() !== "off";
     const norm = normOn ? `;[mix]loudnorm=I=-16:TP=-1.5:LRA=11[aout]` : `;[mix]anull[aout]`;
-    const args = ["-y", "-i", o.video, "-i", o.bgm, "-filter_complex",
-      `[0:a]volume=${vg}[a0];[1:a]volume=${bg}[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix]${norm}`,
+    let fc: string;
+    if (duckOn) {
+      // Music plays fuller in the gaps (duckGain) and is sidechain-compressed by the voice so it dips
+      // while narration speaks, then swells back in pauses. Both streams are forced to 44.1k stereo so
+      // the sidechain key matches the carrier. Low threshold so even quiet speech ducks; release ~300ms
+      // gives a natural recovery rather than a pumping artifact. When there's no real voice (silent bed /
+      // SFX-only comedy) the key never crosses threshold → music simply stays at duckGain (desired).
+      const dg = o.duckGain ?? Math.min(0.5, Math.max(bg * 1.8, 0.26));
+      fc =
+        `[0:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=${vg},asplit=2[v0][vkey];` +
+        `[1:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=${dg.toFixed(3)}[m0];` +
+        `[m0][vkey]sidechaincompress=threshold=0.05:ratio=6:attack=12:release=300:makeup=1[md];` +
+        `[v0][md]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix]${norm}`;
+    } else {
+      fc = `[0:a]volume=${vg}[a0];[1:a]volume=${bg}[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix]${norm}`;
+    }
+    const args = ["-y", "-i", o.video, "-i", o.bgm, "-filter_complex", fc,
       "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", "-shortest", o.out];
     const { code, stderr } = await run(FFMPEG, args);
     if (code !== 0) throw new Error(`ffmpeg mixBgm failed (${code}): ${stderr.slice(-800)}`);
