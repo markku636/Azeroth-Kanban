@@ -16,3 +16,8 @@ admin/playwright-report
 *.log
 .DS_Store
 Thumbs.db
+
+# generated studio media (a docker volume in prod) + local engine test harnesses —
+# never belong in the build context / image
+studio-storage
+admin/studio-storage
