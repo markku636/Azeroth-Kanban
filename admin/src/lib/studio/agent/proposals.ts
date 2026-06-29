@@ -90,17 +90,18 @@ export async function applyProposals(
         r = await createScene(ownerId, projectId, { title: p.title, synopsis: p.synopsis, dialogue: p.dialogue }, actor, options);
       } else if (p.kind === 'update_scene') {
         // 把 sceneId 綁回 URL 專案：否則 admin(bypass)可改任意專案的場景、一般使用者可能誤改自己別的專案。
-        r = (await prisma.scene.findFirst({ where: { id: p.sceneId, projectId }, select: { id: true } }))
+        // 明確檢查 sceneId 真值：Prisma 把 { id: undefined } 當「無此條件」會誤配到專案首筆（畸形 client 輸入防護）。
+        r = (p.sceneId && (await prisma.scene.findFirst({ where: { id: p.sceneId, projectId }, select: { id: true } })))
           ? await updateScene(ownerId, p.sceneId, { title: p.title, synopsis: p.synopsis, dialogue: p.dialogue }, actor, options)
           : { code: ApiReturnCode.NOT_FOUND, message: '場景不屬於此專案' };
       } else if (p.kind === 'create_shot') {
         r = await createShot(ownerId, { projectId, sceneId: p.sceneId ?? null, visual: p.visual, tts: p.tts, motion: p.motion, emotion: p.emotion, branch: p.branch, caption: p.caption, punchline: p.punchline, sfx: p.sfx === 'none' ? undefined : p.sfx, punch: p.punch }, actor, options);
       } else if (p.kind === 'update_shot') {
-        r = (await prisma.shot.findFirst({ where: { id: p.shotId, projectId }, select: { id: true } }))
+        r = (p.shotId && (await prisma.shot.findFirst({ where: { id: p.shotId, projectId }, select: { id: true } })))
           ? await updateShot(ownerId, p.shotId, { visual: p.visual, tts: p.tts, motion: p.motion, emotion: p.emotion, branch: p.branch, caption: p.caption, punchline: p.punchline, sfx: p.sfx === 'none' ? undefined : p.sfx, punch: p.punch }, actor, options)
           : { code: ApiReturnCode.NOT_FOUND, message: '分鏡不屬於此專案' };
       } else if (p.kind === 'assign_character_to_shot') {
-        r = (await prisma.shot.findFirst({ where: { id: p.shotId, projectId }, select: { id: true } }))
+        r = (p.shotId && (await prisma.shot.findFirst({ where: { id: p.shotId, projectId }, select: { id: true } })))
           ? await assignCharacterToShot(ownerId, p.shotId, p.characterId, actor, options)
           : { code: ApiReturnCode.NOT_FOUND, message: '分鏡不屬於此專案' };
       } else if (p.kind === 'attach_character') {
