@@ -29,7 +29,7 @@ interface EditableShot {
   hasClip?: boolean;
 }
 
-interface ProjectCharLite { characterId: string; character: { name: string } }
+interface ProjectCharLite { characterId: string; roleInStory?: string | null; character: { name: string } }
 
 /**
  * 分鏡編輯／新增 Modal。
@@ -507,7 +507,7 @@ export function ShotEditModal({
                 className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               >
                 <option value="">無（不指派角色）</option>
-                {projectChars.map((pc) => <option key={pc.characterId} value={pc.characterId}>{pc.character.name}</option>)}
+                {projectChars.map((pc) => <option key={pc.characterId} value={pc.characterId}>{pc.character.name}{pc.roleInStory ? ` · ${pc.roleInStory}` : ''}</option>)}
               </select>
             </div>
           ) : null}
