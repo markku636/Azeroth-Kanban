@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { complete, type LlmMessage, type LlmProvider } from '../llm';
 import { buildStoryContext } from '../story-context';
 import { PROPOSAL_SPEC, parseProposals, type Proposal } from './proposals';
+import { tolerantJsonParse } from '../json-tolerant';
 
 // UI 端可選的三個供應商。
 //  - anthropic / vertex：單回合（整個專案現況放進 context）→ 回覆 + 提案。
@@ -58,7 +59,7 @@ async function buildProjectState(projectId: string, scope: OwnerScope): Promise<
 /** 執行一筆 <FETCH> 查詢（read-only，scoped 到本專案 / 本人角色庫）。回傳可讀字串。 */
 async function executeFetch(projectId: string, scope: OwnerScope, raw: string): Promise<string> {
   let action: Record<string, unknown>;
-  try { const j = raw.match(/\{[\s\S]*\}/); action = JSON.parse(j ? j[0] : '{}'); } catch { return '查詢格式錯誤（需 JSON）。'; }
+  try { const j = raw.match(/\{[\s\S]*\}/); action = tolerantJsonParse(j ? j[0] : '{}') as Record<string, unknown>; } catch { return '查詢格式錯誤（需 JSON）。'; }
   if (typeof action.get_shot === 'string') {
     const s = await prisma.shot.findFirst({ where: { id: action.get_shot, projectId } });
     if (!s) return '找不到此分鏡。';

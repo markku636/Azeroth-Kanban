@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { complete } from './llm';
 import { buildStoryContext } from './story-context';
+import { tolerantJsonParse } from './json-tolerant';
 
 // 「YouTube 上架包裝」：把成片題材 + 分鏡內容，產出一份會被點開的社群上架文案
 // （標題 / 縮圖大字 / 說明 / hashtags / 置頂留言）。不落庫，供前端複製貼上。
@@ -95,7 +96,7 @@ export async function generateYouTubeMeta(projectId: string): Promise<YouTubeMet
     const m = text.match(/\{[\s\S]*\}/);
     if (m) {
       try {
-        const meta = normalizeMeta(JSON.parse(m[0]) as Record<string, unknown>);
+        const meta = normalizeMeta(tolerantJsonParse(m[0]) as Record<string, unknown>);
         if (meta.title || meta.description) return meta;
       } catch {
         /* 解析失敗 → 進入下一次重試 */

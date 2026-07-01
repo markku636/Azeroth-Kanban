@@ -5,6 +5,7 @@ import {
   updateStoryBible, createScene, updateScene, createShot, updateShot,
   attachCharacterToProject, assignCharacterToShot,
 } from '@/lib/studio-service';
+import { tolerantJsonParse } from '../json-tolerant';
 
 // 主動 AI Agent 的「提案」（write）型別。Agent 只提案、不直接落庫；使用者審核後才 apply。
 export type Proposal =
@@ -45,7 +46,7 @@ export function parseProposals(text: string): { reply: string; proposals: Propos
   const reply = text.replace(/<PROPOSALS>[\s\S]*?<\/PROPOSALS>/, '').trim();
   if (!m) return { reply: text.trim(), proposals: [] };
   let raw: unknown;
-  try { const j = m[1].match(/\[[\s\S]*\]/); raw = JSON.parse(j ? j[0] : '[]'); } catch { return { reply, proposals: [] }; }
+  try { const j = m[1].match(/\[[\s\S]*\]/); raw = tolerantJsonParse(j ? j[0] : '[]'); } catch { return { reply, proposals: [] }; }
   if (!Array.isArray(raw)) return { reply, proposals: [] };
   const proposals: Proposal[] = [];
   for (const item of raw) {

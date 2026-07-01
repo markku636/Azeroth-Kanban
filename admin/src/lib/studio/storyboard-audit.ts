@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { complete } from './llm';
 import { buildStoryContext } from './story-context';
 import { SHORT_FORM_CRAFT } from './interview';
+import { tolerantJsonParse } from './json-tolerant';
 
 // 「影片健檢」：把目前分鏡當成短影音初稿，用短影音黃金法則做評分 + 具體可執行的改進建議。
 // 唯讀（不改專案），給使用者「這支會不會紅 / 哪裡要改」的回饋閉環。provider 由 LLM_PROVIDER 決定。
@@ -95,7 +96,7 @@ export async function auditStoryboard(projectId: string): Promise<StoryboardAudi
     const m = text.match(/\{[\s\S]*\}/);
     if (m) {
       try {
-        const audit = normalize(JSON.parse(m[0]) as Record<string, unknown>);
+        const audit = normalize(tolerantJsonParse(m[0]) as Record<string, unknown>);
         if (audit.verdict || audit.issues.length) return { ...audit, truncated };
       } catch {
         /* 解析失敗 → 重試 */

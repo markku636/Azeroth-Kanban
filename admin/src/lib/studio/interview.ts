@@ -1,5 +1,8 @@
 import { complete } from './llm';
 import type { StoryContext } from './story-context';
+// 容忍 LLM 尾逗號的 JSON 解析（共用）。stripTrailingCommas re-export 供既有測試沿用。
+import { stripTrailingCommas, tolerantJsonParse } from './json-tolerant';
+export { stripTrailingCommas };
 
 /** 把故事聖經併進 system；preamble 由各函式接在第一則 user 訊息前。 */
 function withStorySystem(base: string, story?: StoryContext): string {
@@ -31,18 +34,6 @@ export interface PlannedShot {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
-}
-
-// LLM（尤其 Gemini）常在陣列/物件最後多一個逗號（`…},]` / `…",}`）→ JSON.parse 直接爆 → 整份生成靜默失敗回空。
-// 移除結構性尾逗號（] } 前、只在字串外）。exported for testing; pure。
-export function stripTrailingCommas(json: string): string {
-  return json.replace(/,(\s*[\]}])/g, '$1');
-}
-
-// 先嚴格 parse（合法 JSON 零風險）；失敗才清尾逗號重試（把常見的 LLM 尾逗號救回來，不硬吞其他錯）。
-function tolerantJsonParse(src: string): unknown {
-  try { return JSON.parse(src); } catch { /* 尾逗號等 → 清理後重試 */ }
-  return JSON.parse(stripTrailingCommas(src)); // 仍失敗則由呼叫端 catch
 }
 
 function normalizeShot(s: unknown): PlannedShot {
