@@ -79,8 +79,8 @@ export const SHOT_FIELDS = `每個分鏡物件欄位：
 - motion：英文運鏡提示
 - emotion：繁中情緒（會用於配音語氣，搞笑片可誇張，如「厭世吐槽」「震驚」「得意」）
 - branch："still"（靜態 Ken-Burns，快）或 "i2v"（動態，慢）
-- caption：可選，繁中「迷因大字幕」標語（setup）；一般敘事片可省略
-- punchline：可選，繁中「反轉下字幕」，會在反轉點彈出
+- caption：可選，繁中「迷因大字幕」標語（setup）；一般敘事片可省略。**要短**（建議 ≤14 字，是滿版大字，太長會被切掉/擠成小字）
+- punchline：可選，繁中「反轉下字幕」，會在反轉點彈出；同樣**要短有力**（建議 ≤14 字，越精煉越有梗）
 - sfx：可選，卡點音效之一 "none"|"vineboom"|"scratch"|"rimshot"|"ding"|"whoosh"|"boing"
 - punch：可選 true/false，此鏡是否為反轉/punchline（觸發放大變焦 + 下字幕彈出）
 - punchAtFrac：可選 0~1，反轉點落在該鏡時長的比例（預設 0.55）
