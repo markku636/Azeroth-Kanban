@@ -54,6 +54,30 @@ export function wrapCjk(text: string, max = 13): string {
   return out.join("\n");
 }
 
+// Split a narration line into short "pop-on" caption segments (highest short-form retention). Breaks at
+// sentence/clause punctuation first, then chunks any long run to <=maxLen; sub-minLen fragments are merged
+// forward so no caption flashes too briefly to read. Soft clause punctuation (，、；：) is trimmed from
+// segment ends for clean chunks; terminal 。！？…!? are kept for reading rhythm. Exported for unit testing; pure.
+export function segmentCaption(text: string, maxLen = 9, minLen = 3): string[] {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  const rawParts = clean.split(/(?<=[。！？…，、；：!?,;:])/).map((p) => p.trim()).filter(Boolean);
+  const pieces: string[] = [];
+  for (const part of rawParts) {
+    const unit = part.replace(/[，、；：,;:]\s*$/, "") || part;
+    if (unit.length <= maxLen) { pieces.push(unit); continue; }
+    let buf = "";
+    for (const ch of unit) { buf += ch; if (buf.length >= maxLen) { pieces.push(buf); buf = ""; } }
+    if (buf) pieces.push(buf);
+  }
+  const segs: string[] = [];
+  for (const p of pieces) {
+    if (segs.length && p.length < minLen) segs[segs.length - 1] += p;
+    else segs.push(p);
+  }
+  return segs.length ? segs : [clean];
+}
+
 function run(bin: string, args: string[]): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve, reject) => {
     const p = spawn(bin, args, { windowsHide: true });
@@ -90,11 +114,13 @@ export function probeHasAudio(path: string): Promise<boolean> {
   });
 }
 
-/** 字幕圖層樣式（專案級可設）。fontSize 絕對像素、color 名稱或 #RRGGBB、position 決定垂直位置。 */
+/** 字幕圖層樣式（專案級可設）。fontSize 絕對像素、color 名稱或 #RRGGBB、position 決定垂直位置。
+ * segment=true → pop-on 動態字幕：把整段旁白切成短句、依語音長度逐句彈出（短影音保留率最高的字幕形式）。 */
 export interface SubStyle {
   fontSize?: number;
   color?: string;
   position?: 'bottom' | 'center' | 'top';
+  segment?: boolean;
 }
 
 // All caption pixel sizes/offsets below were tuned for a 720×1280 (H=1280) canvas. Scaling them by
@@ -134,8 +160,13 @@ const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() === "off"
  * 每一行各自一個 drawtext 並垂直堆疊，**刻意不在單一 textfile 裡放換行** —— ffmpeg 8.x 的 drawtext
  * 會把 textfile 中的換行算成 .notdef 方塊（□）顯示在每行行尾（已實證）。逐行 drawtext 即可避開。
  */
-function subDrawtext(text: string, style: SubStyle | undefined, font: string, canvasH?: number): { filter: string; subFiles: string[] } {
-  const lines = wrapCjk(text).split('\n').filter((l) => l.length > 0);
+function subDrawtext(
+  text: string,
+  style: SubStyle | undefined,
+  font: string,
+  canvasH?: number,
+  timing?: { narrationDur: number; totalDur: number },
+): { filter: string; subFiles: string[] } {
   const s = capScale(canvasH);
   const base = typeof style?.fontSize === 'number' && style.fontSize > 0 ? style.fontSize : 42;
   const fontsize = Math.round(base * s);
@@ -144,30 +175,57 @@ function subDrawtext(text: string, style: SubStyle | undefined, font: string, ca
   const color = (style?.color ?? 'white').replace(/[^#\w@.]/g, '') || 'white'; // 防注入：只留色名/hex 合法字元
   const sh = Math.max(1, Math.round(2 * s)); // 柔和投影位移（等比縮放）：搭配描邊在雜亂背景上更清晰
   const lineH = fontsize + ls;
-  const n = Math.max(1, lines.length);
-  // 整塊字幕的頂端 y（之後每行往下堆 i*lineH）。bottom 以「最後一行」對齊 h-240 底邊距 → 多行往上長、
-  // 底邊距一致（單行 n=1 時 baseTop = h-240，與原本相同＝零回歸；多行不再把首行釘在 h-240 而把整塊往下擠）。
-  const baseTop =
-    style?.position === 'top'
-      ? `${Math.round(180 * s)}`
-      : style?.position === 'center'
-        ? `(h-${n * lineH})/2`
-        : `h-${Math.round(240 * s) + (n - 1) * lineH}`;
   const subFiles: string[] = [];
-  const filters = lines.map((ln, i) => {
-    const f = join(tmpdir(), `sub_${randomUUID()}.txt`);
-    writeFileSync(f, ln, 'utf8');
-    subFiles.push(f);
-    const y = `${baseTop}+${i * lineH}`;
-    return (
-      `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
-      `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
-      `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
-      // gentle 0.35s alpha fade-in so the narration subtitle glides in rather than popping (commas escaped)
-      `x=(w-text_w)/2:y=${y}:alpha='if(lt(t\\,0.35)\\,t/0.35\\,1)'`
-    );
-  });
-  return { filter: filters.join(','), subFiles };
+
+  // 把一組（已 wrap 的）行畫在 bottom/center/top 錨點；enable=顯示時間窗（空=全程）、fadeExpr=alpha 表達式。
+  // bottom 以「最後一行」對齊底邊距 → 多行往上長、底邊距一致（單行時與原本相同＝零回歸）。
+  const renderGroup = (lines: string[], enable: string, fadeExpr: string): string[] => {
+    const n = Math.max(1, lines.length);
+    const baseTop =
+      style?.position === 'top'
+        ? `${Math.round(180 * s)}`
+        : style?.position === 'center'
+          ? `(h-${n * lineH})/2`
+          : `h-${Math.round(240 * s) + (n - 1) * lineH}`;
+    return lines.map((ln, i) => {
+      const f = join(tmpdir(), `sub_${randomUUID()}.txt`);
+      writeFileSync(f, ln, 'utf8');
+      subFiles.push(f);
+      const y = `${baseTop}+${i * lineH}`;
+      return (
+        `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
+        `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
+        `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
+        `x=(w-text_w)/2:y=${y}${enable}:alpha='${fadeExpr}'`
+      );
+    });
+  };
+
+  // Pop-on 動態逐句字幕：把整段旁白切成短句、依語音長度逐句彈出（每句只在自己的時間窗顯示，quick 0.12s 彈入）。
+  // 短影音保留率最高的字幕形式。需要 timing（語音長度）才能對齊；否則退回整段模式（向後相容）。
+  if (style?.segment && timing && timing.narrationDur > 0) {
+    const segs = segmentCaption(text);
+    if (segs.length > 1) {
+      const totalChars = segs.reduce((a, b) => a + b.length, 0) || 1;
+      const filters: string[] = [];
+      let acc = 0;
+      for (let i = 0; i < segs.length; i++) {
+        const start = (acc / totalChars) * timing.narrationDur;
+        acc += segs[i].length;
+        // 最後一句撐到片尾（含 pad 尾巴）→ 停頓時字不會消失
+        const end = i === segs.length - 1 ? timing.totalDur + 1 : (acc / totalChars) * timing.narrationDur;
+        const lines = wrapCjk(segs[i], 11).split('\n').filter((l) => l.length > 0);
+        const enable = `:enable='between(t\\,${start.toFixed(2)}\\,${end.toFixed(2)})'`;
+        const fadeExpr = `if(lt(t-${start.toFixed(2)}\\,0.12)\\,(t-${start.toFixed(2)})/0.12\\,1)`;
+        filters.push(...renderGroup(lines, enable, fadeExpr));
+      }
+      return { filter: filters.join(','), subFiles };
+    }
+  }
+
+  // 預設：整段字幕全程顯示，柔和 0.35s alpha 淡入（零回歸）
+  const lines = wrapCjk(text).split('\n').filter((l) => l.length > 0);
+  return { filter: renderGroup(lines, '', `if(lt(t\\,0.35)\\,t/0.35\\,1)`).join(','), subFiles };
 }
 
 /**
@@ -249,7 +307,7 @@ export class Compositor {
     let subFiles: string[] = [];
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
-      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
+      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
 
     // Always carry an audio track (voice, or a silent bed when there's none) so every clip is a
@@ -363,7 +421,7 @@ export class Compositor {
     let subFiles: string[] = [];
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
-      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
+      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
     if (o.voice) args.push("-i", o.voice);
