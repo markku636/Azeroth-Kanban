@@ -21,6 +21,9 @@ interface BibleResp {
 const FIELDS = ['description', 'premise', 'logline', 'worldSetting', 'styleGuide', 'tone', 'genre', 'targetAudience', 'bibleNotes'] as const;
 type FieldKey = (typeof FIELDS)[number];
 
+// pop-on 預覽的示範短句（循環播放，模擬逐句彈出）
+const POP_SAMPLE = ['這顆球', '我收了', '三十年', '終於派上用場'] as const;
+
 export default function StoryPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
@@ -78,6 +81,14 @@ export default function StoryPage() {
   }, [projectId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  // pop-on 預覽動畫：字幕預覽在 segment 開啟時循環示範短句，讓使用者實際看到「逐句彈出」的效果。
+  const [previewIdx, setPreviewIdx] = useState(0);
+  useEffect(() => {
+    if (!sub.segment) { setPreviewIdx(0); return; }
+    const t = setInterval(() => setPreviewIdx((i) => (i + 1) % POP_SAMPLE.length), 900);
+    return () => clearInterval(t);
+  }, [sub.segment]);
 
   // AI 助手套用提案後重載故事設定。
   useEffect(() => {
@@ -313,7 +324,7 @@ export default function StoryPage() {
         <div className="mt-3">
           <div className="mb-1 text-xs text-gray-400">預覽{sub.segment ? '（實際會逐句彈出）' : ''}</div>
           <div className={`flex h-28 overflow-hidden rounded bg-gray-800 px-3 ${sub.position === 'top' ? 'items-start pt-2' : sub.position === 'center' ? 'items-center' : 'items-end pb-2'} justify-center`}>
-            <span style={{ fontSize: Math.max(10, Math.min(30, sub.fontSize * 0.35)), color: sub.color, textShadow: '0 0 2px #000,0 0 2px #000,0 0 2px #000', backgroundColor: sub.plate ? 'rgba(0,0,0,0.5)' : undefined, padding: sub.plate ? '2px 8px' : undefined, borderRadius: sub.plate ? 4 : undefined }} className="text-center font-medium leading-tight">{sub.segment ? '逐句彈出' : '這是旁白字幕預覽'}</span>
+            <span key={sub.segment ? previewIdx : 'static'} style={{ fontSize: Math.max(10, Math.min(30, sub.fontSize * 0.35)), color: sub.color, textShadow: '0 0 2px #000,0 0 2px #000,0 0 2px #000', backgroundColor: sub.plate ? 'rgba(0,0,0,0.5)' : undefined, padding: sub.plate ? '2px 8px' : undefined, borderRadius: sub.plate ? 4 : undefined }} className="animate-in fade-in zoom-in-95 duration-200 text-center font-medium leading-tight">{sub.segment ? POP_SAMPLE[previewIdx] : '這是旁白字幕預覽'}</span>
           </div>
         </div>
       </section>
