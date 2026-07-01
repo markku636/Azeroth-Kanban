@@ -217,8 +217,9 @@ function subDrawtext(
   const subFiles: string[] = [];
 
   // 把一組（已 wrap 的）行畫在 bottom/center/top 錨點；enable=顯示時間窗（空=全程）、fadeExpr=alpha 表達式。
-  // bottom 以「最後一行」對齊底邊距 → 多行往上長、底邊距一致（單行時與原本相同＝零回歸）。
-  const renderGroup = (lines: string[], enable: string, fadeExpr: string): string[] => {
+  // yAnim=可選的 y 動畫項（pop-on 用來做「滑入」kinetic 進場）；空字串時 y 維持不加引號＝與原本 byte-identical（零回歸）。
+  // bottom 以「最後一行」對齊底邊距 → 多行往上長、底邊距一致（單行時與原本相同）。
+  const renderGroup = (lines: string[], enable: string, fadeExpr: string, yAnim = ''): string[] => {
     const n = Math.max(1, lines.length);
     const baseTop =
       style?.position === 'top'
@@ -231,26 +232,33 @@ function subDrawtext(
       writeFileSync(f, ln, 'utf8');
       subFiles.push(f);
       const y = `${baseTop}+${i * lineH}`;
+      // yAnim 含逗號的表達式 → 用單引號包起來保護（免被當 filter 選項分隔）；無動畫時維持原本不加引號。
+      const yExpr = yAnim ? `'${y}${yAnim}'` : y;
       return (
         `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
         `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
         `${plate}shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
-        `x=(w-text_w)/2:y=${y}${enable}:alpha='${fadeExpr}'`
+        `x=(w-text_w)/2:y=${yExpr}${enable}:alpha='${fadeExpr}'`
       );
     });
   };
 
-  // Pop-on 動態逐句字幕：把整段旁白切成短句、依語音長度逐句彈出（每句只在自己的時間窗顯示，quick 0.12s 彈入）。
-  // 短影音保留率最高的字幕形式。需要 timing（語音長度）才能對齊；否則退回整段模式（向後相容）。
+  // Pop-on 動態逐句字幕：把整段旁白切成短句、依語音長度逐句彈出（每句只在自己的時間窗顯示）。
+  // kinetic 進場＝0.12s alpha 淡入 ＋ 由下往上 ~22px 滑入（0.18s 內回位）＝現代短影音動態字幕觀感（研究：kinetic
+  // typography 提升保留率）。短影音保留率最高的字幕形式。需要 timing（語音長度）才能對齊；否則退回整段模式。
   if (style?.segment && timing && timing.narrationDur > 0) {
     const segs = segmentCaption(text);
     if (segs.length > 1) {
+      const rise = Math.round(22 * s);
       const filters: string[] = [];
       for (const { seg, start, end } of captionSegmentTimings(segs, timing.narrationDur, timing.totalDur)) {
         const lines = wrapCjk(seg, 11).split('\n').filter((l) => l.length > 0);
-        const enable = `:enable='between(t\\,${start.toFixed(2)}\\,${end.toFixed(2)})'`;
-        const fadeExpr = `if(lt(t-${start.toFixed(2)}\\,0.12)\\,(t-${start.toFixed(2)})/0.12\\,1)`;
-        filters.push(...renderGroup(lines, enable, fadeExpr));
+        const st = start.toFixed(2);
+        const enable = `:enable='between(t\\,${st}\\,${end.toFixed(2)})'`;
+        const fadeExpr = `if(lt(t-${st}\\,0.12)\\,(t-${st})/0.12\\,1)`;
+        // 由 +rise（畫面偏下）在 0.18s 內滑回 0；逗號在 max() 內，靠 yExpr 的單引號保護。
+        const yAnim = `+${rise}*max(0,1-(t-${st})/0.18)`;
+        filters.push(...renderGroup(lines, enable, fadeExpr, yAnim));
       }
       return { filter: filters.join(','), subFiles };
     }
