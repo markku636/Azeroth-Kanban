@@ -78,6 +78,24 @@ export function segmentCaption(text: string, maxLen = 9, minLen = 3): string[] {
   return segs.length ? segs : [clean];
 }
 
+// Distribute pop-on caption segments across the narration timeline, proportional to each segment's
+// character count (≈ speech time). The last segment holds through the tail pad (end = totalDur + 1) so
+// text doesn't vanish during the trailing pause. Exported for unit testing; pure.
+export function captionSegmentTimings(
+  segs: string[], narrationDur: number, totalDur: number,
+): { seg: string; start: number; end: number }[] {
+  const totalChars = segs.reduce((a, b) => a + b.length, 0) || 1;
+  const out: { seg: string; start: number; end: number }[] = [];
+  let acc = 0;
+  for (let i = 0; i < segs.length; i++) {
+    const start = (acc / totalChars) * narrationDur;
+    acc += segs[i].length;
+    const end = i === segs.length - 1 ? totalDur + 1 : (acc / totalChars) * narrationDur;
+    out.push({ seg: segs[i], start, end });
+  }
+  return out;
+}
+
 function run(bin: string, args: string[]): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve, reject) => {
     const p = spawn(bin, args, { windowsHide: true });
@@ -227,15 +245,9 @@ function subDrawtext(
   if (style?.segment && timing && timing.narrationDur > 0) {
     const segs = segmentCaption(text);
     if (segs.length > 1) {
-      const totalChars = segs.reduce((a, b) => a + b.length, 0) || 1;
       const filters: string[] = [];
-      let acc = 0;
-      for (let i = 0; i < segs.length; i++) {
-        const start = (acc / totalChars) * timing.narrationDur;
-        acc += segs[i].length;
-        // 最後一句撐到片尾（含 pad 尾巴）→ 停頓時字不會消失
-        const end = i === segs.length - 1 ? timing.totalDur + 1 : (acc / totalChars) * timing.narrationDur;
-        const lines = wrapCjk(segs[i], 11).split('\n').filter((l) => l.length > 0);
+      for (const { seg, start, end } of captionSegmentTimings(segs, timing.narrationDur, timing.totalDur)) {
+        const lines = wrapCjk(seg, 11).split('\n').filter((l) => l.length > 0);
         const enable = `:enable='between(t\\,${start.toFixed(2)}\\,${end.toFixed(2)})'`;
         const fadeExpr = `if(lt(t-${start.toFixed(2)}\\,0.12)\\,(t-${start.toFixed(2)})/0.12\\,1)`;
         filters.push(...renderGroup(lines, enable, fadeExpr));

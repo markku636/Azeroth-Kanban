@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { wrapCjk, escDrawtext, segmentCaption } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings } from './assemble';
 
 // 字幕 CJK 軟換行：避免單行寬過畫面；句末標點提早斷行讓字幕更好讀。
 describe('wrapCjk', () => {
@@ -60,6 +60,35 @@ describe('segmentCaption（pop-on 逐句字幕切句）', () => {
     const joined = segmentCaption(text).join('');
     expect(joined).toContain('直到今天');
     expect(joined).toContain('牠根本不是皮卡丘。');
+  });
+});
+
+// pop-on 逐句字幕的時間分配：依字數比例排在語音時間軸上，最後一句撐到片尾。
+describe('captionSegmentTimings（pop-on 時間分配）', () => {
+  it('第一句從 0 開始、各句依序不重疊', () => {
+    const t = captionSegmentTimings(['三十年了', '我才發現真相'], 6, 6.45);
+    expect(t[0].start).toBe(0);
+    expect(t[0].end).toBeCloseTo(t[1].start, 5); // 前一句結束 = 下一句開始
+    expect(t[1].start).toBeGreaterThan(t[0].start);
+  });
+
+  it('最後一句撐到片尾 + 1（停頓時字不消失）', () => {
+    const t = captionSegmentTimings(['a', 'bb', 'ccc'], 5, 5.4);
+    expect(t[t.length - 1].end).toBe(6.4);
+  });
+
+  it('時間比例正比於字數', () => {
+    // 字數 2 : 6 → 第一句佔 narrationDur 的 1/4
+    const t = captionSegmentTimings(['aa', 'bbbbbb'], 8, 8.5);
+    expect(t[0].end).toBeCloseTo(2, 5); // 2/8 * 8
+    expect(t[1].start).toBeCloseTo(2, 5);
+  });
+
+  it('單句：從 0 到片尾+1', () => {
+    const t = captionSegmentTimings(['只有一句'], 4, 4.4);
+    expect(t).toHaveLength(1);
+    expect(t[0].start).toBe(0);
+    expect(t[0].end).toBe(5.4);
   });
 });
 
