@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings } from './assemble';
+import { unlinkSync } from 'node:fs';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext } from './assemble';
+
+// helper: run subDrawtext, clean up its temp files, return the filter string
+function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
+  const { filter, subFiles } = subDrawtext(text, style, 'C:/f.ttf', 1280, timing);
+  for (const f of subFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
+  return filter;
+}
 
 // 字幕 CJK 軟換行：避免單行寬過畫面；句末標點提早斷行讓字幕更好讀。
 describe('wrapCjk', () => {
@@ -89,6 +97,36 @@ describe('captionSegmentTimings（pop-on 時間分配）', () => {
     expect(t).toHaveLength(1);
     expect(t[0].start).toBe(0);
     expect(t[0].end).toBe(5.4);
+  });
+});
+
+// 字幕 drawtext filter 合約：預設整段（零回歸）／底板 box／pop-on 逐句時間窗＋kinetic 滑入。
+describe('subDrawtext filter 合約', () => {
+  it('預設（無 segment）：整段一次顯示、0.35s 淡入、y 不加引號、無底板', () => {
+    const f = filterOf('這是一句旁白', { fontSize: 42, color: 'white' });
+    expect(f).toContain('drawtext=');
+    expect(f).toContain("alpha='if(lt(t\\,0.35)\\,t/0.35\\,1)'"); // 整段淡入
+    expect(f).not.toContain('box=1'); // 預設無底板
+    expect(f).not.toContain('between(t'); // 預設無逐句時間窗
+  });
+
+  it('plate=true：加半透明底板 box', () => {
+    const f = filterOf('忙背景字幕', { color: 'white', plate: true });
+    expect(f).toContain('box=1:boxcolor=black@0.5');
+  });
+
+  it('segment + timing：逐句 enable 時間窗 + kinetic 滑入(max) + 引號包住 y', () => {
+    const f = filterOf('三十年了，我才發現真相。', { segment: true }, { narrationDur: 4, totalDur: 4.4 });
+    // 多句 → 多個 drawtext，各有 between() 時間窗
+    expect(f.match(/enable='between\(t/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(f).toContain('max(0,1-'); // kinetic 由下滑入
+    expect(f).toContain("y='"); // 含逗號的 y 表達式用引號保護
+  });
+
+  it('segment 但只有一段（無法切多句）→ 退回整段模式（零回歸）', () => {
+    const f = filterOf('好', { segment: true }, { narrationDur: 2, totalDur: 2.4 });
+    expect(f).not.toContain('between(t'); // 單段 → 走整段淡入路徑
+    expect(f).toContain("alpha='if(lt(t\\,0.35)");
   });
 });
 

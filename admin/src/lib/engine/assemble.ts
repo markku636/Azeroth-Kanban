@@ -197,7 +197,9 @@ const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() === "off"
  * 每一行各自一個 drawtext 並垂直堆疊，**刻意不在單一 textfile 裡放換行** —— ffmpeg 8.x 的 drawtext
  * 會把 textfile 中的換行算成 .notdef 方塊（□）顯示在每行行尾（已實證）。逐行 drawtext 即可避開。
  */
-function subDrawtext(
+// exported for unit testing (asserts the drawtext filter contract: plate box / pop-on enable windows /
+// kinetic slide). Writes per-line temp files as a side effect — callers/tests unlink the returned subFiles.
+export function subDrawtext(
   text: string,
   style: SubStyle | undefined,
   font: string,
