@@ -121,6 +121,8 @@ export interface SubStyle {
   color?: string;
   position?: 'bottom' | 'center' | 'top';
   segment?: boolean;
+  /** plate=true → 字幕後加半透明底板（box），雜亂/高亮背景上更好讀。預設關＝零回歸。 */
+  plate?: boolean;
 }
 
 // All caption pixel sizes/offsets below were tuned for a 720×1280 (H=1280) canvas. Scaling them by
@@ -174,6 +176,8 @@ function subDrawtext(
   const ls = Math.round(12 * s);
   const color = (style?.color ?? 'white').replace(/[^#\w@.]/g, '') || 'white'; // 防注入：只留色名/hex 合法字元
   const sh = Math.max(1, Math.round(2 * s)); // 柔和投影位移（等比縮放）：搭配描邊在雜亂背景上更清晰
+  // 可選半透明底板：雜亂/高亮背景上大幅提升可讀性。box 用文字外框寬度當內距（boxborderw）。預設關＝零回歸。
+  const plate = style?.plate ? `box=1:boxcolor=black@0.5:boxborderw=${Math.max(8, Math.round(16 * s))}:` : '';
   const lineH = fontsize + ls;
   const subFiles: string[] = [];
 
@@ -195,7 +199,7 @@ function subDrawtext(
       return (
         `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
         `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
-        `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
+        `${plate}shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:` +
         `x=(w-text_w)/2:y=${y}${enable}:alpha='${fadeExpr}'`
       );
     });

@@ -33,7 +33,7 @@ export default function StoryPage() {
   const [loading, setLoading] = useState(true);
   const [pickId, setPickId] = useState('');
   const [pickRole, setPickRole] = useState('');
-  const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false });
+  const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -68,8 +68,8 @@ export default function StoryPage() {
       const pJson = await pRes.json().catch(() => ({}));
       if (pRes.ok && pJson.data) {
         setTitle(pJson.data.title ?? '');
-        const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean } | null;
-        if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true });
+        const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean } | null;
+        if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true });
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -95,7 +95,7 @@ export default function StoryPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '儲存失敗'); }
   };
 
-  const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean }) => {
+  const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean; plate: boolean }) => {
     setSub(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtitleStyle: next }) });
   };
@@ -270,7 +270,7 @@ export default function StoryPage() {
                 key={label}
                 type="button"
                 aria-pressed={active}
-                onClick={() => saveSub({ ...preset, segment: sub.segment })}
+                onClick={() => saveSub({ ...preset, segment: sub.segment, plate: sub.plate })}
                 className={`rounded border px-2 py-0.5 ${active ? 'border-blue-400 bg-blue-50 font-medium text-blue-700 ring-1 ring-blue-300 dark:bg-blue-950/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-white dark:border-gray-300 dark:hover:bg-gray-200'}`}
               >
                 {label}
@@ -303,10 +303,17 @@ export default function StoryPage() {
             ：把整段旁白切成短句，跟著語音逐句彈出（而非整段停在畫面）。短影音保留率最高的字幕形式，建議開啟。
           </span>
         </label>
+        <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
+          <input type="checkbox" checked={sub.plate} onChange={(e) => saveSub({ ...sub, plate: e.target.checked })} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600">
+            <span className="font-medium text-gray-700">字幕底板</span>
+            ：字幕後加半透明黑底，雜亂或高亮背景（戶外、白牆、天空）上更好讀。乾淨背景可關閉。
+          </span>
+        </label>
         <div className="mt-3">
           <div className="mb-1 text-xs text-gray-400">預覽{sub.segment ? '（實際會逐句彈出）' : ''}</div>
           <div className={`flex h-28 overflow-hidden rounded bg-gray-800 px-3 ${sub.position === 'top' ? 'items-start pt-2' : sub.position === 'center' ? 'items-center' : 'items-end pb-2'} justify-center`}>
-            <span style={{ fontSize: Math.max(10, Math.min(30, sub.fontSize * 0.35)), color: sub.color, textShadow: '0 0 2px #000,0 0 2px #000,0 0 2px #000' }} className="text-center font-medium leading-tight">{sub.segment ? '逐句彈出' : '這是旁白字幕預覽'}</span>
+            <span style={{ fontSize: Math.max(10, Math.min(30, sub.fontSize * 0.35)), color: sub.color, textShadow: '0 0 2px #000,0 0 2px #000,0 0 2px #000', backgroundColor: sub.plate ? 'rgba(0,0,0,0.5)' : undefined, padding: sub.plate ? '2px 8px' : undefined, borderRadius: sub.plate ? 4 : undefined }} className="text-center font-medium leading-tight">{sub.segment ? '逐句彈出' : '這是旁白字幕預覽'}</span>
           </div>
         </div>
       </section>

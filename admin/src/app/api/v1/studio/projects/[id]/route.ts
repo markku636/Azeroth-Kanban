@@ -57,7 +57,7 @@ export const PATCH = withPermission(
           aspect: str(body.aspect),
           fps: typeof body.fps === 'number' ? body.fps : undefined,
           bgmGain: typeof body.bgmGain === 'number' ? body.bgmGain : undefined,
-          subtitleStyle: body.subtitleStyle && typeof body.subtitleStyle === 'object' ? (body.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean }) : undefined,
+          subtitleStyle: body.subtitleStyle && typeof body.subtitleStyle === 'object' ? (body.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean }) : undefined,
         },
         buildActor(session, request),
         { bypassOwnership: bypass },

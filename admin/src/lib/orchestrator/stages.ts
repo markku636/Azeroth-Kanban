@@ -120,7 +120,7 @@ async function projectDims(projectId: string): Promise<{ kfW: number; kfH: numbe
 /** 讀專案字幕圖層樣式（fontSize/color/position）；無設定回 undefined（走引擎預設）。 */
 async function projectSubStyle(projectId: string): Promise<SubStyle | undefined> {
   const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true } });
-  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown } | null;
+  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown } | null;
   if (!s || typeof s !== 'object') return undefined;
   const pos = s.position;
   return {
@@ -128,6 +128,7 @@ async function projectSubStyle(projectId: string): Promise<SubStyle | undefined>
     color: typeof s.color === 'string' ? s.color : undefined,
     position: pos === 'top' || pos === 'center' || pos === 'bottom' ? pos : undefined,
     segment: s.segment === true,
+    plate: s.plate === true,
   };
 }
 
