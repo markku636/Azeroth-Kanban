@@ -103,6 +103,23 @@ export function probeDuration(path: string): Promise<number> {
   });
 }
 
+/**
+ * Trim leading & trailing silence from a voice clip (keeps internal pauses) so cuts feel tight, the
+ * hook lands faster, and pop-on captions sync to actual speech. Conservative −45 dB peak threshold so
+ * it strips true digital silence without clipping soft speech onsets/breaths (verified: first-150ms
+ * loudness rises or holds, never drops). Writes outPath; returns the trimmed duration, or 0 on failure.
+ */
+export async function trimSilence(inPath: string, outPath: string): Promise<number> {
+  const af =
+    "silenceremove=start_periods=1:start_threshold=-45dB:start_duration=0.02:detection=peak," +
+    "areverse," +
+    "silenceremove=start_periods=1:start_threshold=-45dB:start_duration=0.02:detection=peak," +
+    "areverse";
+  const { code } = await run(FFMPEG, ["-y", "-i", inPath, "-af", af, outPath]);
+  if (code !== 0) return 0;
+  try { return await probeDuration(outPath); } catch { return 0; }
+}
+
 /** True if the file has at least one audio stream. */
 export function probeHasAudio(path: string): Promise<boolean> {
   return new Promise((resolve) => {
