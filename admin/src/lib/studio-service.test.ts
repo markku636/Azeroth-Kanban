@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('@/lib/prisma', () => ({
   prisma: { studioProject: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() } },
 }));
+vi.mock('@/lib/audit-log-service', () => ({ createAuditLog: vi.fn() }));
 
 import { updateProject, createProject } from './studio-service';
 import { prisma } from '@/lib/prisma';
@@ -67,5 +68,19 @@ describe('createProject 標題驗證（DB 之前）', () => {
     const r = await createProject('owner', { title: 'x'.repeat(121) });
     expect(r.code).toBe(ApiReturnCode.VALIDATION_ERROR);
     expect(prisma.studioProject.create).not.toHaveBeenCalled();
+  });
+
+  it('新專案預設 Pop-on 逐句字幕 + 底板 + 1080p 高品質（短影音最佳預設）', async () => {
+    const now = new Date();
+    vi.mocked(prisma.studioProject.create as any).mockResolvedValue({
+      id: 'p1', title: '片', description: null, logline: null, status: 'interview',
+      aspect: '9:16', fps: 30, renderQuality: 'high', bgmPath: null, bgmGain: null,
+      subtitleStyle: { segment: true, plate: true }, createdAt: now, updatedAt: now,
+    });
+    const r = await createProject('owner', { title: '片' });
+    expect(r.code).toBe(0);
+    const arg = vi.mocked(prisma.studioProject.create as any).mock.calls[0][0];
+    expect(arg.data.subtitleStyle).toEqual({ segment: true, plate: true });
+    expect(arg.data.renderQuality).toBe('high');
   });
 });

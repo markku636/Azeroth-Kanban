@@ -165,6 +165,9 @@ export async function createProject(
         aspect: input.aspect ?? '9:16',
         fps: input.fps ?? 30,
         renderQuality: 'high', // 新專案預設高品質(1080p)；既有專案(null) 視為 standard 以零回歸
+        // 新專案預設「Pop-on 逐句字幕 + 底板」——短影音保留率最高的字幕形式（研究 +12–25% 觀看時長），
+        // 對本 app 的短影音用途是最佳預設。既有專案 subtitleStyle 不受影響（null → 引擎預設整段模式）。
+        subtitleStyle: { segment: true, plate: true },
         status: 'interview',
         ownerId,
       },
