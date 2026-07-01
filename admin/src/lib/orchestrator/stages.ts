@@ -4,7 +4,7 @@
 // Reads intent from the DB (so user edits + uploaded reference images are honoured) and writes artifacts
 // to studio_storage; mirrors graph.ts's per-shot branch logic and assemble.
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync, copyFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Shot } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -334,12 +334,13 @@ export async function generateVoice(shot: Shot, projectId: string): Promise<stri
   // 去掉旁白前後的靜音（保留句中停頓）→ 卡點更緊、鉤子更快到、pop-on 字幕更貼齊真實語音。
   // 安全網：只在有實際削減、且削後仍保留 ≥55% 原長（避免異常過削整段）時才替換；否則保留原檔。可用 STUDIO_TRIM_SILENCE=off 關閉。
   if ((process.env.STUDIO_TRIM_SILENCE ?? 'on').toLowerCase() !== 'off') {
+    const tmp = join(dir, 'voice_trim.wav');
     try {
       const raw0 = await probeDuration(p);
-      const tmp = join(dir, 'voice_trim.wav');
       const d1 = await trimSilence(p, tmp);
       if (d1 > 0.1 && raw0 > 0 && d1 < raw0 - 0.03 && d1 >= raw0 * 0.55) copyFileSync(tmp, p);
     } catch { /* 保留原始配音 */ }
+    try { unlinkSync(tmp); } catch { /* 沒產生暫存檔就略過 */ } // 不留下 voice_trim.wav 殘檔
   }
   await prisma.shot.update({ where: { id: shot.id }, data: { voiceWav: p, status: 'VOICE' } });
   await publishProgress({ projectId, shotId: shot.id, stage: 'voice', status: 'done' });
