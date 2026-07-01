@@ -41,9 +41,13 @@ export async function suggestShots(projectId: string, input: SuggestInput): Prom
   if (story.preamble) lines.push(story.preamble, '');
   lines.push(`專案標題：「${project?.title ?? ''}」`);
   if (existing.length) {
-    lines.push('', '目前已有的分鏡（依序，請延續其角色、風格與故事）：');
+    lines.push('', '目前已有的分鏡（依序，請延續其角色外觀錨點、畫風與故事）：');
     for (const s of existing) {
-      const desc = (s.caption || s.visual || s.tts || '').toString().trim().slice(0, 120);
+      // 以 visual 領頭：它帶著角色外觀錨點與畫風結尾詞，是「延續角色/風格」最關鍵的線索；
+      // 再附一小段 caption/tts 交代劇情節拍（喜劇鏡有 caption 時原本會蓋掉 visual → 角色/畫風會飄）。
+      const vis = (s.visual ?? '').toString().trim().slice(0, 110);
+      const beat = (s.caption ?? s.tts ?? '').toString().trim().slice(0, 30);
+      const desc = [vis, beat].filter(Boolean).join(' ／ ');
       lines.push(`#${s.shotNo} ${desc}`);
     }
   } else {
