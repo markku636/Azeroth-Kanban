@@ -32,6 +32,7 @@ export const PROPOSAL_SPEC = `當你要建立或修改專案資料時，**不要
 - {"kind":"update_shot","summary":"...","shotId":"<現有分鏡id>", 其餘同 create_shot 的可改欄位}
 - {"kind":"assign_character_to_shot","summary":"...","shotId":"<分鏡id>","characterId":"<角色id或null>"}
 - {"kind":"attach_character","summary":"...","characterId":"<角色庫角色id>","roleInStory":"主角(可省)"}
+建立/修改分鏡的 **visual 撰寫規則**（與分鏡導演同標準）：① 精煉英文 SDXL（約 25–35 字詞）；② 有固定主角時每鏡都用同一組外觀錨點＋1–2 個獨特識別特徵（痣/疤/配件）＝人物一致；③ 全片用同一組畫風結尾詞（畫風＋色調）＝畫風一致；④ **不要要求畫面內出現可讀文字/招牌字**（SDXL 會亂碼）——招牌只描述顏色/發光/風格，文案放 caption/punchline；⑤ caption/punchline 要短（≤14 字，滿版大字才放得下）。
 規則：sceneId/shotId/characterId 一律用下方〈專案現況〉提供的真實 id；沒有要改資料時就不要放 <PROPOSALS> 區塊。產出必須與〈故事聖經〉一致。`;
 
 function pick<T extends Record<string, unknown>>(o: T, keys: string[]): Record<string, string> {
