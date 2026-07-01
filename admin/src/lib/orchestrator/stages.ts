@@ -535,11 +535,24 @@ export async function assembleScene(projectId: string, sceneId: string): Promise
 export async function runKeyframesStage(projectId: string, shotIds?: string[]): Promise<void> {
   const shots = await loadTargets(projectId, shotIds);
   await publishProgress({ projectId, stage: 'plan', message: `生成圖片 ${shots.length} 鏡` });
+  // 逐鏡容錯：單一鏡失敗（ComfyUI 暫斷/壞 prompt）不該讓整批停擺、後面的鏡全沒生。完成能完成的、記下失敗的，
+  // 使用者再用「批次→選未生圖」只補失敗那幾鏡即可（降低重試成本）。全部失敗才 throw（＝ComfyUI 沒開之類）。
+  const failed: number[] = [];
   for (const s of shots) {
-    await generateKeyframe(s, projectId);
-    await freeComfy();
+    try {
+      await generateKeyframe(s, projectId);
+    } catch (e) {
+      failed.push(s.shotNo);
+      await publishProgress({ projectId, shotId: s.id, stage: 'keyframe', status: 'error', message: `鏡 ${s.shotNo} 生圖失敗：${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      await freeComfy();
+    }
   }
-  await publishProgress({ projectId, stage: 'keyframes-done', message: `${shots.length} 張關鍵幀已生成` });
+  if (shots.length > 0 && failed.length === shots.length) throw new Error(`全部 ${shots.length} 鏡生圖失敗（可能 ComfyUI 未啟動）`);
+  const msg = failed.length
+    ? `${shots.length - failed.length}/${shots.length} 張關鍵幀完成；鏡 ${failed.join(', ')} 失敗，可用「批次→選未生圖」只重生這幾鏡`
+    : `${shots.length} 張關鍵幀已生成`;
+  await publishProgress({ projectId, stage: 'keyframes-done', message: msg });
 }
 
 /**
@@ -555,13 +568,23 @@ export async function runRenderStage(projectId: string, shotIds?: string[], scen
       ? await prisma.shot.findMany({ where: { projectId, sceneId }, orderBy: { sortOrder: 'asc' } })
       : await loadTargets(projectId);
   await publishProgress({ projectId, sceneId, stage: 'plan', message: `生成影片 ${shots.length} 鏡` });
+  // 逐鏡容錯：單一鏡失敗不該讓整批停擺、連 assemble 都不跑（那樣連部分成片都拿不到）。完成能完成的，
+  // 之後仍組裝（assemble 以 existsSync 過濾已產出的片段）→ 至少拿到部分成片；補生失敗的鏡再重生即完整。
+  const failed: number[] = [];
   for (const s of shots) {
-    let cur = s;
-    if (!cur.keyframePath) { await generateKeyframe(cur, projectId); await freeComfy(); cur = await reget(s.id); }
-    await generateVoice(cur, projectId); cur = await reget(s.id); // 重生配音以反映台詞編輯
-    await generateVideo(cur, projectId);
-    await freeComfy();
+    try {
+      let cur = s;
+      if (!cur.keyframePath) { await generateKeyframe(cur, projectId); await freeComfy(); cur = await reget(s.id); }
+      await generateVoice(cur, projectId); cur = await reget(s.id); // 重生配音以反映台詞編輯
+      await generateVideo(cur, projectId);
+    } catch (e) {
+      failed.push(s.shotNo);
+      await publishProgress({ projectId, sceneId, shotId: s.id, stage: 'video', status: 'error', message: `鏡 ${s.shotNo} 生片失敗：${e instanceof Error ? e.message : String(e)}` });
+    } finally {
+      await freeComfy();
+    }
   }
+  if (shots.length > 0 && failed.length === shots.length) throw new Error(`全部 ${shots.length} 鏡生片失敗（可能 ComfyUI／TTS 未啟動）`);
   if (sceneId) await assembleScene(projectId, sceneId);
   else await assembleProject(projectId);
 }
