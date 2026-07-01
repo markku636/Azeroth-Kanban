@@ -405,7 +405,7 @@ export default function StoryboardPage() {
       lastEventRef.current = Date.now(); // 有進度就餵看門狗（自動解除停滯提示）
       if (e.shotId) setShotProg((p) => ({ ...p, [e.shotId as string]: { stage: e.stage, pct: e.pct, status: e.status } }));
       if (e.stage === 'plan') setOverall('規劃中…');
-      else if (e.stage === 'keyframes-done') { setOverall('圖片已生成 ✅，檢視後可生成影片'); setGen('idle'); toast.success('關鍵幀已生成 🖼'); flashTitle('✅ 圖片已生成 — 影片工作室'); void load(); }
+      else if (e.stage === 'keyframes-done') { const partFail = !!e.message && e.message.includes('失敗'); setOverall(e.message ?? '圖片已生成 ✅，檢視後可生成影片'); setGen('idle'); if (partFail) toast.error(e.message as string); else toast.success('關鍵幀已生成 🖼'); flashTitle(partFail ? '⚠ 圖片部分失敗 — 影片工作室' : '✅ 圖片已生成 — 影片工作室'); void load(); }
       else if (e.stage === 'assemble') { setOverall('合成成片…'); setGen('generating'); }
       else if (e.stage === 'scene-done') { setOverall('本幕影片完成 ✅'); setGen('idle'); toast.success('本幕影片完成 🎬'); flashTitle('✅ 本幕完成 — 影片工作室'); void load(); }
       else if (e.stage === 'done') { setOverall('完成 ✅'); setGen('done'); setFinalReady(true); toast.success('成片完成 🎬'); flashTitle('🎬 成片完成 — 影片工作室'); void load(); }
