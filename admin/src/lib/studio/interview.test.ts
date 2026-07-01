@@ -3,12 +3,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // interview.ts import './llm'（會拉進 LLM client）；parseShotArray 純函式，不需要 llm，故 stub 掉。
 vi.mock('./llm', () => ({ complete: vi.fn() }));
 
-import { parseShotArray, chatStoryboard } from './interview';
+import { parseShotArray, chatStoryboard, stripTrailingCommas } from './interview';
 import { complete } from './llm';
 
 describe('parseShotArray', () => {
   it('沒有 JSON 陣列時回傳空陣列', () => {
     expect(parseShotArray('抱歉，我需要更多資訊')).toEqual([]);
+  });
+
+  it('容忍 LLM 常見的尾逗號（陣列/物件末端多逗號），不會整份失敗', () => {
+    // Gemini 常回這種：物件與陣列末端多一個逗號 → 舊版 JSON.parse 會爆 → 回空陣列 → 生成靜默失敗
+    const text = '[{"visual":"a","tts":"一",},{"visual":"b","tts":"二"},]';
+    const shots = parseShotArray(text);
+    expect(shots).toHaveLength(2);
+    expect(shots[0]).toMatchObject({ visual: 'a', tts: '一' });
+    expect(shots[1]).toMatchObject({ visual: 'b', tts: '二' });
   });
 
   it('從含前後雜訊的文字中抽出陣列並正規化', () => {
@@ -29,6 +38,15 @@ describe('parseShotArray', () => {
     const shots = parseShotArray('[{"branch":"hologram","sfx":"airhorn"}]');
     expect(shots[0].branch).toBe('still');
     expect(shots[0].sfx).toBe('none');
+  });
+
+  it('stripTrailingCommas：只去結構性尾逗號、不動字串內的逗號', () => {
+    expect(stripTrailingCommas('[1,2,]')).toBe('[1,2]');
+    expect(stripTrailingCommas('{"a":1,}')).toBe('{"a":1}');
+    expect(stripTrailingCommas('[{"a":1,},]')).toBe('[{"a":1}]');
+    // 字串內、以及正常逗號不受影響
+    expect(stripTrailingCommas('["a, b","c"]')).toBe('["a, b","c"]');
+    expect(stripTrailingCommas('{"k":"x","j":"y"}')).toBe('{"k":"x","j":"y"}');
   });
 
   it('保留合法 sfx 與 punch 數值欄位', () => {

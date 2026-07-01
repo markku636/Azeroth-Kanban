@@ -33,6 +33,18 @@ export interface ChatMessage {
   content: string;
 }
 
+// LLM（尤其 Gemini）常在陣列/物件最後多一個逗號（`…},]` / `…",}`）→ JSON.parse 直接爆 → 整份生成靜默失敗回空。
+// 移除結構性尾逗號（] } 前、只在字串外）。exported for testing; pure。
+export function stripTrailingCommas(json: string): string {
+  return json.replace(/,(\s*[\]}])/g, '$1');
+}
+
+// 先嚴格 parse（合法 JSON 零風險）；失敗才清尾逗號重試（把常見的 LLM 尾逗號救回來，不硬吞其他錯）。
+function tolerantJsonParse(src: string): unknown {
+  try { return JSON.parse(src); } catch { /* 尾逗號等 → 清理後重試 */ }
+  return JSON.parse(stripTrailingCommas(src)); // 仍失敗則由呼叫端 catch
+}
+
 function normalizeShot(s: unknown): PlannedShot {
   const o = (s ?? {}) as Record<string, unknown>;
   const sfx = typeof o.sfx === 'string' && SFX_SET.has(o.sfx) ? (o.sfx as ShotSfx) : 'none';
@@ -54,7 +66,7 @@ function normalizeShot(s: unknown): PlannedShot {
 export function parseShotArray(text: string): PlannedShot[] {
   const match = text.match(/\[[\s\S]*\]/);
   try {
-    const raw: unknown = JSON.parse(match ? match[0] : '[]');
+    const raw: unknown = tolerantJsonParse(match ? match[0] : '[]');
     return Array.isArray(raw) ? raw.map(normalizeShot) : [];
   } catch {
     return [];
@@ -126,7 +138,7 @@ function normalizeScene(s: unknown): PlannedScene {
 function parseScript(text: string): PlannedScript {
   const match = text.match(/\{[\s\S]*\}/);
   try {
-    const raw = JSON.parse(match ? match[0] : '{}') as Record<string, unknown>;
+    const raw = tolerantJsonParse(match ? match[0] : '{}') as Record<string, unknown>;
     const scenes = Array.isArray(raw.scenes) ? raw.scenes.map(normalizeScene).filter((s) => s.title || s.synopsis) : [];
     return { logline: String(raw.logline ?? '').trim(), scenes };
   } catch {
@@ -160,7 +172,7 @@ export async function planStoryBible(seed: string, story?: StoryContext): Promis
   });
   const m = text.match(/\{[\s\S]*\}/);
   try {
-    const o = JSON.parse(m ? m[0] : '{}') as Record<string, unknown>;
+    const o = tolerantJsonParse(m ? m[0] : '{}') as Record<string, unknown>;
     const s = (k: string) => String(o[k] ?? '').trim();
     return { premise: s('premise'), worldSetting: s('worldSetting'), styleGuide: s('styleGuide'), tone: s('tone'), genre: s('genre'), targetAudience: s('targetAudience') };
   } catch {
