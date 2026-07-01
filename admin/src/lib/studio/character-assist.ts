@@ -40,7 +40,9 @@ const SYS: Record<CharField, string> = {
   appearance:
     'You are an expert SDXL prompt engineer. Rewrite the character APPEARANCE into a single clean ' +
     'English comma-separated visual prompt for consistent character rendering ' +
-    '(age, build, hair, face, signature clothing/accessories, art style). Keep it concise — one line, under 60 words. ' +
+    '(age, build, hair, face, signature clothing/accessories, art style). ' +
+    'Include 1-2 DISTINCTIVE identity markers (e.g. a mole, a scar, a unique accessory) — a specific marker ' +
+    'locks the same face across shots far better than generic descriptors. Keep it concise — one line, under 60 words. ' +
     'Output ONLY the prompt text — no markdown, no quotes, no labels, no explanations.',
   voiceInstruct:
     '你是配音導演。把角色的「語氣 instruct」優化成一句精煉的情緒／語調指令（供 TTS 用）。' +
