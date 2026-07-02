@@ -205,10 +205,17 @@ export function subDrawtext(
   font: string,
   canvasH?: number,
   timing?: { narrationDur: number; totalDur: number },
+  canvasW?: number,
 ): { filter: string; subFiles: string[] } {
   const s = capScale(canvasH);
   const base = typeof style?.fontSize === 'number' && style.fontSize > 0 ? style.fontSize : 42;
   const fontsize = Math.round(base * s);
+  // 依字級與畫布寬度動態算每行上限，避免大字級（如「迷因大黃」64px）在 1080p 上一行 13 字超出畫面。
+  // 上限取「原本固定值」與「畫面放得下的字數」的較小者 → 小字級維持原行為（零回歸），大字級才收窄。
+  const w = canvasW && canvasW > 0 ? canvasW : (canvasH && canvasH > 0 ? Math.round((canvasH * 9) / 16) : 720);
+  const fitChars = Math.max(6, Math.floor((w * 0.9) / Math.max(1, fontsize)));
+  const wrapMax = Math.min(13, fitChars);   // 整段字幕（原預設 13）
+  const segWrapMax = Math.min(11, fitChars); // pop-on 逐句（原預設 11）
   const border = Math.max(2, Math.round(3 * s));
   const ls = Math.round(12 * s);
   const color = (style?.color ?? 'white').replace(/[^#\w@.]/g, '') || 'white'; // 防注入：只留色名/hex 合法字元
@@ -254,7 +261,7 @@ export function subDrawtext(
       const rise = Math.round(22 * s);
       const filters: string[] = [];
       for (const { seg, start, end } of captionSegmentTimings(segs, timing.narrationDur, timing.totalDur)) {
-        const lines = wrapCjk(seg, 11).split('\n').filter((l) => l.length > 0);
+        const lines = wrapCjk(seg, segWrapMax).split('\n').filter((l) => l.length > 0);
         const st = start.toFixed(2);
         const enable = `:enable='between(t\\,${st}\\,${end.toFixed(2)})'`;
         const fadeExpr = `if(lt(t-${st}\\,0.12)\\,(t-${st})/0.12\\,1)`;
@@ -266,8 +273,8 @@ export function subDrawtext(
     }
   }
 
-  // 預設：整段字幕全程顯示，柔和 0.35s alpha 淡入（零回歸）
-  const lines = wrapCjk(text).split('\n').filter((l) => l.length > 0);
+  // 預設：整段字幕全程顯示，柔和 0.35s alpha 淡入（零回歸；wrap 依字級/寬度動態，小字級＝原 13 字）
+  const lines = wrapCjk(text, wrapMax).split('\n').filter((l) => l.length > 0);
   return { filter: renderGroup(lines, '', `if(lt(t\\,0.35)\\,t/0.35\\,1)`).join(','), subFiles };
 }
 
@@ -350,7 +357,7 @@ export class Compositor {
     let subFiles: string[] = [];
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
-      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
+      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }, W); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
 
     // Always carry an audio track (voice, or a silent bed when there's none) so every clip is a
@@ -464,7 +471,7 @@ export class Compositor {
     let subFiles: string[] = [];
     if (o.subtitle) {
       const font = o.fontfile ?? findCjkFont();
-      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
+      if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }, W); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
     if (o.voice) args.push("-i", o.voice);
