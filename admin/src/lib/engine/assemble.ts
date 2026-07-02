@@ -356,7 +356,7 @@ export class Compositor {
       `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
     let subFiles: string[] = [];
     if (o.subtitle) {
-      const font = o.fontfile ?? findCjkFont();
+      const font = o.fontfile ?? findBoldCjkFont(); // 旁白字幕用粗體：短影音字幕慣例，小字級也清楚有力（回退 regular）
       if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }, W); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
 
@@ -470,7 +470,7 @@ export class Compositor {
     let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${GRADE}`;
     let subFiles: string[] = [];
     if (o.subtitle) {
-      const font = o.fontfile ?? findCjkFont();
+      const font = o.fontfile ?? findBoldCjkFont(); // 旁白字幕用粗體：短影音字幕慣例，小字級也清楚有力（回退 regular）
       if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }, W); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
