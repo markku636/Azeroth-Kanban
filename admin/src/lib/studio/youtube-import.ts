@@ -37,10 +37,14 @@ export function parseTimedText(body: string): string {
   return cleanTranscript(texts.join('\n'));
 }
 
+function safeCodePoint(cp: number): string {
+  return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ''; // fromCodePoint（非 fromCharCode）才不會截斷 emoji 等 astral 字元
+}
 function decodeEntities(s: string): string {
   return s
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => safeCodePoint(parseInt(h, 16))) // 十六進位數值實體
+    .replace(/&#(\d+);/g, (_, n) => safeCodePoint(+n))                        // 十進位數值實體（含 &#39;）
     .replace(/<[^>]+>/g, ''); // 去殘留標籤
 }
 
@@ -95,12 +99,37 @@ export async function fetchYoutubeSource(url: string): Promise<YoutubeSource> {
 }
 
 interface CaptionTrack { baseUrl: string; lang: string; kind: string }
+
+/**
+ * 從 HTML 中 key 之後抓出第一個「括號平衡」的 JSON 陣列。**正確處理巢狀陣列**（字串內、及 name:{runs:[…]}
+ * 這類巢狀 [] 不會誤判結尾）——這正是原本 lazy regex `\[[\s\S]*?\]` 會截斷、導致有字幕的影片也抓不到的 bug。
+ * exported for testing; pure。回傳含首尾中括號的字串，或 null。
+ */
+export function extractJsonArrayAfter(html: string, key: string): string | null {
+  const idx = html.indexOf(key);
+  if (idx < 0) return null;
+  const start = html.indexOf('[', idx);
+  if (start < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < html.length; i++) {
+    const ch = html[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === '\\') esc = true;
+      else if (ch === '"') inStr = false;
+    } else if (ch === '"') inStr = true;
+    else if (ch === '[') depth++;
+    else if (ch === ']') { depth--; if (depth === 0) return html.slice(start, i + 1); }
+  }
+  return null;
+}
+
 function extractCaptionTracks(html: string): CaptionTrack[] {
-  const m = html.match(/"captionTracks":(\[[\s\S]*?\])/);
-  if (!m) return [];
+  const arr = extractJsonArrayAfter(html, '"captionTracks":');
+  if (!arr) return [];
   try {
-    const arr = JSON.parse(m[1]) as { baseUrl?: string; languageCode?: string; kind?: string; vssId?: string }[];
-    return arr.filter((t) => t.baseUrl).map((t) => ({ baseUrl: t.baseUrl as string, lang: t.languageCode ?? '', kind: t.kind ?? '' }));
+    const parsed = JSON.parse(arr) as { baseUrl?: string; languageCode?: string; kind?: string }[];
+    return parsed.filter((t) => t.baseUrl).map((t) => ({ baseUrl: (t.baseUrl as string).replace(/&amp;/g, '&'), lang: t.languageCode ?? '', kind: t.kind ?? '' }));
   } catch { return []; }
 }
 function score(t: CaptionTrack): number {

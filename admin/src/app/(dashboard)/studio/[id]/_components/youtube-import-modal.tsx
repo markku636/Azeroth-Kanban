@@ -18,6 +18,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
+    if (busy) return; // 防重複送出（鍵盤 Enter 連按會建立重複分鏡）
     if (!source.trim() && !url.trim()) { toast.error('請貼上字幕逐字稿，或填入 YouTube 網址'); return; }
     setBusy(true);
     try {
@@ -60,6 +61,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
           <Textarea
             value={source}
             onChange={(e) => setSource(e.target.value)}
+            aria-label="YouTube 字幕逐字稿"
             placeholder={'0:00 大家好 今天要來挑戰…\n0:04 我從小就夢想…\n（貼上整段字幕或腳本）'}
             rows={7}
             className="mb-4"
@@ -70,6 +72,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
           <Input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            aria-label="YouTube 網址"
             placeholder="https://www.youtube.com/watch?v=... 或 youtu.be/... 或 /shorts/..."
             className="mb-4"
             inputClassName="bg-white text-gray-900 dark:bg-gray-50"
@@ -89,7 +92,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
 
         <div className="flex items-center justify-end gap-2 border-t border-gray-200 px-5 py-3 dark:border-gray-300">
           <Button variant="outline" onClick={onClose} disabled={busy} className="border-gray-300 text-gray-600">取消</Button>
-          <Button onClick={() => void run()} isLoading={busy} className="bg-red-600 text-white hover:bg-red-700">
+          <Button onClick={() => void run()} isLoading={busy} disabled={busy} className="bg-red-600 text-white hover:bg-red-700">
             <PiSparkleFill className="me-1.5 h-4 w-4" /> 改編並建立分鏡
           </Button>
         </div>
