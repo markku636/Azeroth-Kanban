@@ -27,9 +27,14 @@ export interface TtsResult { wav: Buffer; durationSec: number; sampleRate: numbe
  * 語氣標點原樣保留。純函式、exported for testing。
  */
 export function normalizeTtsText(s: string): string {
+  // 只清「結構性 markdown」(成對 **粗體** / `行內碼` / [文字](url)、行首 # 標題) 與多餘空白；
+  // **不**碰行內符號——f*ck 的星號、C# 的井號、溫度 > 30 的大於、~~~ 語氣延長都要原樣保留
+  // （之前無條件刪 [*_`~#>|] 會把這些合法內容毀掉，且經 R25 也燒進畫面）。
   return (s ?? "")
     .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // markdown 連結 [文字](url) → 只留文字
-    .replace(/[*_`~#>|]/g, "")               // 其餘 markdown 標記（不該念出）
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")     // **粗體** → 文字（雙星號成對；單一 * 的 f*ck 不受影響）
+    .replace(/`([^`\n]+)`/g, "$1")           // `行內碼` → 文字（成對反引號）
+    .replace(/^#{1,6}\s+/gm, "")             // 行首標題標記「# 」（C# 這種行內 # 不受影響）
     .replace(/\s+/g, " ")                     // 換行 / tab / 多空白 → 單一空白（TTS 讀成自然停頓）
     .trim();
 }

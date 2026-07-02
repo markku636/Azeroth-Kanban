@@ -2,8 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SealTTSClient, normalizeTtsText } from './voiceover';
 
 describe('normalizeTtsText（送 TTS 前正規化旁白）', () => {
-  it('去掉 markdown 標記（星號/反引號/井字），留下文字', () => {
-    expect(normalizeTtsText('**超級**強的 `皮卡丘` ##大招')).toBe('超級強的 皮卡丘 大招');
+  it('去掉「結構性」markdown（成對 **粗體** / `行內碼` / 行首 # 標題）', () => {
+    expect(normalizeTtsText('**超級**強的 `皮卡丘`')).toBe('超級強的 皮卡丘');
+    expect(normalizeTtsText('# 大標題\n內文')).toBe('大標題 內文');
+  });
+  it('**保留行內符號**：f*ck 星號 / C# 井號 / 大於 / ~~~ 都不刪（修 R24 過度刪除的 regression）', () => {
+    expect(normalizeTtsText('f*ck 這爛設計')).toBe('f*ck 這爛設計');
+    expect(normalizeTtsText('我用 C# 寫的，不是 F#')).toBe('我用 C# 寫的，不是 F#');
+    expect(normalizeTtsText('溫度 > 30 度')).toBe('溫度 > 30 度');
+    expect(normalizeTtsText('太扯了吧~~~')).toBe('太扯了吧~~~');
+    expect(normalizeTtsText('b*llsh*t 騙了我三十年')).toBe('b*llsh*t 騙了我三十年');
   });
   it('markdown 連結 → 只留文字', () => {
     expect(normalizeTtsText('看這個 [連結](https://x.com/y) 很讚')).toBe('看這個 連結 很讚');
