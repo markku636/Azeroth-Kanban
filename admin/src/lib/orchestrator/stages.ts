@@ -4,7 +4,7 @@
 // Reads intent from the DB (so user edits + uploaded reference images are honoured) and writes artifacts
 // to studio_storage; mirrors graph.ts's per-shot branch logic and assemble.
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Shot } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -307,16 +307,32 @@ export async function generateRefine(projectId: string, payload: RefinePayload):
 // ─────────────────────────── Voice ───────────────────────────
 export async function generateVoice(shot: Shot, projectId: string): Promise<string | undefined> {
   if (!shot.tts) return shot.voiceWav ?? undefined;
-  await publishProgress({ projectId, shotId: shot.id, stage: 'voice', status: 'running' });
-  const tts = new SealTTSClient(SEAL_URL, SEAL_KEY);
+  const dir = shotDir(projectId, shot.id);
+  const p = join(dir, 'voice.wav');
+  const sigFile = join(dir, 'voice.sig');
   // 指派角色時，沿用角色的 cosyvoice3 lora_scale / 引擎 / 預設語氣（shot.emotion 優先覆寫）。
   const character = shot.characterId ? await prisma.character.findUnique({ where: { id: shot.characterId } }) : null;
+  const instruct = shot.emotion ?? character?.voiceInstruct ?? undefined;
+  // 配音快取：台詞/聲線/語氣/lora/引擎都沒變且 voice.wav 還在 → 直接重用，免重跑 ~4s/鏡 TTS。
+  // 大幅縮短「只改畫質/BGM 卻整支重渲」的等待（24 鏡可省 ~90s），也降 TTS 伺服器負載。台詞一改簽章就不同→自動重生。
+  const sig = JSON.stringify({ t: shot.tts, sp: shot.speaker ?? 'default', in: instruct ?? null, lo: character?.loraScale ?? null, en: character?.ttsEngine ?? null });
+  if (existsSync(p) && existsSync(sigFile)) {
+    try {
+      if (readFileSync(sigFile, 'utf8') === sig) {
+        if (shot.voiceWav !== p) await prisma.shot.update({ where: { id: shot.id }, data: { voiceWav: p, status: 'VOICE' } });
+        await publishProgress({ projectId, shotId: shot.id, stage: 'voice', status: 'done', message: '配音重用（內容未變）' });
+        return p;
+      }
+    } catch { /* 快取讀取失敗 → 照常重生 */ }
+  }
+  await publishProgress({ projectId, shotId: shot.id, stage: 'voice', status: 'running' });
+  const tts = new SealTTSClient(SEAL_URL, SEAL_KEY);
   let r;
   try {
     r = await tts.synth({
       speaker: shot.speaker ?? 'default',
       text: shot.tts,
-      instruct: shot.emotion ?? character?.voiceInstruct ?? undefined,
+      instruct,
       loraScale: character?.loraScale ?? undefined,
       engine: character?.ttsEngine ?? undefined,
     });
@@ -328,9 +344,7 @@ export async function generateVoice(shot: Shot, projectId: string): Promise<stri
     }
     throw e;
   }
-  const dir = shotDir(projectId, shot.id);
   mkdirSync(dir, { recursive: true });
-  const p = join(dir, 'voice.wav');
   writeFileSync(p, r.wav);
   // 去掉旁白前後的靜音（保留句中停頓）→ 卡點更緊、鉤子更快到、pop-on 字幕更貼齊真實語音。
   // 安全網：只在有實際削減、且削後仍保留 ≥55% 原長（避免異常過削整段）時才替換；否則保留原檔。可用 STUDIO_TRIM_SILENCE=off 關閉。
@@ -343,6 +357,7 @@ export async function generateVoice(shot: Shot, projectId: string): Promise<stri
     } catch { /* 保留原始配音 */ }
     try { unlinkSync(tmp); } catch { /* 沒產生暫存檔就略過 */ } // 不留下 voice_trim.wav 殘檔
   }
+  try { writeFileSync(sigFile, sig); } catch { /* 簽章寫失敗不致命，下次就當快取未命中重生 */ } // 記下本次配音簽章供下次比對
   await prisma.shot.update({ where: { id: shot.id }, data: { voiceWav: p, status: 'VOICE' } });
   await publishProgress({ projectId, shotId: shot.id, stage: 'voice', status: 'done' });
   return p;
