@@ -1,5 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { SealTTSClient } from './voiceover';
+import { SealTTSClient, normalizeTtsText } from './voiceover';
+
+describe('normalizeTtsText（送 TTS 前正規化旁白）', () => {
+  it('去掉 markdown 標記（星號/反引號/井字），留下文字', () => {
+    expect(normalizeTtsText('**超級**強的 `皮卡丘` ##大招')).toBe('超級強的 皮卡丘 大招');
+  });
+  it('markdown 連結 → 只留文字', () => {
+    expect(normalizeTtsText('看這個 [連結](https://x.com/y) 很讚')).toBe('看這個 連結 很讚');
+  });
+  it('換行 / tab / 多空白 → 單一空白', () => {
+    expect(normalizeTtsText('第一句\n\n第二句\t\t第三句   第四句')).toBe('第一句 第二句 第三句 第四句');
+  });
+  it('保留中文語氣標點（。！？…，）', () => {
+    expect(normalizeTtsText('真的假的？太扯了吧！我不敢相信…')).toBe('真的假的？太扯了吧！我不敢相信…');
+  });
+  it('空字串 / null 安全', () => {
+    expect(normalizeTtsText('')).toBe('');
+    expect(normalizeTtsText(undefined as unknown as string)).toBe('');
+  });
+});
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let fetchMock: any;

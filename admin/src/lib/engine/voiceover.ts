@@ -21,12 +21,25 @@ export interface TtsOptions {
 
 export interface TtsResult { wav: Buffer; durationSec: number; sampleRate: number }
 
+/**
+ * 送進 TTS 前把旁白文字正規化——LLM 偶爾夾帶不該被「念出來」的東西（markdown 星號/反引號/井字、markdown 連結、
+ * 換行、多餘空白），TTS 會照字面念成怪聲或破壞語氣。這裡把它們清掉/收斂成自然停頓；中文字與 。！？…， 等
+ * 語氣標點原樣保留。純函式、exported for testing。
+ */
+export function normalizeTtsText(s: string): string {
+  return (s ?? "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // markdown 連結 [文字](url) → 只留文字
+    .replace(/[*_`~#>|]/g, "")               // 其餘 markdown 標記（不該念出）
+    .replace(/\s+/g, " ")                     // 換行 / tab / 多空白 → 單一空白（TTS 讀成自然停頓）
+    .trim();
+}
+
 export class SealTTSClient {
   constructor(private baseUrl = "http://192.168.50.57:7866", private apiKey = "") {}
 
   async synth(o: TtsOptions): Promise<TtsResult> {
     const payload: Record<string, unknown> = {
-      speaker: o.speaker, text: o.text, engine: o.engine ?? "cosyvoice3",
+      speaker: o.speaker, text: normalizeTtsText(o.text), engine: o.engine ?? "cosyvoice3",
       response_mode: "base64", format: "wav",
       lora_scale: o.loraScale ?? 0.0,                 // REQUIRED
       speed: o.speed ?? 1.0,
