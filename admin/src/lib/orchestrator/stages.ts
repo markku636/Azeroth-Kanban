@@ -16,6 +16,7 @@ import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
 import { lipsync } from '@/lib/engine/lipsync';
 import { makePad } from '@/lib/engine/music';
+import { moodFromProject } from './mood';
 import { publishProgress } from './events';
 
 const COMFY_HOST = (process.env.COMFYUI_URL ?? 'http://127.0.0.1:8188').replace(/^https?:\/\//, '');
@@ -429,15 +430,6 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
 }
 
 // ─────────────────────────── Assemble core（任意一組分鏡 → outDir/final.mp4）───────────────────────────
-/** Map a project's tone/genre to a fallback-score mood so the default bed fits the story (default neutral). */
-function moodFromProject(p: { tone?: string | null; genre?: string | null } | null): string {
-  const txt = `${p?.tone ?? ''} ${p?.genre ?? ''}`.toLowerCase();
-  if (/(tense|suspense|thriller|horror|action|驚悚|懸疑|緊張|恐怖|動作)/.test(txt)) return 'tense';
-  if (/(sad|melanchol|grief|somber|emotional|悲|哀|憂|傷感|療傷|催淚)/.test(txt)) return 'somber';
-  if (/(warm|happy|uplift|comedy|feel-?good|喜劇|溫暖|歡|勵志|搞笑|療癒)/.test(txt)) return 'warm';
-  return 'neutral';
-}
-
 async function assembleClips(projectId: string, shots: Shot[], outDir: string): Promise<string> {
   mkdirSync(outDir, { recursive: true });
 
@@ -485,7 +477,7 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
 
   const dur = await probeDuration(videoOut);
   const project = await prisma.studioProject.findUnique({ where: { id: projectId } });
-  const mood = moodFromProject(project); // 依故事 tone/genre 選配樂情緒（預設 neutral，向後相容）
+  const mood = moodFromProject(project, shots); // tone/genre 明確用之(零回歸)；否則用分鏡情緒多數決補
   const bgm = join(outDir, 'bgm.wav');
   if (project?.bgmPath && existsSync(project.bgmPath)) {
     await loopAudioTo(project.bgmPath, +(dur + 0.5).toFixed(2), bgm); // 使用者上傳的 BGM，循環/裁切到片長
