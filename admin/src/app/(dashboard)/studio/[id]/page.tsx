@@ -25,6 +25,7 @@ import { HistoryModal } from './_components/history-modal';
 import { ScriptPreviewModal } from './_components/script-preview-modal';
 import { VideoModal } from '../_components/video-modal';
 import { YouTubeMetaModal } from './_components/youtube-meta-modal';
+import { YoutubeImportModal } from './_components/youtube-import-modal';
 import { AuditModal } from './_components/audit-modal';
 import { MediaModal } from '../_components/media-modal';
 
@@ -224,6 +225,7 @@ export default function StoryboardPage() {
   const [finalReady, setFinalReady] = useState(false);
   const [finalOpen, setFinalOpen] = useState(false);
   const [ytOpen, setYtOpen] = useState(false);
+  const [ytImportOpen, setYtImportOpen] = useState(false);
   const [auditOpen, setAuditOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [editingShotId, setEditingShotId] = useState<string | null>(null);
@@ -951,6 +953,9 @@ export default function StoryboardPage() {
           <Button variant="outline" onClick={openAi} disabled={busy} title={aiEnabled ? undefined : '需設定 ANTHROPIC_API_KEY'}>
             <PiSparkleFill className="me-1.5 h-4 w-4 text-purple-500" /> AI 訪談
           </Button>
+          <Button variant="outline" onClick={() => (aiEnabled ? setYtImportOpen(true) : toast('AI 未啟用：請設定 Vertex 或 ANTHROPIC_API_KEY', { icon: '🔒' }))} disabled={busy} title="貼 YouTube 網址或字幕逐字稿，AI 依其節奏改編成本專案的原創分鏡" className="border-red-300 text-red-700 hover:border-red-400 hover:text-red-800 dark:border-red-800 dark:text-red-300">
+            <PiYoutubeLogoFill className="me-1.5 h-4 w-4" /> YouTube 改編
+          </Button>
           <Button variant="outline" onClick={() => void addScene()} disabled={busy}>
             <PiPlusBold className="me-1.5 h-4 w-4" /> 新增場景
           </Button>
@@ -1254,6 +1259,7 @@ export default function StoryboardPage() {
       )}
 
       {ytOpen && <YouTubeMetaModal projectId={projectId} hookKeyframeUrl={hookKeyframeUrl} onClose={() => setYtOpen(false)} />}
+      {ytImportOpen && <YoutubeImportModal projectId={projectId} onClose={() => setYtImportOpen(false)} onDone={() => { setYtImportOpen(false); void load(); }} />}
 
       {auditOpen && <AuditModal projectId={projectId} onClose={() => setAuditOpen(false)} />}
 

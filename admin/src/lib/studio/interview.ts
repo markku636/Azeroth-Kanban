@@ -105,6 +105,27 @@ export async function planStoryboard(idea: string, count = 6, story?: StoryConte
   return parseShotArray(text);
 }
 
+// ─────────────────────────── 從參考影片腳本改編分鏡（YouTube → Storyboard） ───────────────────────────
+const ADAPT_SYSTEM = `你是短影音改編導演。使用者會給你一支「參考影片」的腳本／字幕逐字稿（可能有雜訊、時間碼、口語贅字）。
+你的工作：先讀懂它的**敘事結構、節奏、鉤子、笑點/轉折的安排與鏡頭切換感**，再產生一份「**節奏與觀影體驗相近、但內容原創**」的分鏡表。
+規則：
+- 沿用來源的**結構骨架與節奏**（鉤子在哪、怎麼升級、爆點在哪、幾拍），但**改寫成使用者專案的角色/題材/風格**，**不要逐字照抄**來源台詞或專有名詞（避免侵權，也讓成片是原創）。
+- 若來源比目標長，濃縮成最精華的節拍；若太短，合理擴充但別注水。
+- 產出的分鏡數量以使用者要求為準。
+${SHORT_FORM_CRAFT}
+${SHOT_FIELDS}
+若專案已有〈故事聖經〉/角色，改編時要融入其設定與角色外觀錨點。只回傳 JSON 陣列，不要任何其他文字或 markdown。`;
+
+/** 參考影片腳本/字幕逐字稿 → 改編成本專案的分鏡表（相同節奏、內容原創）。source 可為字幕逐字稿或腳本文字。 */
+export async function adaptStoryboardFromSource(source: string, count = 8, story?: StoryContext): Promise<PlannedShot[]> {
+  const src = source.trim().slice(0, 12000); // 上限保護：太長截斷（保留前段結構即可）
+  const text = await complete({
+    system: withStorySystem(ADAPT_SYSTEM, story),
+    messages: [{ role: 'user', content: `${storyPreamble(story)}參考影片腳本／字幕逐字稿如下（請萃取其節奏與結構、改編成原創分鏡）：\n"""\n${src}\n"""\n請產生 ${count} 個分鏡。` }],
+  });
+  return parseShotArray(text);
+}
+
 // ─────────────────────────── 腳本層（logline + 分場大綱） ───────────────────────────
 
 export interface PlannedScene {
