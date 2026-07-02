@@ -10,7 +10,7 @@ import type { Shot } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { ComfyUIClient } from '@/lib/comfyui/client';
 import { buildSdxl, buildSdxlHires, buildSdxlImg2Img, buildSdxlImg2ImgHires, buildSdxlInpaint, QUALITY_SUFFIX } from '@/lib/engine/keyframe';
-import { SealTTSClient } from '@/lib/engine/voiceover';
+import { SealTTSClient, normalizeTtsText } from '@/lib/engine/voiceover';
 import { Compositor, probeDuration, trimSilence, type SubStyle } from '@/lib/engine/assemble';
 import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
@@ -357,6 +357,11 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
   const isComedy = Boolean(shot.caption || shot.punchline || (shot.sfx && shot.sfx !== 'none') || shot.punch);
   const { cw, ch } = await projectDims(projectId);
   const subStyle = await projectSubStyle(projectId);
+  // 燒進畫面的文字也正規化（去 markdown/收斂空白），與 R24 送 TTS 的清理一致 → 「聽到的」與「看到的」都乾淨。
+  const cap = shot.caption ? normalizeTtsText(shot.caption) || undefined : undefined;
+  const punch = shot.punchline ? normalizeTtsText(shot.punchline) || undefined : undefined;
+  const sub = shot.subtitle ? normalizeTtsText(shot.subtitle) || undefined : undefined;
+  const subOrTts = normalizeTtsText(shot.subtitle ?? shot.tts ?? '') || undefined;
   let produced = false;
 
   if (shot.branch === 'lip' && keyframe && voice) {
@@ -369,9 +374,9 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     if (isComedy) {
       const dur = await probeDuration(voice);
       const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
-      await comp.memeMotionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, topCaption: shot.caption ?? undefined, bottomCaption: shot.punchline ?? undefined, punchAt });
+      await comp.memeMotionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, topCaption: cap, bottomCaption: punch, punchAt });
     } else {
-      await comp.motionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, subtitle: shot.subtitle ?? undefined, subStyle });
+      await comp.motionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle });
     }
     await prisma.shot.update({ where: { id: shot.id }, data: { lipsyncMp4: clip, status: 'VIDEO' } });
     produced = true;
@@ -387,7 +392,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
     await comp.memeMotionShot({
       clip: motion[0].path, voice, out: clip, fallbackDur: fbDur, width: cw, height: ch,
-      topCaption: shot.caption ?? undefined, bottomCaption: shot.punchline ?? undefined, punchAt,
+      topCaption: cap, bottomCaption: punch, punchAt,
     });
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
@@ -398,7 +403,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
     await comp.memeStill({
       image: keyframe, voice, out: clip, fallbackDur: fbDur, width: cw, height: ch,
-      topCaption: shot.caption ?? undefined, bottomCaption: shot.punchline ?? undefined,
+      topCaption: cap, bottomCaption: punch,
       punchAt, punchZoom: shot.punch ? (shot.punchZoom ?? 1.9) : undefined,
     });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
@@ -410,11 +415,11 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
       image: keyframe, motion: i2vMotionPrompt(shot), prefix: `studio/${projectId}/i2v_${shot.id}`,
       onProgress: (p) => void publishProgress({ projectId, shotId: shot.id, stage: 'video', pct: p }),
     });
-    await comp.motionShot({ clip: motion[0].path, voice, out: clip, width: cw, height: ch, subtitle: shot.subtitle ?? undefined, subStyle, fallbackDur: 4.0 });
+    await comp.motionShot({ clip: motion[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, fallbackDur: 4.0 });
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
   } else if (keyframe && voice) {
-    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: shot.subtitle ?? shot.tts ?? undefined, subStyle, motionSeed: shot.shotNo });
+    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
     produced = true;
   }
