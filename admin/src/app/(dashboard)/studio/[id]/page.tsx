@@ -409,8 +409,8 @@ export default function StoryboardPage() {
       if (e.stage === 'plan') setOverall('規劃中…');
       else if (e.stage === 'keyframes-done') { const partFail = !!e.message && e.message.includes('失敗'); setOverall(e.message ?? '圖片已生成 ✅，檢視後可生成影片'); setGen('idle'); if (partFail) toast.error(e.message as string); else toast.success('關鍵幀已生成 🖼'); flashTitle(partFail ? '⚠ 圖片部分失敗 — 影片工作室' : '✅ 圖片已生成 — 影片工作室'); void load(); }
       else if (e.stage === 'assemble') { setOverall('合成成片…'); setGen('generating'); }
-      else if (e.stage === 'scene-done') { setOverall('本幕影片完成 ✅'); setGen('idle'); toast.success('本幕影片完成 🎬'); flashTitle('✅ 本幕完成 — 影片工作室'); void load(); }
-      else if (e.stage === 'done') { setOverall('完成 ✅'); setGen('done'); setFinalReady(true); toast.success('成片完成 🎬'); flashTitle('🎬 成片完成 — 影片工作室'); void load(); }
+      else if (e.stage === 'scene-done') { const partFail = !!e.message && e.message.includes('失敗'); setOverall(partFail ? (e.message as string) : '本幕影片完成 ✅'); setGen('idle'); if (partFail) toast.error(e.message as string); else toast.success('本幕影片完成 🎬'); flashTitle(partFail ? '⚠ 本幕部分失敗 — 影片工作室' : '✅ 本幕完成 — 影片工作室'); void load(); }
+      else if (e.stage === 'done') { const partFail = !!e.message && e.message.includes('失敗'); setOverall(partFail ? (e.message as string) : '完成 ✅'); setGen('done'); setFinalReady(true); if (partFail) toast.error(e.message as string); else toast.success('成片完成 🎬'); flashTitle(partFail ? '⚠ 成片部分失敗 — 影片工作室' : '🎬 成片完成 — 影片工作室'); void load(); }
       else if (e.stage === 'error') { setOverall('錯誤：' + (e.message ?? '')); setGen('error'); toast.error('生成失敗：' + (e.message ?? '請查看 worker log')); flashTitle('❌ 生成失敗 — 影片工作室'); }
       else if (e.shotId) setGen('generating');
     };

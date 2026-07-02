@@ -509,21 +509,28 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
 }
 
 // ─────────────────────────── Assemble whole project ───────────────────────────
-export async function assembleProject(projectId: string): Promise<string> {
+/** 部分鏡生片失敗時，在完成訊息帶上警告（看板據此改成「部分失敗」提示，不誤報全成功）。 */
+function doneMessage(final: string, failedShots?: number[]): string {
+  return failedShots?.length
+    ? `${final}｜⚠ 鏡 ${failedShots.join(', ')} 生片失敗、未納入成片；補生這幾鏡後重新生成影片即完整。`
+    : final;
+}
+
+export async function assembleProject(projectId: string, failedShots?: number[]): Promise<string> {
   await publishProgress({ projectId, stage: 'assemble', status: 'running' });
   const all = await prisma.shot.findMany({ where: { projectId }, orderBy: { sortOrder: 'asc' } });
   const final = await assembleClips(projectId, all, join(projectDir(projectId), 'output'));
   await prisma.studioProject.update({ where: { id: projectId }, data: { status: 'export' } });
-  await publishProgress({ projectId, stage: 'done', message: final });
+  await publishProgress({ projectId, stage: 'done', message: doneMessage(final, failedShots) });
   return final;
 }
 
 // ─────────────────────────── Assemble a single scene（一幕單獨成片，可獨立預覽/下載）───────────────────────────
-export async function assembleScene(projectId: string, sceneId: string): Promise<string> {
+export async function assembleScene(projectId: string, sceneId: string, failedShots?: number[]): Promise<string> {
   await publishProgress({ projectId, sceneId, stage: 'assemble', status: 'running' });
   const shots = await prisma.shot.findMany({ where: { projectId, sceneId }, orderBy: { sortOrder: 'asc' } });
   const final = await assembleClips(projectId, shots, sceneOutputDir(projectId, sceneId));
-  await publishProgress({ projectId, sceneId, stage: 'scene-done', message: final });
+  await publishProgress({ projectId, sceneId, stage: 'scene-done', message: doneMessage(final, failedShots) });
   return final;
 }
 
@@ -576,14 +583,17 @@ export async function runRenderStage(projectId: string, shotIds?: string[], scen
       await generateVideo(cur, projectId);
     } catch (e) {
       failed.push(s.shotNo);
+      // 這一鏡生片失敗：若磁碟上還留著「上一版」clip.mp4（改台詞前的舊片），刪掉它——否則 assemble 以 existsSync
+      // 過濾時會把過期片段拼進成片（看起來成功、內容卻是舊的）。刪掉＝該鏡在成片缺席（誠實），補生後再重生即完整。
+      try { const c = shotClip(projectId, s.id); if (existsSync(c)) unlinkSync(c); } catch { /* ignore */ }
       await publishProgress({ projectId, sceneId, shotId: s.id, stage: 'video', status: 'error', message: `鏡 ${s.shotNo} 生片失敗：${e instanceof Error ? e.message : String(e)}` });
     } finally {
       await freeComfy();
     }
   }
   if (shots.length > 0 && failed.length === shots.length) throw new Error(`全部 ${shots.length} 鏡生片失敗（可能 ComfyUI／TTS 未啟動）`);
-  if (sceneId) await assembleScene(projectId, sceneId);
-  else await assembleProject(projectId);
+  if (sceneId) await assembleScene(projectId, sceneId, failed);
+  else await assembleProject(projectId, failed);
 }
 
 /** 洗圖階段：單鏡 img2img/inpaint 微調 → 新版本（不覆蓋現役）。一次一鏡 + /free，沿用 crash-safe 慣例。 */
