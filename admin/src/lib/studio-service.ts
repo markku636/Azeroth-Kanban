@@ -54,6 +54,8 @@ export type ProjectDto = Pick<
   look: string | null;
   /** 進度條（隨播放增長的橫條）設定；恆有值（未設＝enabled:false + 預設） */
   progressBar: ProgressBarConfig;
+  /** 章節標題 lower-third（每個場景第一鏡疊段落標題）是否開啟 */
+  sceneTitles: boolean;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 成片最後產生時間（ISO），無成片時為 null */
@@ -102,6 +104,7 @@ function projectToDto(
     watermark: parseWatermark(p.spec),
     look: typeof (p.spec as { look?: unknown } | null)?.look === 'string' ? (p.spec as { look: string }).look : null,
     progressBar: parseProgressBar(p.spec),
+    sceneTitles: (p.spec as { sceneTitles?: unknown } | null)?.sceneTitles === true,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
@@ -227,6 +230,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   look?: string | null;
   /** 進度條：合併進 spec.progressBar。enabled=false＝移除該鍵。 */
   progressBar?: { enabled?: boolean; color?: string; position?: string };
+  /** 章節標題 lower-third：合併進 spec.sceneTitles（true 存、false 移除）。 */
+  sceneTitles?: boolean;
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -277,13 +282,18 @@ export async function updateProject(
       }
       data.spec = spec as Prisma.InputJsonValue;
     }
-    if (patch.progressBar !== undefined) {
+    if (patch.progressBar !== undefined || patch.sceneTitles !== undefined) {
       const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
-      if (!patch.progressBar?.enabled) delete spec.progressBar; // 關閉＝移除
-      else {
-        const color = typeof patch.progressBar.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(patch.progressBar.color) ? patch.progressBar.color : '#FFD400';
-        const position = patch.progressBar.position === 'top' ? 'top' : 'bottom';
-        spec.progressBar = { enabled: true, color, position };
+      if (patch.progressBar !== undefined) {
+        if (!patch.progressBar?.enabled) delete spec.progressBar; // 關閉＝移除
+        else {
+          const color = typeof patch.progressBar.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(patch.progressBar.color) ? patch.progressBar.color : '#FFD400';
+          const position = patch.progressBar.position === 'top' ? 'top' : 'bottom';
+          spec.progressBar = { enabled: true, color, position };
+        }
+      }
+      if (patch.sceneTitles !== undefined) {
+        if (patch.sceneTitles) spec.sceneTitles = true; else delete spec.sceneTitles;
       }
       data.spec = spec as Prisma.InputJsonValue;
     }

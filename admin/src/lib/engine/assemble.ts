@@ -465,6 +465,41 @@ export function cardDraws(
   return { draws, files };
 }
 
+/**
+ * 章節/場景標題「下三分之一」lower-third：左對齊的品牌強調色細條 ＋ 深色底板標題，於鏡頭開頭淡入、停留
+ * holdSec 後淡出（解說片常見的「段落標題」）。放在畫面下三分之一（中央偏下，避開底部旁白字幕）。純函式；
+ * exported for unit testing（drawbox 的 y 用 ih，drawtext 的 y 用 h）。
+ */
+export function lowerThirdDraws(
+  font: string,
+  o: { text: string; accent?: string; holdSec?: number },
+  canvasH: number, canvasW = 720,
+): { draws: string[]; files: string[] } {
+  const s = capScale(canvasH);
+  const accent = /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+(@[0-9.]+)?$/.test(o.accent ?? '') ? (o.accent as string) : '#FFD400';
+  const accentBox = accent.startsWith('#') ? `0x${accent.slice(1)}` : accent;
+  const hold = Math.max(1.5, o.holdSec ?? 2.6);
+  const vis = (hold + 0.5).toFixed(2);
+  const fontsize = Math.round(38 * s);
+  const M = Math.round(canvasW * 0.06);
+  const files: string[] = [];
+  const draws: string[] = [];
+  const enable = `:enable='lt(t\\,${vis})'`;
+  // 上方品牌強調色細條（drawbox：置/量都用 ih/iw；enable 視窗內顯示）
+  const lineW = Math.round(canvasW * 0.16);
+  const lineH = Math.max(3, Math.round(6 * s));
+  draws.push(`drawbox=x=${M}:y=ih*0.72-${Math.round(20 * s)}:w=${lineW}:h=${lineH}:color=${accentBox}:t=fill${enable}`);
+  // 標題：左對齊、深色底板、0.3s 淡入 → hold → 0.4s 淡出
+  const f = join(tmpdir(), `lt_${randomUUID()}.txt`);
+  writeFileSync(f, o.text, 'utf8'); files.push(f);
+  const alpha = `if(lt(t\\,0.3)\\,t/0.3\\,if(gt(t\\,${hold.toFixed(2)})\\,max(0\\,1-(t-${hold.toFixed(2)})/0.4)\\,1))`;
+  draws.push(
+    `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white:fontsize=${fontsize}:` +
+    `box=1:boxcolor=black@0.5:boxborderw=${Math.round(12 * s)}:borderw=${Math.max(1, Math.round(1 * s))}:bordercolor=black@0.6:` +
+    `x=${M}:y=h*0.72${enable}:alpha='${alpha}'`);
+  return { draws, files };
+}
+
 /** 浮水印角落位置：tl 左上 / tr 右上 / bl 左下 / br 右下。 */
 export type WatermarkPos = 'tl' | 'tr' | 'bl' | 'br';
 
@@ -958,6 +993,24 @@ export class Compositor {
     const args = ["-y", "-i", o.video, "-vf", filter, "-c:a", "copy", ...VIDEO_ARGS, o.out];
     const { code, stderr } = await run(FFMPEG, args);
     if (code !== 0) throw new Error(`ffmpeg progressBar failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
+  /**
+   * 章節標題 lower-third 一次性合成：把段落標題燒在鏡頭開頭的下三分之一（重編碼視訊、音訊 copy）。
+   * text 為空或無字型 → 回傳原檔不動。
+   */
+  async lowerThird(o: {
+    video: string; out: string; text: string; accent?: string; holdSec?: number;
+    width?: number; height?: number; fontfile?: string;
+  }): Promise<string> {
+    const font = o.fontfile ?? findBoldCjkFont();
+    if (!font || !o.text?.trim()) return o.video;
+    const { draws, files } = lowerThirdDraws(font, { text: o.text.trim(), accent: o.accent, holdSec: o.holdSec }, o.height ?? 1280, o.width ?? 720);
+    const args = ["-y", "-i", o.video, "-vf", draws.join(","), "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
+    if (code !== 0) throw new Error(`ffmpeg lowerThird failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
 }

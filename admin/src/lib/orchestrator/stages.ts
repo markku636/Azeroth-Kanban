@@ -124,14 +124,18 @@ async function projectDims(projectId: string): Promise<{ kfW: number; kfH: numbe
  * 一次查詢拿到專案的「字幕自訂樣式 + 風格預設」。subStyle 取用優先序：使用者自訂 json → preset 的預設 →
  * undefined（走引擎預設）；preset 另供 generateVideo 貫通每鏡調色（gradeStyle）與迷因路徑判定（memeCaptions）。
  */
-async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; preset?: StylePreset; look?: string }> {
+async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; preset?: StylePreset; look?: string; sceneTitles?: boolean; sceneTitleAccent?: string }> {
   const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true, stylePreset: true, spec: true } });
   const preset = getStylePreset(p?.stylePreset ?? null);
+  const spec = p?.spec as { look?: unknown; sceneTitles?: unknown; sceneTitleAccent?: unknown } | null;
   // per-project 調色 look（spec.look，優先於 preset.gradeStyle）；非合法 key 忽略（gradeChain 也會 fallback）
-  const rawLook = (p?.spec as { look?: unknown } | null)?.look;
+  const rawLook = spec?.look;
   const look = typeof rawLook === 'string' && GRADE_STYLE_KEYS.includes(rawLook) ? rawLook : undefined;
+  // 章節標題 lower-third（spec.sceneTitles 或全域 env STUDIO_SCENE_TITLES）；強調色沿用 spec 或風格預設 cards.accent
+  const sceneTitles = spec?.sceneTitles === true || (process.env.STUDIO_SCENE_TITLES ?? 'off').toLowerCase() !== 'off';
+  const sceneTitleAccent = typeof spec?.sceneTitleAccent === 'string' ? spec.sceneTitleAccent : preset?.cards?.accent;
   const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown; highlight?: unknown; highlightColor?: unknown } | null;
-  if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset, look }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
+  if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset, look, sceneTitles, sceneTitleAccent }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
   const pos = s.position;
   return {
     subStyle: {
@@ -147,6 +151,8 @@ async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; p
     },
     preset,
     look,
+    sceneTitles,
+    sceneTitleAccent,
   };
 }
 
@@ -392,8 +398,18 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
   const keyframe = shot.keyframePath ?? undefined;
   const voice = shot.voiceWav ?? undefined;
   const { cw, ch } = await projectDims(projectId);
-  const { subStyle, preset, look } = await projectStyle(projectId);
+  const { subStyle, preset, look, sceneTitles, sceneTitleAccent } = await projectStyle(projectId);
   const gradeStyle = look ?? preset?.gradeStyle; // per-project 調色 look 優先，否則跟隨風格預設
+  // 章節標題 lower-third：僅該場景「第一鏡」且場景有標題時，於鏡頭開頭疊段落標題（解說片段落感）。
+  let sceneTitleText: string | undefined;
+  if (sceneTitles && shot.sceneId) {
+    const [scene, firstShot] = await Promise.all([
+      prisma.scene.findUnique({ where: { id: shot.sceneId }, select: { title: true } }),
+      prisma.shot.findFirst({ where: { sceneId: shot.sceneId }, orderBy: { sortOrder: 'asc' }, select: { id: true } }),
+    ]);
+    const title = scene?.title?.trim();
+    if (title && firstShot?.id === shot.id) sceneTitleText = title;
+  }
   // 迷因大字路徑判定：preset 明確關閉 memeCaptions（如 dark-horror）時，「只設 sfx」不再單獨觸發迷因路徑
   // （sfx 仍會在 assemble 卡點混入）；無 preset 或 preset 開啟 memeCaptions ＝ 舊行為（零回歸）。
   const sfxAsMeme = (!preset || preset.memeCaptions) && Boolean(shot.sfx && shot.sfx !== 'none');
@@ -414,6 +430,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     subtitle: shot.subtitle ?? null, caption: shot.caption ?? null, punchline: shot.punchline ?? null,
     punch: shot.punch, punchAtFrac: shot.punchAtFrac ?? null, punchZoom: shot.punchZoom ?? null,
     sfx: shot.sfx ?? null, canvas: `${cw}x${ch}`, subStyle: subStyle ?? null, presetId: preset?.id ?? null,
+    sceneTitle: sceneTitleText ?? null,
   });
   if (existsSync(clip) && existsSync(videoSigFile)) {
     try {
@@ -491,6 +508,12 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     produced = true;
   }
   if (produced) {
+    // 章節標題 lower-third：在記版本/簽章前疊上去，讓歷史與快取都反映最終成品。
+    if (sceneTitleText) {
+      const ltOut = join(dir, 'clip_lt.mp4');
+      await comp.lowerThird({ video: clip, out: ltOut, text: sceneTitleText, accent: sceneTitleAccent, width: cw, height: ch });
+      if (existsSync(ltOut) && ltOut !== clip) { copyFileSync(ltOut, clip); try { unlinkSync(ltOut); } catch { /* ignore */ } }
+    }
     await recordVersion(shot, projectId, 'video', clip, { branch: shot.branch });
     try { writeFileSync(videoSigFile, sig); } catch { /* 簽章寫失敗不致命，下次當快取未命中重渲 */ } // 成功渲染後才記影片簽章
   }

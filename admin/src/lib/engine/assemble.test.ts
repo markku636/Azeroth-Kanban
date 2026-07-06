@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -228,6 +228,27 @@ describe('watermarkDrawtext（品牌浮水印）', () => {
     expect(hi.filter).toContain('white@1'); clean(hi);
     const lo = watermarkDrawtext('@x', 'C:/f.ttf', { opacity: 0 });
     expect(lo.filter).toContain('white@0.15'); clean(lo);
+  });
+});
+
+describe('lowerThirdDraws（章節標題 lower-third）', () => {
+  const clean = (r: { files: string[] }) => { for (const f of r.files) { try { unlinkSync(f); } catch { /* noop */ } } };
+  it('accent 色條(drawbox 用 ih)＋深色底板標題(drawtext 用 h)、淡入淡出、寫暫存檔', () => {
+    const r = lowerThirdDraws('C:/f.ttf', { text: '第一章 · 開場', accent: '#FFD400', holdSec: 2.6 }, 1280, 720);
+    const all = r.draws.join(';');
+    expect(all).toContain('drawbox='); // 品牌強調色條
+    expect(all).toContain('color=0xFFD400');
+    expect(all).toContain('ih*0.72'); // 色條用輸入高度
+    expect(all).toContain('y=h*0.72'); // 標題用畫面高度
+    expect(all).toContain('box=1'); // 深色底板
+    expect(all).toContain('max(0'); // 淡出
+    expect(r.files.length).toBe(1);
+    clean(r);
+  });
+  it('非法 accent → 回退金', () => {
+    const r = lowerThirdDraws('C:/f.ttf', { text: 'x', accent: 'evil;drawbox' }, 1280, 720);
+    expect(r.draws.join(';')).toContain('color=0xFFD400');
+    clean(r);
   });
 });
 

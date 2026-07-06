@@ -40,6 +40,7 @@ export default function StoryPage() {
   const [wm, setWm] = useState<{ text: string; position: string }>({ text: '', position: 'tr' });
   const [look, setLookState] = useState<string>('');
   const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
+  const [sceneTitles, setSceneTitles] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -81,6 +82,7 @@ export default function StoryPage() {
         setLookState(typeof pJson.data.look === 'string' ? pJson.data.look : '');
         const pbData = pJson.data.progressBar as { enabled?: boolean; color?: string; position?: string } | null;
         if (pbData && typeof pbData === 'object') setPb({ enabled: pbData.enabled === true, color: typeof pbData.color === 'string' ? pbData.color : '#FFD400', position: pbData.position === 'top' ? 'top' : 'bottom' });
+        setSceneTitles(pJson.data.sceneTitles === true);
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -132,6 +134,11 @@ export default function StoryPage() {
   const savePb = (next: { enabled: boolean; color: string; position: string }) => {
     setPb(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ progressBar: next }) });
+  };
+  // 章節標題 lower-third：每個場景第一鏡疊段落標題（用場景的標題）。改後需重新「生成影片」套用。
+  const saveSceneTitles = (v: boolean) => {
+    setSceneTitles(v);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sceneTitles: v }) });
   };
   // key 對應引擎 GRADE_STYLES；css 只是 UI 近似預覽（非精確，實際以 ffmpeg 為準）。'' ＝跟隨風格預設。
   const LOOKS: { key: string; label: string; css: string }[] = [
@@ -471,6 +478,16 @@ export default function StoryPage() {
             </div>
           </div>
         )}
+      </section>
+
+      {/* 章節標題 */}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">章節標題（段落 lower-third）</h2>
+        <p className="mb-3 text-xs text-gray-400">每個場景的第一個鏡頭，在畫面下三分之一疊出該場景的標題（品牌強調色細條＋深色底板），幫觀眾抓住段落結構。需要場景有填標題。改後需重新「② 生成影片」套用。</p>
+        <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
+          <input type="checkbox" checked={sceneTitles} onChange={(e) => saveSceneTitles(e.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600"><span className="font-medium text-gray-700">顯示章節標題</span>：每個場景開頭疊出段落標題（強調色沿用影片風格）。</span>
+        </label>
       </section>
 
       {/* 專案角色 */}

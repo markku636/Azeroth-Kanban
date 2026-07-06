@@ -114,6 +114,21 @@ describe('updateProject 浮水印合併進 spec', () => {
     expect((data.spec as any).keep).toBe(1);
     expect((data.spec as any).progressBar).toBeUndefined();
   });
+  it('sceneTitles true 存 / false 移除，與 progressBar 同批不衝突', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { sceneTitles: true, progressBar: { enabled: true } });
+    let data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).sceneTitles).toBe(true);
+    expect((data.spec as any).progressBar.enabled).toBe(true);
+    vi.clearAllMocks();
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, sceneTitles: true } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { sceneTitles: false });
+    data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).sceneTitles).toBeUndefined();
+  });
 });
 
 describe('parseProgressBar（spec → 進度條設定）', () => {

@@ -63,6 +63,7 @@ export const PATCH = withPermission(
           watermark: body.watermark === null ? null : (body.watermark && typeof body.watermark === 'object' ? (body.watermark as { text?: string; position?: string; opacity?: number }) : undefined),
           look: body.look === null ? null : (typeof body.look === 'string' ? body.look : undefined),
           progressBar: body.progressBar && typeof body.progressBar === 'object' ? (body.progressBar as { enabled?: boolean; color?: string; position?: string }) : undefined,
+          sceneTitles: typeof body.sceneTitles === 'boolean' ? body.sceneTitles : undefined,
         },
         buildActor(session, request),
         { bypassOwnership: bypass },
