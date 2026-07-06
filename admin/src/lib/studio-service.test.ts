@@ -143,6 +143,21 @@ describe('updateProject 浮水印合併進 spec', () => {
     expect((data.spec as any).keep).toBe(1);
     expect((data.spec as any).filmFinish).toBeUndefined();
   });
+  it('autoSfx true 存 / false 移除（可與 sceneTitles 同批）', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { autoSfx: true, sceneTitles: true });
+    let data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).autoSfx).toBe(true);
+    expect((data.spec as any).sceneTitles).toBe(true);
+    vi.clearAllMocks();
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, autoSfx: true } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { autoSfx: false });
+    data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).autoSfx).toBeUndefined();
+  });
   it('parseFilmFinish：未設→false/subtle；strong 帶出', () => {
     expect(parseFilmFinish({})).toEqual({ enabled: false, intensity: 'subtle' });
     expect(parseFilmFinish({ filmFinish: { enabled: true, intensity: 'strong' } })).toEqual({ enabled: true, intensity: 'strong' });

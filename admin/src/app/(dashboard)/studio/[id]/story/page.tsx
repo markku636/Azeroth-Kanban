@@ -41,6 +41,7 @@ export default function StoryPage() {
   const [look, setLookState] = useState<string>('');
   const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
   const [sceneTitles, setSceneTitles] = useState(false);
+  const [autoSfx, setAutoSfx] = useState(false);
   const [bgmMood, setBgmMood] = useState<string>('');
   const [hasSubs, setHasSubs] = useState(false);
   const [hasChapters, setHasChapters] = useState(false);
@@ -89,6 +90,7 @@ export default function StoryPage() {
         const pbData = pJson.data.progressBar as { enabled?: boolean; color?: string; position?: string } | null;
         if (pbData && typeof pbData === 'object') setPb({ enabled: pbData.enabled === true, color: typeof pbData.color === 'string' ? pbData.color : '#FFD400', position: pbData.position === 'top' ? 'top' : 'bottom' });
         setSceneTitles(pJson.data.sceneTitles === true);
+        setAutoSfx(pJson.data.autoSfx === true);
         setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
         setHasSubs(pJson.data.hasSubtitles === true);
         setHasChapters(pJson.data.hasChapters === true);
@@ -152,6 +154,11 @@ export default function StoryPage() {
   const saveSceneTitles = (v: boolean) => {
     setSceneTitles(v);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sceneTitles: v }) });
+  };
+  // 自動轉場音效（換場景 whoosh）。改後需重新「生成影片」套用。
+  const saveAutoSfx = (v: boolean) => {
+    setAutoSfx(v);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoSfx: v }) });
   };
   // BGM 情緒：'' ＝自動（送 null）。改後需重新「生成影片」套用。
   const saveBgmMood = (v: string) => {
@@ -607,6 +614,10 @@ export default function StoryPage() {
         <select aria-label="配樂情緒" value={bgmMood} onChange={(e) => saveBgmMood(e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50 sm:w-72">
           {BGM_MOODS.map((m) => <option key={m.key || 'auto'} value={m.key}>{m.label}</option>)}
         </select>
+        <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
+          <input type="checkbox" checked={autoSfx} onChange={(e) => saveAutoSfx(e.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600"><span className="font-medium text-gray-700">自動轉場音效</span>：每次換場景自動加一聲輕 whoosh，讓節奏更有律動（與逐鏡自訂音效並存）。</span>
+        </label>
       </section>
 
       {/* 字幕 / 章節下載 */}

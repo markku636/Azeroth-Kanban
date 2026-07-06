@@ -565,11 +565,20 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   }
 
   let videoOut = body;
-  if (present.some((s) => s.sfx && s.sfx !== 'none')) {
-    const cues = present
-      .map((s, i) => ({ s, i }))
-      .filter((x) => x.s.sfx && x.s.sfx !== 'none')
-      .map((x) => ({ sfx: sfxFile(x.s.sfx as SfxName, join(outDir, 'sfx')), atSec: +(starts[x.i] + durs[x.i] * (x.s.punchAtFrac ?? 0.55)).toFixed(2), gain: 0.8 }));
+  // 逐鏡音效卡點（使用者指定的 shot.sfx）＋（選）自動場景轉場 whoosh（spec.autoSfx／env STUDIO_AUTO_SFX）。
+  const shotCues = present
+    .map((s, i) => ({ s, i }))
+    .filter((x) => x.s.sfx && x.s.sfx !== 'none')
+    .map((x) => ({ sfx: sfxFile(x.s.sfx as SfxName, join(outDir, 'sfx')), atSec: +(starts[x.i] + durs[x.i] * (x.s.punchAtFrac ?? 0.55)).toFixed(2), gain: 0.8 }));
+  const autoSfx = (project?.spec as { autoSfx?: unknown } | null)?.autoSfx === true || (process.env.STUDIO_AUTO_SFX ?? 'off').toLowerCase() !== 'off';
+  const transCues = autoSfx
+    ? present.slice(1)
+        .map((cur, k) => ({ cur, prev: present[k], i: k + 1 }))
+        .filter((x) => x.cur.sceneId && x.prev.sceneId !== x.cur.sceneId) // 換場景才加，避免每鏡都響
+        .map((x) => ({ sfx: sfxFile('whoosh', join(outDir, 'sfx')), atSec: +Math.max(0, starts[x.i] - 0.08).toFixed(2), gain: 0.42 }))
+    : [];
+  const cues = [...shotCues, ...transCues];
+  if (cues.length) {
     await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：加入音效卡點…' });
     const withSfx = join(outDir, 'body_sfx.mp4');
     await comp.mixSfx({ video: body, cues, out: withSfx });
