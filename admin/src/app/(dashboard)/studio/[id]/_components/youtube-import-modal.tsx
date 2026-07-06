@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Button, Input, Textarea } from 'rizzui';
 import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold, PiArrowUpBold, PiArrowDownBold } from 'react-icons/pi';
@@ -47,6 +47,17 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [shots, setShots] = useState<ReviewShot[]>([]);
   const [targetSeconds, setTargetSeconds] = useState(0);
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
+  const [aiReady, setAiReady] = useState<boolean | null>(null); // null=檢查中；false=AI 未設定
+
+  // 上線前預檢：AI 沒設定就在輸入階段先講清楚（免得使用者填半天、甚至等抓完字幕才報錯）。
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/v1/studio/config')
+      .then((r) => r.json())
+      .then((j) => { if (alive) setAiReady(j?.code === 0 ? Boolean(j.data?.aiEnabled) : true); })
+      .catch(() => { if (alive) setAiReady(true); }); // 查不到就不擋（維持原本點了才報錯的行為）
+    return () => { alive = false; };
+  }, []);
 
   // 點健檢提示 → 捲到對應的分鏡並短暫高亮，讓提示可執行。
   const jumpToShot = (idx: number) => {
@@ -136,6 +147,12 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               <PiInfoBold className="mt-0.5 h-4 w-4 flex-none" />
               <span>AI 會萃取來源影片的<b>敘事結構與節奏</b>，改編成<b>內容原創</b>的分鏡（不逐字照抄、融入本專案角色/風格）。改編後會先讓你<b>預覽審核</b>再建立。<b>貼上字幕逐字稿最可靠</b>；只填網址時系統會盡量抓字幕。</span>
             </div>
+            {aiReady === false && (
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                <PiWarningBold className="mt-0.5 h-4 w-4 flex-none" />
+                <span>此功能需要 AI 才能改編，但系統目前<b>尚未設定 AI</b>（需設定 <code>LLM_PROVIDER</code> 與對應憑證）。設定後再回來使用。</span>
+              </div>
+            )}
 
             <label className="mb-1 block text-sm font-medium text-gray-700">① 貼上字幕逐字稿（推薦）</label>
             <p className="mb-1.5 text-xs text-gray-400">在 YouTube 影片下方「⋯ → 顯示轉錄稿」複製，或直接貼腳本。中英文皆可。</p>
@@ -301,7 +318,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
           {phase === 'input' ? (
             <>
               <Button variant="outline" onClick={onClose} disabled={busy} className="border-gray-300 text-gray-600">取消</Button>
-              <Button onClick={() => void preview()} isLoading={busy} disabled={busy} className="bg-red-600 text-white hover:bg-red-700">
+              <Button onClick={() => void preview()} isLoading={busy} disabled={busy || aiReady === false} className="bg-red-600 text-white hover:bg-red-700">
                 <PiSparkleFill className="me-1.5 h-4 w-4" /> 改編預覽
               </Button>
             </>
