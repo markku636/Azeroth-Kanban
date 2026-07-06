@@ -33,13 +33,21 @@ const TAIL_SHOTS = 10;
 
 function normalizeMeta(raw: Record<string, unknown>): YouTubeMeta {
   const s = (k: string) => String(raw[k] ?? '').trim();
-  const tags = Array.isArray(raw.hashtags)
-    ? raw.hashtags
-        .map((t) => String(t).trim())
-        .filter(Boolean)
-        .map((t) => (t.startsWith('#') ? t : `#${t}`))
-        .slice(0, 8)
-    : [];
+  // hashtag 護欄：去頭尾 #、去掉標籤內部空白（`#中年 阿智`＝無效標籤 → `#中年阿智`）、補回單一 #、
+  // 大小寫不敏感去重（LLM 偶爾回 #A 與 #a），最後上限 8 個。
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  if (Array.isArray(raw.hashtags)) {
+    for (const t of raw.hashtags) {
+      const body = String(t).trim().replace(/^#+/, '').replace(/\s+/g, '');
+      if (!body) continue;
+      const key = body.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      tags.push(`#${body}`);
+      if (tags.length >= 8) break;
+    }
+  }
   return {
     title: s('title'),
     thumbnailText: s('thumbnailText'),

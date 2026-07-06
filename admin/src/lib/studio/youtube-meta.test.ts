@@ -76,4 +76,20 @@ describe('generateYouTubeMeta 輸出正規化', () => {
     expect(meta.hashtags.every((h) => h.startsWith('#'))).toBe(true);
     expect(meta.title).toBe('吸睛標題');
   });
+
+  it('hashtags 大小寫不敏感去重、去掉標籤內空白、去多餘 #', async () => {
+    vi.mocked(prisma.shot.count as any).mockResolvedValue(3);
+    vi.mocked(prisma.shot.findMany as any).mockResolvedValue([{ shotNo: 1, tts: 't', caption: null, punchline: null }]);
+    vi.mocked(complete as any).mockResolvedValue(JSON.stringify({
+      title: 'T', thumbnailText: 'x', description: 'd',
+      hashtags: ['#中年 阿智', '##寶可夢', 'Ash', '#ash', '中年阿智', '   '],
+      pinnedComment: 'p',
+    }));
+    const meta = await generateYouTubeMeta('proj1');
+    expect(meta.hashtags).toContain('#中年阿智'); // 內部空白已去除
+    expect(meta.hashtags).toContain('#寶可夢');   // 多餘的 # 已收斂成單一
+    expect(meta.hashtags.filter((h) => h.toLowerCase() === '#ash')).toHaveLength(1); // Ash/#ash 去重
+    expect(meta.hashtags.filter((h) => h === '#中年阿智')).toHaveLength(1); // 「#中年 阿智」與「中年阿智」視為同一個
+    expect(meta.hashtags.every((h) => h.length > 1)).toBe(true); // 沒有空標籤
+  });
 });
