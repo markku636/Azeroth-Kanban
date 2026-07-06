@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { ComfyUIClient } from '@/lib/comfyui/client';
 import { buildSdxl, buildSdxlHires, buildSdxlImg2Img, buildSdxlImg2ImgHires, buildSdxlInpaint, QUALITY_SUFFIX } from '@/lib/engine/keyframe';
 import { SealTTSClient, normalizeTtsText } from '@/lib/engine/voiceover';
-import { Compositor, probeDuration, trimSilence, GRADE_STYLE_KEYS, type SubStyle } from '@/lib/engine/assemble';
+import { Compositor, probeDuration, trimSilence, GRADE_STYLE_KEYS, segmentCaption, captionSegmentTimings, type SubStyle } from '@/lib/engine/assemble';
 import { getStylePreset, type StylePreset } from '@/lib/engine/style-preset';
 import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
@@ -650,15 +650,29 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     } catch (e) { console.warn('[assemble] finish overlays failed (kept un-finished final)', e); }
   }
 
-  // 字幕檔（SRT/VTT）：每鏡旁白對齊實際時間軸 → 可上傳 YouTube CC / 無障礙 / 二次剪輯。片頭卡開啟時整片位移
-  // (片頭卡 2.8s − 首縫交疊 0.6 ＝ body 在成片上的起點)。best-effort，失敗不影響成片。
+  // 字幕檔（SRT/VTT）：對齊「燒進畫面的逐句(pop-on)字幕」——用每鏡實際配音長度切句計時（與 subDrawtext 同源），
+  // 得到短而精準的 CC（比整鏡一大塊更適合 YouTube CC / 無障礙）。片頭卡開啟時整片位移(片頭卡 2.8s − 首縫交疊
+  // 0.6 ＝ body 在成片上的起點)。best-effort，失敗不影響成片。
   try {
     const introOffset = introOn ? 2.8 - 0.6 : 0;
-    const cueEntries = present.map((s, i) => ({
-      start: introOffset + starts[i],
-      end: introOffset + (i + 1 < starts.length ? starts[i + 1] : starts[i] + durs[i]),
-      text: normalizeTtsText(s.subtitle ?? s.tts ?? '') || '',
-    }));
+    const cueEntries: { start: number; end: number; text: string }[] = [];
+    for (let i = 0; i < present.length; i++) {
+      const s = present[i];
+      const text = normalizeTtsText(s.subtitle ?? s.tts ?? '') || '';
+      if (!text) continue;
+      const clipStart = introOffset + starts[i], clipDur = durs[i];
+      // 配音長度＝與燒字幕同源（subDrawtext 也 probe voiceWav）；無配音則以 clip 長度估。
+      let narrationDur = clipDur;
+      if (s.voiceWav && existsSync(s.voiceWav)) { try { narrationDur = await probeDuration(s.voiceWav); } catch { /* 用估值 */ } }
+      const segs = segmentCaption(text);
+      if (segs.length > 1 && narrationDur > 0) {
+        for (const seg of captionSegmentTimings(segs, narrationDur, clipDur)) {
+          cueEntries.push({ start: clipStart + seg.start, end: clipStart + Math.min(seg.end, clipDur), text: seg.seg });
+        }
+      } else {
+        cueEntries.push({ start: clipStart, end: clipStart + clipDur, text });
+      }
+    }
     writeFileSync(join(outDir, 'final.srt'), buildSrt(cueEntries), 'utf8');
     writeFileSync(join(outDir, 'final.vtt'), buildVtt(cueEntries), 'utf8');
   } catch (e) { console.warn('[assemble] subtitle export failed (non-fatal)', e); }
