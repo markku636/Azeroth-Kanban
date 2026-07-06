@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Button, Input, Textarea } from 'rizzui';
-import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold, PiArrowUpBold, PiArrowDownBold } from 'react-icons/pi';
+import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold, PiArrowUpBold, PiArrowDownBold, PiArrowsClockwiseBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
 import { checkStoryboard, CAPTION_MAX } from '@/lib/studio/storyboard-checks';
@@ -118,6 +118,27 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
     setShots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   const removeShot = (i: number) => setShots((prev) => prev.filter((_, idx) => idx !== i));
   const addShot = () => setShots((prev) => [...prev, { visual: '', tts: '', branch: 'still' }]);
+
+  // 逐鏡「換一個」：請 AI 依前後鏡產生一個不同但更好的替代版本，替換該鏡（一次只換一鏡）。
+  const [rewriting, setRewriting] = useState<number | null>(null);
+  const rewriteOne = async (i: number) => {
+    if (rewriting !== null || busy) return;
+    setRewriting(i);
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${projectId}/rewrite-shot`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current: shots[i], prevTts: shots[i - 1]?.tts, nextTts: shots[i + 1]?.tts }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.code !== 0 || !j.data?.shot) throw new Error(j.message ?? '重寫失敗');
+      setShots((prev) => prev.map((s, idx) => (idx === i ? (j.data.shot as ReviewShot) : s)));
+      toast.success('已換一個版本');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '重寫失敗');
+    } finally {
+      setRewriting(null);
+    }
+  };
   // 上下調整分鏡順序（2 分鐘片的起承轉合很吃順序）。
   const moveShot = (i: number, dir: -1 | 1) =>
     setShots((prev) => {
@@ -286,6 +307,9 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                     </button>
                     {s.punch && <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-700">反轉鏡</span>}
                     <div className="ml-auto flex flex-none items-center gap-0.5">
+                      <button type="button" onClick={() => void rewriteOne(i)} disabled={rewriting !== null || busy} aria-label={`第 ${i + 1} 鏡換一個`} title="AI 換一個版本（依前後鏡重寫這一鏡）" className="me-1 text-gray-400 transition-colors hover:text-red-600 disabled:opacity-30 disabled:hover:text-gray-400">
+                        <PiArrowsClockwiseBold className={`h-3.5 w-3.5 ${rewriting === i ? 'animate-spin' : ''}`} />
+                      </button>
                       <button type="button" onClick={() => moveShot(i, -1)} disabled={i === 0} aria-label={`第 ${i + 1} 鏡上移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
                         <PiArrowUpBold className="h-3.5 w-3.5" />
                       </button>

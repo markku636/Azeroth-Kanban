@@ -68,6 +68,20 @@ export function parseShotArray(text: string): PlannedShot[] {
   return [];
 }
 
+/** 從文字中抽出「單一分鏡物件」並正規化（供逐鏡重寫）。抽不到或空白鏡回 null。 */
+export function parseShotObject(text: string): PlannedShot | null {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) return null;
+  try {
+    const raw = tolerantJsonParse(m[0]);
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const s = normalizeShot(raw);
+      return s.visual.trim() || s.tts.trim() ? s : null;
+    }
+  } catch { /* 解析失敗 → null */ }
+  return null;
+}
+
 /** 把外部（前端已審核）的分鏡物件陣列正規化成 PlannedShot[]，並濾掉完全空白（無 visual 也無 tts）的鏡。 */
 export function coercePlannedShots(arr: unknown[]): PlannedShot[] {
   if (!Array.isArray(arr)) return [];
@@ -202,6 +216,33 @@ export async function adaptStoryboardFromSource(source: string, count = 8, story
   }
   if (!out.length && lastErr) throw lastErr; // 全數失敗才把真錯誤浮上來（否則會被誤報成「沒產生分鏡」）
   return out;
+}
+
+// ─────────────────────────── 逐鏡重寫（審核時「換一個」） ───────────────────────────
+const REWRITE_SYSTEM = `你是短影音分鏡導演。使用者會給你一支影片分鏡中的「某一鏡」及其前後鏡，請產生一個「不同但更好」的替代版本：
+延續同一主角外觀錨點與畫風、自然承接前後鏡（不重複前後講過的話）、更有看點也更緊湊。
+${SHOT_FIELDS}
+只回傳「一個」JSON 物件（同上欄位），不要陣列、不要 markdown、不要多餘文字。`;
+
+/** 重寫單一鏡：給定該鏡與前後鏡旁白（＋可選指令），產生一個「不同但更好」的替代版本。抽不到回 null。 */
+export async function rewriteShot(
+  opts: { current: PlannedShot; prevTts?: string; nextTts?: string; instruction?: string },
+  story?: StoryContext,
+): Promise<PlannedShot | null> {
+  const { current, prevTts, nextTts, instruction } = opts;
+  const body = [
+    prevTts?.trim() ? `前一鏡旁白：「${prevTts.trim()}」` : '（這是第一鏡＝全片鉤子，開場要快、要抓人）',
+    nextTts?.trim() ? `後一鏡旁白：「${nextTts.trim()}」` : '（這是最後一鏡＝全片爆點，收在記得住的一句）',
+    `目前這一鏡：${JSON.stringify({ visual: current.visual, tts: current.tts, caption: current.caption, punchline: current.punchline, branch: current.branch, motion: current.motion, emotion: current.emotion })}`,
+    instruction?.trim() ? `額外要求：${instruction.trim()}` : '',
+    '請產生一個不同但更好的替代版本。',
+  ].filter(Boolean).join('\n');
+  const text = await complete({
+    system: withStorySystem(REWRITE_SYSTEM, story),
+    messages: [{ role: 'user', content: `${storyPreamble(story)}${body}` }],
+    maxTokens: 800,
+  });
+  return parseShotObject(text);
 }
 
 // ─────────────────────────── 腳本層（logline + 分場大綱） ───────────────────────────

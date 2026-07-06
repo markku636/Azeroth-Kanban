@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // interview.ts import './llm'（會拉進 LLM client）；parseShotArray 純函式，不需要 llm，故 stub 掉。
 vi.mock('./llm', () => ({ complete: vi.fn() }));
 
-import { parseShotArray, chatStoryboard, stripTrailingCommas, coercePlannedShots, adaptStoryboardFromSource } from './interview';
+import { parseShotArray, chatStoryboard, stripTrailingCommas, coercePlannedShots, adaptStoryboardFromSource, parseShotObject, rewriteShot } from './interview';
 import { complete } from './llm';
 
 describe('parseShotArray', () => {
@@ -101,6 +101,40 @@ describe('coercePlannedShots（前端審核後的分鏡陣列 → 正規化落�
   it('非陣列 → 空陣列', () => {
     expect(coercePlannedShots(null as unknown as unknown[])).toEqual([]);
     expect(coercePlannedShots('x' as unknown as unknown[])).toEqual([]);
+  });
+});
+
+describe('parseShotObject（單一分鏡物件）', () => {
+  it('合法物件 → 正規化分鏡', () => {
+    const s = parseShotObject('好的：{"visual":"a cat","tts":"喵","branch":"i2v"} 以上');
+    expect(s).toMatchObject({ visual: 'a cat', tts: '喵', branch: 'i2v' });
+  });
+  it('空白物件（無 visual 也無 tts）→ null', () => {
+    expect(parseShotObject('{"caption":"  "}')).toBeNull();
+  });
+  it('沒有物件 → null', () => { expect(parseShotObject('抱歉沒有內容')).toBeNull(); });
+});
+
+describe('rewriteShot（逐鏡換一個）', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  beforeEach(() => vi.mocked(complete as any).mockReset());
+  const current = { visual: 'old', tts: '舊旁白', motion: '', emotion: '', branch: 'still' as const };
+
+  it('回傳重寫後的分鏡', async () => {
+    vi.mocked(complete as any).mockResolvedValue('{"visual":"new scene","tts":"新旁白更有梗"}');
+    const s = await rewriteShot({ current, prevTts: '前句', nextTts: '後句' });
+    expect(s).toMatchObject({ visual: 'new scene', tts: '新旁白更有梗' });
+  });
+  it('前後鏡旁白會帶進提示（承接脈絡）', async () => {
+    vi.mocked(complete as any).mockResolvedValue('{"visual":"x","tts":"y"}');
+    await rewriteShot({ current, prevTts: '上一句話', nextTts: '下一句話' });
+    const content = vi.mocked(complete as any).mock.calls[0][0].messages[0].content;
+    expect(content).toContain('上一句話');
+    expect(content).toContain('下一句話');
+  });
+  it('AI 回不出有效物件 → null', async () => {
+    vi.mocked(complete as any).mockResolvedValue('抱歉');
+    expect(await rewriteShot({ current })).toBeNull();
   });
 });
 
