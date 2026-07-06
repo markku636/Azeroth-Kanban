@@ -1,7 +1,7 @@
 // 分鏡「即時結構健檢」純函式（無 server 相依，client 與 server 皆可 import；不需 LLM/API）。
 // 給使用者在「建立分鏡」前就看到確定性、免費、即時的品質提示 —— 補 storyboard-audit（LLM 深度健檢）的不足。
 
-import { SECONDS_PER_SHOT, estimatedSeconds } from './pacing';
+import { SECONDS_PER_SHOT, estimateStoryboardSeconds } from './pacing';
 
 /** 檢查用的最小分鏡形狀（PlannedShot / ReviewShot 的子集）。 */
 export interface CheckShot {
@@ -35,8 +35,8 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
   const n = shots.length;
   if (n === 0) return out;
 
-  // ① 片長 vs 目標
-  const est = estimatedSeconds(n);
+  // ① 片長 vs 目標（依旁白字數估算，比固定 3.8s/鏡準）
+  const est = estimateStoryboardSeconds(shots);
   const target = opts?.targetSeconds;
   if (typeof target === 'number' && target > 0) {
     const diffShots = Math.round((target - est) / SECONDS_PER_SHOT);

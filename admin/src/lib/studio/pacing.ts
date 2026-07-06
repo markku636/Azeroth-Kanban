@@ -10,9 +10,27 @@ export function shotsForDuration(seconds: number): number {
   return Math.max(1, Math.round(seconds / SECONDS_PER_SHOT));
 }
 
-/** 分鏡數 → 估計片長（秒）。 */
+/** 分鏡數 → 估計片長（秒）。用於「還沒有分鏡內容、只知道鏡數」時（如目標片長快選）。 */
 export function estimatedSeconds(shotCount: number): number {
   return Math.max(0, Math.round(shotCount * SECONDS_PER_SHOT));
+}
+
+// 依「旁白字數」估片長：TTS 朗讀時間才是真正決定單鏡長短的因素（比固定 3.8s/鏡準很多）。
+export const CHARS_PER_SECOND = 4.5; // 中文 TTS 平均語速（cosyvoice3 實測約 3.5–5 字/秒，取中）
+export const STILL_MIN_SECONDS = 2.2; // 靜態 Ken-Burns 鏡的最短觀看時間
+export const I2V_SECONDS = 4.0; // i2v clip 固定時長（引擎 fallbackDur）
+export const SHOT_PAD_SECONDS = 0.5; // 每鏡留白/轉場緩衝
+
+/** 依旁白字數（＋branch）估單鏡秒數。空旁白時退回該 branch 的最短時間。純函式、可測。 */
+export function estimateShotSeconds(shot: { tts?: string; branch?: string }): number {
+  const chars = (shot.tts ?? '').trim().length;
+  const speak = chars / CHARS_PER_SECOND + (chars ? SHOT_PAD_SECONDS : 0);
+  return (shot.branch ?? 'still') === 'i2v' ? Math.max(I2V_SECONDS, speak) : Math.max(STILL_MIN_SECONDS, speak);
+}
+
+/** 依每鏡旁白字數加總估全片秒數（比 estimatedSeconds(count) 準）。 */
+export function estimateStoryboardSeconds(shots: { tts?: string; branch?: string }[]): number {
+  return Math.round(shots.reduce((sum, s) => sum + estimateShotSeconds(s), 0));
 }
 
 /** 目標片長預設選項（供 UI 快選）。value=秒。 */

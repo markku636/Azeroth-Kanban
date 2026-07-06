@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { Button, Input, Textarea } from 'rizzui';
 import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
-import { DURATION_PRESETS, shotsForDuration, estimatedSeconds } from '@/lib/studio/pacing';
+import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
 import { checkStoryboard } from '@/lib/studio/storyboard-checks';
 
 /** 前端審核用的分鏡（對齊 server PlannedShot 欄位；只放 UI 需要的）。 */
@@ -95,7 +95,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
           <div className="flex min-w-0 items-center gap-2 font-semibold text-gray-900">
             <PiYoutubeLogoFill className="h-5 w-5 flex-none text-red-500" />
             <span className="truncate">
-              {phase === 'input' ? 'YouTube 改編 · 依來源節奏產生原創分鏡' : `審核改編結果 · 共 ${shots.length} 鏡 ≈ ${estimatedSeconds(shots.length)} 秒`}
+              {phase === 'input' ? 'YouTube 改編 · 依來源節奏產生原創分鏡' : `審核改編結果 · 共 ${shots.length} 鏡 ≈ ${estimateStoryboardSeconds(shots)} 秒`}
             </span>
           </div>
           <button type="button" onClick={onClose} aria-label="關閉" className="flex-none text-gray-400 transition-colors hover:text-gray-600">

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { checkStoryboard, summarizeChecks, CAPTION_MAX, TTS_MAX, type CheckShot } from './storyboard-checks';
 
 const shot = (o: Partial<CheckShot> = {}): CheckShot => ({ visual: 'x', tts: '一句旁白', branch: 'still', ...o });
+// 讓每鏡旁白夠長，加總約 3.8s/鏡 → 32 鏡 ≈ 120s（配合字數估算）
+const fullShot = (o: Partial<CheckShot> = {}): CheckShot => ({ visual: 'x', tts: '這是一句大約十五個字的旁白內容', branch: 'still', ...o });
 
 describe('checkStoryboard — 片長 vs 目標', () => {
   it('遠低於目標 → warn 提示還差幾鏡', () => {
@@ -10,8 +12,8 @@ describe('checkStoryboard — 片長 vs 目標', () => {
     expect(c?.level).toBe('warn');
     expect(c?.message).toContain('鏡');
   });
-  it('接近目標 → 不提片長', () => {
-    const checks = checkStoryboard(Array.from({ length: 32 }, () => shot()), { targetSeconds: 120 });
+  it('接近目標（旁白字數加總 ≈ 目標）→ 不提片長', () => {
+    const checks = checkStoryboard(Array.from({ length: 32 }, () => fullShot()), { targetSeconds: 120 });
     expect(checks.some((x) => x.code === 'too-short' || x.code === 'too-long')).toBe(false);
   });
   it('明顯超過目標 → info 建議刪鏡', () => {
@@ -54,7 +56,7 @@ describe('checkStoryboard — 內容品質', () => {
     expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(0);
   });
   it('乾淨且達標的分鏡 → 無提示', () => {
-    const arr = Array.from({ length: 32 }, (_, i) => shot({ branch: i % 3 === 0 ? 'i2v' : 'still', tts: '短句' }));
+    const arr = Array.from({ length: 32 }, (_, i) => fullShot({ branch: i % 3 === 0 ? 'i2v' : 'still' }));
     expect(checkStoryboard(arr, { targetSeconds: 120 })).toHaveLength(0);
   });
   it('空陣列 → 無提示', () => { expect(checkStoryboard([])).toEqual([]); });

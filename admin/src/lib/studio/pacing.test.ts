@@ -6,6 +6,10 @@ import {
   planAdaptationBatches,
   sliceByFraction,
   ADAPT_BATCH_MAX,
+  estimateShotSeconds,
+  estimateStoryboardSeconds,
+  STILL_MIN_SECONDS,
+  I2V_SECONDS,
 } from './pacing';
 
 describe('時長 ↔ 分鏡數換算', () => {
@@ -24,6 +28,33 @@ describe('時長 ↔ 分鏡數換算', () => {
     const n = shotsForDuration(120);
     expect(estimatedSeconds(n)).toBeGreaterThanOrEqual(100);
     expect(estimatedSeconds(n)).toBeLessThanOrEqual(140);
+  });
+});
+
+describe('estimateShotSeconds / estimateStoryboardSeconds（依旁白字數估片長）', () => {
+  it('旁白越長、估計秒數越長', () => {
+    const short = estimateShotSeconds({ tts: '短', branch: 'still' });
+    const long = estimateShotSeconds({ tts: '字'.repeat(30), branch: 'still' });
+    expect(long).toBeGreaterThan(short);
+  });
+  it('空旁白的靜態鏡 → 退回最短時間', () => {
+    expect(estimateShotSeconds({ tts: '', branch: 'still' })).toBe(STILL_MIN_SECONDS);
+  });
+  it('i2v 鏡至少有 clip 固定時長', () => {
+    expect(estimateShotSeconds({ tts: '短', branch: 'i2v' })).toBe(I2V_SECONDS);
+  });
+  it('長旁白的 i2v 鏡 → 以朗讀時間為準（超過固定 clip 長）', () => {
+    expect(estimateShotSeconds({ tts: '字'.repeat(40), branch: 'i2v' })).toBeGreaterThan(I2V_SECONDS);
+  });
+  it('全片加總＝各鏡相加（四捨五入）', () => {
+    const shots = [{ tts: '字'.repeat(15) }, { tts: '字'.repeat(15) }, { tts: '字'.repeat(15) }];
+    const total = estimateStoryboardSeconds(shots);
+    expect(total).toBe(Math.round(shots.reduce((s, x) => s + estimateShotSeconds(x), 0)));
+    expect(total).toBeGreaterThan(3 * STILL_MIN_SECONDS); // 15 字/鏡明顯比最短時間長
+  });
+  it('比純鏡數估算更貼近真實：短旁白 32 鏡遠不到 32×3.8s', () => {
+    const shots = Array.from({ length: 32 }, () => ({ tts: '短句', branch: 'still' }));
+    expect(estimateStoryboardSeconds(shots)).toBeLessThan(estimatedSeconds(32));
   });
 });
 
