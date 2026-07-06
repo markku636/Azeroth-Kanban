@@ -42,6 +42,7 @@ export default function StoryPage() {
   const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
   const [sceneTitles, setSceneTitles] = useState(false);
   const [bgmMood, setBgmMood] = useState<string>('');
+  const [hasSubs, setHasSubs] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -85,6 +86,7 @@ export default function StoryPage() {
         if (pbData && typeof pbData === 'object') setPb({ enabled: pbData.enabled === true, color: typeof pbData.color === 'string' ? pbData.color : '#FFD400', position: pbData.position === 'top' ? 'top' : 'bottom' });
         setSceneTitles(pJson.data.sceneTitles === true);
         setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
+        setHasSubs(pJson.data.hasSubtitles === true);
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -517,6 +519,18 @@ export default function StoryPage() {
           {BGM_MOODS.map((m) => <option key={m.key || 'auto'} value={m.key}>{m.label}</option>)}
         </select>
       </section>
+
+      {/* 字幕檔下載 */}
+      {hasSubs && (
+        <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+          <h2 className="mb-1 text-sm font-semibold text-gray-700">字幕檔（CC / 二次利用）</h2>
+          <p className="mb-3 text-xs text-gray-400">已隨成片產生對齊時間軸的字幕檔，可上傳 YouTube 當 CC、做無障礙或二次剪輯。（每次「② 生成影片」會更新。）</p>
+          <div className="flex flex-wrap gap-2">
+            <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=srt`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 SRT</a>
+            <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=vtt`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 VTT</a>
+          </div>
+        </section>
+      )}
 
       {/* 專案角色 */}
       <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">

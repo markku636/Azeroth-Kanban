@@ -9,6 +9,8 @@ export const STUDIO_STORAGE_ROOT = process.env.STUDIO_STORAGE_ROOT ?? join(proce
 
 export const projectDir = (projectId: string): string => join(STUDIO_STORAGE_ROOT, 'projects', projectId);
 export const projectOutputFile = (projectId: string): string => join(projectDir(projectId), 'output', 'final.mp4');
+/** 字幕檔（SRT/VTT）路徑，與 final.mp4 同目錄（assembleClips 每次成片時一併寫出）。 */
+export const projectSubtitleFile = (projectId: string, ext: 'srt' | 'vtt' = 'srt'): string => join(projectDir(projectId), 'output', `final.${ext}`);
 export const shotClipFile = (projectId: string, shotId: string): string => join(projectDir(projectId), 'shots', shotId, 'clip.mp4');
 export const sceneOutputFile = (projectId: string, sceneId: string): string => join(projectDir(projectId), 'scenes', sceneId, 'final.mp4');
 
@@ -21,6 +23,11 @@ export interface OutputInfo {
 /** 此專案是否已有成片 final.mp4，以及其最後產生時間。任何 IO 例外都安全回退為「無」。 */
 export function projectOutputInfo(projectId: string): OutputInfo {
   return fileOutputInfo(projectOutputFile(projectId));
+}
+
+/** 此專案是否已有匯出的 SRT 字幕檔（舊成片可能沒有，重生一次即會補上）。 */
+export function projectHasSubtitles(projectId: string): boolean {
+  try { return existsSync(projectSubtitleFile(projectId, 'srt')); } catch { return false; }
 }
 
 /** 此「幕」是否已有單獨成片 scenes/<sceneId>/final.mp4，以及最後產生時間。 */

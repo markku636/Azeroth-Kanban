@@ -18,6 +18,7 @@ import { i2v } from '@/lib/engine/i2v';
 import { lipsync } from '@/lib/engine/lipsync';
 import { makePad } from '@/lib/engine/music';
 import { pickTransition } from '@/lib/engine/transitions';
+import { buildSrt, buildVtt } from '@/lib/engine/subtitles';
 import { moodFromProject, resolveBgmMood } from './mood';
 import { publishProgress } from './events';
 
@@ -552,19 +553,19 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   const body = join(outDir, 'body.mp4');
   await comp.stitch({ clips, out: body, fades, transitions });
 
+  // 每鏡在 body 時間軸上的起點/時長（SFX 卡點與 SRT 字幕檔共用同一套時間軸）。stitch 的 xfade 收縮：全硬切→
+  // concat（無交疊）；否則每縫夾 ≥2 幀交疊。此處鏡像那套數學，否則卡點/字幕會逐硬縫飄 ~2/30s。
+  const durs = await Promise.all(clips.map((c) => probeDuration(c)));
+  const allHard = fades.every((f) => f <= 0);
+  const minFade = 2 / 30;
+  const starts = [0];
+  for (let i = 1; i < clips.length; i++) {
+    const f = allHard ? 0 : Math.max(fades[i - 1], minFade);
+    starts.push(starts[i - 1] + durs[i - 1] - f);
+  }
+
   let videoOut = body;
   if (present.some((s) => s.sfx && s.sfx !== 'none')) {
-    const durs = await Promise.all(clips.map((c) => probeDuration(c)));
-    // SFX cue times must be measured on the SAME timeline stitch produces. stitch() collapses to a
-    // hard-cut concat only when EVERY seam is hard; otherwise it clamps each seam (incl. hard cuts) to
-    // ≥2 frames of xfade. Mirror that here, else zaps drift ~2/30s late per hard seam before the cue.
-    const allHard = fades.every((f) => f <= 0);
-    const minFade = 2 / 30;
-    const starts = [0];
-    for (let i = 1; i < clips.length; i++) {
-      const f = allHard ? 0 : Math.max(fades[i - 1], minFade);
-      starts.push(starts[i - 1] + durs[i - 1] - f);
-    }
     const cues = present
       .map((s, i) => ({ s, i }))
       .filter((x) => x.s.sfx && x.s.sfx !== 'none')
@@ -649,6 +650,19 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     await comp.progressBar({ video: final, out: pbOut, height: ch, color, position });
     if (existsSync(pbOut) && pbOut !== final) { copyFileSync(pbOut, final); try { unlinkSync(pbOut); } catch { /* ignore */ } }
   }
+
+  // 字幕檔（SRT/VTT）：每鏡旁白對齊實際時間軸 → 可上傳 YouTube CC / 無障礙 / 二次剪輯。片頭卡開啟時整片位移
+  // (片頭卡 2.8s − 首縫交疊 0.6 ＝ body 在成片上的起點)。best-effort，失敗不影響成片。
+  try {
+    const introOffset = introOn ? 2.8 - 0.6 : 0;
+    const cueEntries = present.map((s, i) => ({
+      start: introOffset + starts[i],
+      end: introOffset + (i + 1 < starts.length ? starts[i + 1] : starts[i] + durs[i]),
+      text: normalizeTtsText(s.subtitle ?? s.tts ?? '') || '',
+    }));
+    writeFileSync(join(outDir, 'final.srt'), buildSrt(cueEntries), 'utf8');
+    writeFileSync(join(outDir, 'final.vtt'), buildVtt(cueEntries), 'utf8');
+  } catch (e) { console.warn('[assemble] subtitle export failed (non-fatal)', e); }
   return final;
 }
 

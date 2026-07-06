@@ -2,7 +2,7 @@ import type { Character, Member, Prisma, ProjectCharacter, Scene, Shot, ShotStat
 import { prisma } from '@/lib/prisma';
 import { ApiResponse, ApiReturnCode, type ApiResult } from '@/lib/api-response';
 import { createAuditLog } from '@/lib/audit-log-service';
-import { projectOutputInfo, sceneOutputInfo, shotHasClip, projectDir } from '@/lib/studio/storage';
+import { projectOutputInfo, projectHasSubtitles, sceneOutputInfo, shotHasClip, projectDir } from '@/lib/studio/storage';
 import { rm } from 'node:fs/promises';
 
 // 分鏡看板與 kanban 同演算法：scene = 欄，shot = 卡；sortOrder 走 SORT_GAP 分數插入 + normalize。
@@ -60,6 +60,8 @@ export type ProjectDto = Pick<
   bgmMood: string | null;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
+  /** 是否已有匯出的字幕檔 final.srt（供「下載字幕」；舊成片重生一次才有） */
+  hasSubtitles: boolean;
   /** 成片最後產生時間（ISO），無成片時為 null */
   outputUpdatedAt: string | null;
   /** 分鏡數，僅列表查詢會帶 */
@@ -110,6 +112,7 @@ function projectToDto(
     bgmMood: typeof (p.spec as { bgmMood?: unknown } | null)?.bgmMood === 'string' ? (p.spec as { bgmMood: string }).bgmMood : null,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
+    hasSubtitles: out.hasOutput && projectHasSubtitles(p.id),
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
     ...(extra?.keyframedCount != null ? { keyframedCount: extra.keyframedCount } : {}),
     ...(extra?.cover ? { coverShotId: extra.cover.id, coverUpdatedAt: extra.cover.updatedAt.toISOString() } : {}),
