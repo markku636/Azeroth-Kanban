@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button, Input, Textarea } from 'rizzui';
-import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold } from 'react-icons/pi';
+import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds } from '@/lib/studio/pacing';
+import { checkStoryboard } from '@/lib/studio/storyboard-checks';
 
 /** 前端審核用的分鏡（對齊 server PlannedShot 欄位；只放 UI 需要的）。 */
 interface ReviewShot {
@@ -34,6 +35,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<'input' | 'review'>('input');
   const [shots, setShots] = useState<ReviewShot[]>([]);
+  const [targetSeconds, setTargetSeconds] = useState(0);
 
   // ① 改編預覽（persist:false）→ 進入審核階段
   const preview = async () => {
@@ -51,6 +53,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
       const got: ReviewShot[] = Array.isArray(j.data?.shots) ? j.data.shots : [];
       if (!got.length) throw new Error('AI 沒有產生分鏡，請換段來源或稍後再試');
       setShots(got);
+      setTargetSeconds(estimatedSeconds(Math.min(40, Math.max(1, count)))); // 記下目標片長供審核健檢比對
       setPhase('review');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '改編失敗');
@@ -166,6 +169,20 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               <PiInfoBold className="mt-0.5 h-4 w-4 flex-none" />
               <span>這是 AI 依來源改編的<b>原創分鏡</b>。可就地微調<b>旁白</b>、刪掉不要的鏡，滿意後按「建立分鏡」。建立後在看板上還能繼續生成關鍵幀與逐鏡編輯。</span>
             </div>
+            {(() => {
+              const checks = checkStoryboard(shots, { targetSeconds }).slice(0, 5);
+              if (!checks.length) return null;
+              return (
+                <ul className="mb-3 flex flex-col gap-1 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-300/30 dark:bg-amber-950/20">
+                  {checks.map((c, i) => (
+                    <li key={i} className={`flex items-start gap-1.5 text-xs ${c.level === 'warn' ? 'text-amber-800 dark:text-amber-200' : 'text-gray-500'}`}>
+                      <PiWarningBold className={`mt-0.5 h-3.5 w-3.5 flex-none ${c.level === 'warn' ? 'text-amber-500' : 'text-gray-400'}`} />
+                      <span>{c.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
             <ol className="flex flex-col gap-2">
               {shots.map((s, i) => (
                 <li key={i} className="rounded-lg border border-gray-200 bg-white p-2.5 dark:border-gray-300 dark:bg-gray-50">
