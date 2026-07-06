@@ -136,6 +136,13 @@ describe('rewriteShot（逐鏡換一個）', () => {
     vi.mocked(complete as any).mockResolvedValue('抱歉');
     expect(await rewriteShot({ current })).toBeNull();
   });
+  it('維持使用者選定的 branch（i2v 時要求給 motion）', async () => {
+    vi.mocked(complete as any).mockResolvedValue('{"visual":"x","tts":"y"}');
+    await rewriteShot({ current: { ...current, branch: 'i2v' } });
+    const content = vi.mocked(complete as any).mock.calls[0][0].messages[0].content;
+    expect(content).toContain('branch 為 "i2v"');
+    expect(content).toContain('motion');
+  });
 });
 
 describe('adaptStoryboardFromSource（YouTube 分批改編）', () => {

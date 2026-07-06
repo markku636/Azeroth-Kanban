@@ -234,6 +234,8 @@ export async function rewriteShot(
     prevTts?.trim() ? `前一鏡旁白：「${prevTts.trim()}」` : '（這是第一鏡＝全片鉤子，開場要快、要抓人）',
     nextTts?.trim() ? `後一鏡旁白：「${nextTts.trim()}」` : '（這是最後一鏡＝全片爆點，收在記得住的一句）',
     `目前這一鏡：${JSON.stringify({ visual: current.visual, tts: current.tts, caption: current.caption, punchline: current.punchline, branch: current.branch, motion: current.motion, emotion: current.emotion })}`,
+    // 尊重使用者已選定的動/靜態：branch 維持不變，若是 i2v 記得給對應的 motion（避免生成時幾乎不動）。
+    `請維持 branch 為 "${current.branch}"（使用者已選定${current.branch === 'i2v' ? '動態，請一併給明確的 motion 運鏡描述' : '靜態'}）。`,
     instruction?.trim() ? `額外要求：${instruction.trim()}` : '',
     '請產生一個不同但更好的替代版本。',
   ].filter(Boolean).join('\n');
