@@ -19,6 +19,7 @@ import {
 } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
+import { STYLE_PRESETS } from '@/lib/engine/style-preset'; // 純資料（型別-only 依賴），client 安全
 import { InterviewChat } from './_components/interview-chat';
 import { ShotEditModal } from './_components/shot-edit-modal';
 import { HistoryModal } from './_components/history-modal';
@@ -725,7 +726,7 @@ export default function StoryboardPage() {
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stylePreset: stylePreset || null }) });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '更新失敗'); }
-      const label = ({ 'meme-comedy': '迷因搞笑', 'clean-explainer': '乾淨解說', 'tech-review': '科技評測', vlog: '生活 Vlog', 'dark-horror': '暗黑恐怖' } as Record<string, string>)[stylePreset];
+      const label = STYLE_PRESETS[stylePreset as keyof typeof STYLE_PRESETS]?.label;
       toast.success(label ? `已套用「${label}」模板` : '已改回預設風格');
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : '更新失敗'); }
@@ -950,8 +951,8 @@ export default function StoryboardPage() {
               className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-xs text-gray-700 disabled:opacity-50 dark:bg-gray-50"
             >
               <option value="">預設風格</option>
-              {([['meme-comedy', '迷因搞笑'], ['clean-explainer', '乾淨解說'], ['tech-review', '科技評測'], ['vlog', '生活 Vlog'], ['dark-horror', '暗黑恐怖']] as const).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
+              {Object.values(STYLE_PRESETS).map((p) => (
+                <option key={p.id} value={p.id}>{p.label ?? p.id}</option>
               ))}
             </select>
             <span>· 共 {totalShots} 個分鏡</span>
