@@ -67,6 +67,20 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
     window.setTimeout(() => setHighlightIndex((cur) => (cur === idx ? null : cur)), 1600);
   };
 
+  // 讀入字幕檔（.srt/.vtt/.txt）當來源；SRT/VTT 的時間碼結構由 server 的 cleanSourceTranscript 剝除。
+  const readSubtitleFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 3_000_000) { toast.error('字幕檔太大（上限 3MB）'); return; }
+    try {
+      const text = await file.text();
+      if (!text.trim()) { toast.error('檔案是空的'); return; }
+      setSource(text);
+      toast.success(`已載入「${file.name}」`);
+    } catch {
+      toast.error('讀取檔案失敗');
+    }
+  };
+
   // ① 改編預覽（persist:false）→ 進入審核階段
   const preview = async () => {
     if (busy) return;
@@ -177,13 +191,21 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               </div>
             )}
 
-            <label className="mb-1 block text-sm font-medium text-gray-700">① 貼上字幕逐字稿（推薦）</label>
-            <p className="mb-1.5 text-xs text-gray-400">在 YouTube 影片下方「⋯ → 顯示轉錄稿」複製，或直接貼腳本。中英文皆可。</p>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="block text-sm font-medium text-gray-700">① 貼上字幕逐字稿（推薦）</label>
+              <label className="cursor-pointer text-xs text-red-600 hover:underline">
+                或選字幕檔（.srt/.vtt/.txt）
+                <input type="file" accept=".srt,.vtt,.txt,text/plain" className="hidden"
+                  onChange={(e) => { void readSubtitleFile(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+            </div>
+            <p className="mb-1.5 text-xs text-gray-400">在 YouTube 影片下方「⋯ → 顯示轉錄稿」複製，或直接貼腳本／拖入字幕檔。中英文皆可。</p>
             <Textarea
               value={source}
               onChange={(e) => setSource(e.target.value)}
+              onDrop={(e) => { const f = e.dataTransfer?.files?.[0]; if (f) { e.preventDefault(); void readSubtitleFile(f); } }}
               aria-label="YouTube 字幕逐字稿"
-              placeholder={'0:00 大家好 今天要來挑戰…\n0:04 我從小就夢想…\n（貼上整段字幕或腳本）'}
+              placeholder={'0:00 大家好 今天要來挑戰…\n0:04 我從小就夢想…\n（貼上整段字幕或腳本，或把 .srt/.vtt 拖進來）'}
               rows={7}
               className="mb-4"
               textareaClassName="bg-white text-gray-900 dark:bg-gray-50"
