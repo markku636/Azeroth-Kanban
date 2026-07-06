@@ -17,6 +17,7 @@ import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
 import { lipsync } from '@/lib/engine/lipsync';
 import { makePad } from '@/lib/engine/music';
+import { pickTransition } from '@/lib/engine/transitions';
 import { moodFromProject } from './mood';
 import { publishProgress } from './events';
 
@@ -502,13 +503,17 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   // Scene-aware seam transitions: hard cut at a punchline (comedic snap); a cinematic dip-to-black
   // when the scene changes (clear story-beat delineation); gentle crossfade within a scene. The fades
   // array keeps the same length/semantics as before so the SFX-start math below is unaffected.
+  // 專案 + 情緒先算出來（轉場選擇要吃 mood；後段配樂/卡片/浮水印也重用，故整個 assemble 只查這一次）。
+  const project = await prisma.studioProject.findUnique({ where: { id: projectId } });
+  const mood = moodFromProject(project, shots);
   const fades: number[] = [];
   const transitions: string[] = [];
   for (let i = 1; i < present.length; i++) {
     const prev = present[i - 1], cur = present[i];
-    if (cur.punch || cur.punchline) { fades.push(0); transitions.push('fade'); }       // comedic snap
-    else if (prev.sceneId !== cur.sceneId) { fades.push(0.5); transitions.push('fadeblack'); } // scene change
-    else { fades.push(0.25); transitions.push('fade'); }                                // within scene
+    // fade 秒數維持原語意（與下方 SFX 卡點數學耦合，不可改）；只把轉場「名」升級成有變化、且與情緒相稱的一組。
+    if (cur.punch || cur.punchline) { fades.push(0); transitions.push(pickTransition('punch', i, mood)); }        // comedic snap（硬切）
+    else if (prev.sceneId !== cur.sceneId) { fades.push(0.5); transitions.push(pickTransition('scene', i, mood)); } // scene change
+    else { fades.push(0.25); transitions.push(pickTransition('within', i, mood)); }                                 // within scene
   }
 
   await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：套用場景轉場…' });
@@ -539,8 +544,7 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   }
 
   const dur = await probeDuration(videoOut);
-  const project = await prisma.studioProject.findUnique({ where: { id: projectId } });
-  const mood = moodFromProject(project, shots); // tone/genre 明確用之(零回歸)；否則用分鏡情緒多數決補
+  // project + mood 已在頂端算好（轉場用）；此處直接重用。
   const bgm = join(outDir, 'bgm.wav');
   if (project?.bgmPath && existsSync(project.bgmPath)) {
     await loopAudioTo(project.bgmPath, +(dur + 0.5).toFixed(2), bgm); // 使用者上傳的 BGM，循環/裁切到片長
