@@ -39,6 +39,7 @@ export default function StoryPage() {
   const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false, highlight: false, highlightColor: '#FFD400' });
   const [wm, setWm] = useState<{ text: string; position: string }>({ text: '', position: 'tr' });
   const [look, setLookState] = useState<string>('');
+  const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -78,6 +79,8 @@ export default function StoryPage() {
         const wmData = pJson.data.watermark as { text?: string; position?: string } | null;
         if (wmData && typeof wmData === 'object') setWm({ text: typeof wmData.text === 'string' ? wmData.text : '', position: wmData.position === 'tl' || wmData.position === 'bl' || wmData.position === 'br' ? wmData.position : 'tr' });
         setLookState(typeof pJson.data.look === 'string' ? pJson.data.look : '');
+        const pbData = pJson.data.progressBar as { enabled?: boolean; color?: string; position?: string } | null;
+        if (pbData && typeof pbData === 'object') setPb({ enabled: pbData.enabled === true, color: typeof pbData.color === 'string' ? pbData.color : '#FFD400', position: pbData.position === 'top' ? 'top' : 'bottom' });
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -124,6 +127,11 @@ export default function StoryPage() {
   const saveLook = (next: string) => {
     setLookState(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ look: next || null }) });
+  };
+  // 進度條：送完整物件；enabled=false 時後端會移除。改後需重新「生成影片」套用。
+  const savePb = (next: { enabled: boolean; color: string; position: string }) => {
+    setPb(next);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ progressBar: next }) });
   };
   // key 對應引擎 GRADE_STYLES；css 只是 UI 近似預覽（非精確，實際以 ffmpeg 為準）。'' ＝跟隨風格預設。
   const LOOKS: { key: string; label: string; css: string }[] = [
@@ -435,6 +443,34 @@ export default function StoryPage() {
             )}
           </div>
         </div>
+      </section>
+
+      {/* 進度條 */}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">進度條（觀看進度）</h2>
+        <p className="mb-3 text-xs text-gray-400">成片底部（或頂部）一條隨播放增長的細條，讓觀眾看到「還剩多少」，短影音有助完播率。改後需重新「② 生成影片」套用。</p>
+        <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
+          <input type="checkbox" checked={pb.enabled} onChange={(e) => savePb({ ...pb, enabled: e.target.checked })} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600"><span className="font-medium text-gray-700">顯示進度條</span></span>
+        </label>
+        {pb.enabled && (
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">顏色</span>
+              <input type="color" aria-label="進度條顏色" value={pb.color} onChange={(e) => savePb({ ...pb, color: e.target.value })} className="h-7 w-12 rounded border border-gray-300 bg-white" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">位置</span>
+              <select aria-label="進度條位置" value={pb.position} onChange={(e) => savePb({ ...pb, position: e.target.value })} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 dark:bg-gray-50">
+                <option value="bottom">底部</option>
+                <option value="top">頂部</option>
+              </select>
+            </div>
+            <div className={`relative h-8 flex-1 overflow-hidden rounded bg-gray-800 ${pb.position === 'top' ? 'flex items-start' : 'flex items-end'}`}>
+              <span className="h-1.5 w-3/5 rounded-sm" style={{ backgroundColor: pb.color }} />
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 專案角色 */}

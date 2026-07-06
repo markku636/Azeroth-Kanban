@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 vi.mock('@/lib/audit-log-service', () => ({ createAuditLog: vi.fn() }));
 
-import { updateProject, createProject, parseWatermark } from './studio-service';
+import { updateProject, createProject, parseWatermark, parseProgressBar } from './studio-service';
 import { prisma } from '@/lib/prisma';
 import { ApiReturnCode } from '@/lib/api-response';
 
@@ -96,6 +96,34 @@ describe('updateProject 浮水印合併進 spec', () => {
     const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
     expect((data.spec as any).keep).toBe(1);
     expect((data.spec as any).look).toBeUndefined();
+  });
+  it('progressBar enabled → 存 spec.progressBar（驗色）；同時 patch look 不互相覆蓋', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { look: 'film', progressBar: { enabled: true, color: '#FF0000', position: 'top' } });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).look).toBe('film');
+    expect((data.spec as any).progressBar).toEqual({ enabled: true, color: '#FF0000', position: 'top' });
+  });
+  it('progressBar enabled=false → 移除 spec.progressBar', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, progressBar: { enabled: true } } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { progressBar: { enabled: false } });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).progressBar).toBeUndefined();
+  });
+});
+
+describe('parseProgressBar（spec → 進度條設定）', () => {
+  it('未設 → enabled:false + 預設金/底部', () => {
+    expect(parseProgressBar({})).toEqual({ enabled: false, color: '#FFD400', position: 'bottom' });
+    expect(parseProgressBar(null)).toEqual({ enabled: false, color: '#FFD400', position: 'bottom' });
+  });
+  it('合法 → 帶出 enabled/color/position；非法色退預設', () => {
+    expect(parseProgressBar({ progressBar: { enabled: true, color: '#00FF00', position: 'top' } })).toEqual({ enabled: true, color: '#00FF00', position: 'top' });
+    expect(parseProgressBar({ progressBar: { enabled: true, color: 'evil;x', position: 'x' } })).toEqual({ enabled: true, color: '#FFD400', position: 'bottom' });
   });
 });
 

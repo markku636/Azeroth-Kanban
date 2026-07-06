@@ -33,6 +33,17 @@ export function parseWatermark(spec: unknown): WatermarkConfig | null {
   return { text: wm.text.trim().slice(0, 40), position, opacity };
 }
 
+/** 進度條設定（存於 spec.progressBar）。enabled=false＝不加。 */
+export interface ProgressBarConfig { enabled: boolean; color: string; position: 'top' | 'bottom' }
+
+/** 從 project.spec 解析進度條設定；恆回設定物件（未設＝enabled:false + 預設值），方便 UI 顯示。 */
+export function parseProgressBar(spec: unknown): ProgressBarConfig {
+  const pb = (spec as { progressBar?: { enabled?: unknown; color?: unknown; position?: unknown } } | null)?.progressBar;
+  const color = typeof pb?.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(pb.color) ? pb.color : '#FFD400';
+  const position = pb?.position === 'top' ? 'top' : 'bottom';
+  return { enabled: pb?.enabled === true, color, position };
+}
+
 export type ProjectDto = Pick<
   StudioProject,
   'id' | 'title' | 'description' | 'logline' | 'status' | 'aspect' | 'fps' | 'renderQuality' | 'bgmPath' | 'bgmGain' | 'subtitleStyle' | 'stylePreset' | 'createdAt' | 'updatedAt'
@@ -41,6 +52,8 @@ export type ProjectDto = Pick<
   watermark: WatermarkConfig | null;
   /** 調色 look（GRADE_STYLES 的 key，優先於風格預設的調色）；null＝跟隨預設/預設值 */
   look: string | null;
+  /** 進度條（隨播放增長的橫條）設定；恆有值（未設＝enabled:false + 預設） */
+  progressBar: ProgressBarConfig;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 成片最後產生時間（ISO），無成片時為 null */
@@ -88,6 +101,7 @@ function projectToDto(
     aspect: p.aspect, fps: p.fps, renderQuality: p.renderQuality, bgmPath: p.bgmPath, bgmGain: p.bgmGain, subtitleStyle: p.subtitleStyle, stylePreset: p.stylePreset,
     watermark: parseWatermark(p.spec),
     look: typeof (p.spec as { look?: unknown } | null)?.look === 'string' ? (p.spec as { look: string }).look : null,
+    progressBar: parseProgressBar(p.spec),
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
@@ -211,6 +225,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   watermark?: { text?: string; position?: string; opacity?: number } | null;
   /** 調色 look（GRADE_STYLES key）：合併進 spec.look（免 schema）。null 或空＝清除（跟隨預設）。 */
   look?: string | null;
+  /** 進度條：合併進 spec.progressBar。enabled=false＝移除該鍵。 */
+  progressBar?: { enabled?: boolean; color?: string; position?: string };
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -258,6 +274,16 @@ export async function updateProject(
       if (patch.look !== undefined) {
         if (!patch.look || typeof patch.look !== 'string') delete spec.look; // 非法 key 在 render 端(projectStyle)也會被忽略
         else spec.look = patch.look.slice(0, 20);
+      }
+      data.spec = spec as Prisma.InputJsonValue;
+    }
+    if (patch.progressBar !== undefined) {
+      const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
+      if (!patch.progressBar?.enabled) delete spec.progressBar; // 關閉＝移除
+      else {
+        const color = typeof patch.progressBar.color === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(patch.progressBar.color) ? patch.progressBar.color : '#FFD400';
+        const position = patch.progressBar.position === 'top' ? 'top' : 'bottom';
+        spec.progressBar = { enabled: true, color, position };
       }
       data.spec = spec as Prisma.InputJsonValue;
     }

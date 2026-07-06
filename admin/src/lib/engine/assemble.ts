@@ -494,6 +494,23 @@ export function watermarkDrawtext(
   return { filter, files: [f] };
 }
 
+/**
+ * 進度條 drawbox filter：底部（或頂部）一條隨播放進度由左增長到滿版的橫條（燒進成片＝觀看剩餘提示，短影音完播
+ * 率輔助）。w 用 min(1,t/dur) 夾住，最後停在滿版。color 只接受合法顏色（否則回退金）。純函式；exported for testing。
+ */
+export function progressBarFilter(
+  o: { color?: string; thickness?: number; position?: 'top' | 'bottom'; canvasH?: number; durationSec: number },
+): string {
+  const canvasH = o.canvasH && o.canvasH > 0 ? o.canvasH : 1280;
+  const s = capScale(canvasH);
+  const color = /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+(@[0-9.]+)?$/.test(o.color ?? '') ? (o.color as string) : '#FFD400';
+  const boxColor = color.startsWith('#') ? `0x${color.slice(1)}` : color;
+  const h = Math.max(3, Math.round((o.thickness ?? 8) * s));
+  const dur = Math.max(0.1, o.durationSec);
+  const y = o.position === 'top' ? '0' : `ih-${h}`; // drawbox：ih＝輸入高度
+  return `drawbox=x=0:y=${y}:w='iw*min(1\\,t/${dur.toFixed(2)})':h=${h}:color=${boxColor}:t=fill`;
+}
+
 export interface StillOpts {
   image: string;
   voice?: string;
@@ -926,6 +943,21 @@ export class Compositor {
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg watermark failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
+  /**
+   * 進度條一次性合成：把隨播放增長的橫條燒進成片（重編碼視訊、音訊 copy）。durationSec 不給則 probe。
+   */
+  async progressBar(o: {
+    video: string; out: string; durationSec?: number; color?: string; thickness?: number;
+    position?: 'top' | 'bottom'; height?: number;
+  }): Promise<string> {
+    const dur = o.durationSec ?? await probeDuration(o.video);
+    const filter = progressBarFilter({ color: o.color, thickness: o.thickness, position: o.position, canvasH: o.height, durationSec: dur });
+    const args = ["-y", "-i", o.video, "-vf", filter, "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    if (code !== 0) throw new Error(`ffmpeg progressBar failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
 }

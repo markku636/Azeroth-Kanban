@@ -609,6 +609,19 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     await comp.watermark({ video: final, out: wmOut, text: wmText, width: cw, height: ch, position, opacity });
     if (existsSync(wmOut) && wmOut !== final) { copyFileSync(wmOut, final); try { unlinkSync(wmOut); } catch { /* ignore */ } }
   }
+
+  // 進度條（隨播放增長的橫條，完播率輔助）：來源＝專案 spec.progressBar.enabled 或全域 env STUDIO_PROGRESS_BAR。
+  // color/position 可選（預設金、底部）。未啟用＝零回歸。
+  const pbCfg = (project?.spec as { progressBar?: { enabled?: unknown; color?: unknown; position?: unknown } } | null)?.progressBar;
+  const pbOn = pbCfg?.enabled === true || (process.env.STUDIO_PROGRESS_BAR ?? 'off').toLowerCase() !== 'off';
+  if (pbOn) {
+    const { ch } = await projectDims(projectId);
+    const color = typeof pbCfg?.color === 'string' ? pbCfg.color : undefined;
+    const position = pbCfg?.position === 'top' ? 'top' : 'bottom';
+    const pbOut = join(outDir, 'final_pb.mp4');
+    await comp.progressBar({ video: final, out: pbOut, height: ch, color, position });
+    if (existsSync(pbOut) && pbOut !== final) { copyFileSync(pbOut, final); try { unlinkSync(pbOut); } catch { /* ignore */ } }
+  }
   return final;
 }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -228,6 +228,25 @@ describe('watermarkDrawtext（品牌浮水印）', () => {
     expect(hi.filter).toContain('white@1'); clean(hi);
     const lo = watermarkDrawtext('@x', 'C:/f.ttf', { opacity: 0 });
     expect(lo.filter).toContain('white@0.15'); clean(lo);
+  });
+});
+
+describe('progressBarFilter（進度條）', () => {
+  it('底部：drawbox 於 ih-h、寬度隨 t 增長並夾在 1、預設金', () => {
+    const f = progressBarFilter({ durationSec: 30, canvasH: 1280 });
+    expect(f).toContain('drawbox=');
+    expect(f).toContain('color=0xFFD400'); // 預設金（drawbox 用 0x）
+    expect(f).toContain('min(1'); // 進度夾住
+    expect(f).toContain('t/30.00'); // 依總時長
+    expect(f).toContain('y=ih-'); // 底部（用 ih）
+  });
+  it('頂部：y=0；自訂色', () => {
+    const f = progressBarFilter({ durationSec: 12, position: 'top', color: '#00FF00' });
+    expect(f).toContain('y=0:');
+    expect(f).toContain('color=0x00FF00');
+  });
+  it('非法色 → 回退金', () => {
+    expect(progressBarFilter({ durationSec: 5, color: 'evil;drawbox' })).toContain('color=0xFFD400');
   });
 });
 
