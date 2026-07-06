@@ -172,6 +172,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !busy && aiReady !== false) { e.preventDefault(); void preview(); } }}
               aria-label="YouTube 網址"
               placeholder="https://www.youtube.com/watch?v=... 或 youtu.be/... 或 /shorts/..."
               className="mb-4"
@@ -203,6 +204,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               <input
                 type="number" min={1} max={40} value={count}
                 onChange={(e) => setCount(Math.min(40, Math.max(1, Number(e.target.value) || 8)))}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !busy && aiReady !== false) { e.preventDefault(); void preview(); } }}
                 aria-label="分鏡數量"
                 className="w-20 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:bg-gray-50"
               />
