@@ -975,35 +975,36 @@ export class Compositor {
   }
 
   /**
-   * 品牌浮水印一次性合成：把頻道 handle 燒在成片角落（重編碼視訊、音訊 copy）。text 為空或找不到字型 → 直接
-   * 回傳原檔路徑（不動）。宽/高供字級與邊距等比縮放（不傳＝以 720×1280 估）。
+   * 成片收尾覆蓋一次性合成：把品牌浮水印 + 進度條 + 電影感收尾（膠片噪點/暗角）合併成**單一 -vf 一次重編碼**，
+   * 避免逐項各重編碼一次疊加畫質流失、也更快。皆未啟用 → 回原檔不動（不重編碼）。順序：浮水印→進度條→膠片
+   * 收尾（噪點/暗角放最後，質感才均勻覆蓋全畫面）。durationSec 供進度條；不傳則 probe。
    */
-  async watermark(o: {
-    video: string; out: string; text: string;
-    width?: number; height?: number; position?: WatermarkPos; opacity?: number; fontfile?: string;
+  async finish(o: {
+    video: string; out: string; width?: number; height?: number; durationSec?: number;
+    watermark?: { text: string; position?: WatermarkPos; opacity?: number };
+    progressBar?: { color?: string; position?: 'top' | 'bottom' };
+    filmFinish?: { intensity?: 'subtle' | 'strong' };
   }): Promise<string> {
-    const font = o.fontfile ?? findCjkFont(); // 常規字重：低調不搶戲
-    if (!font || !o.text?.trim()) return o.video; // 無字型/無文字 → 不加，回原檔
-    const { filter, files } = watermarkDrawtext(o.text.trim(), font, { position: o.position, opacity: o.opacity, canvasH: o.height, canvasW: o.width });
-    const args = ["-y", "-i", o.video, "-vf", filter, "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    const W = o.width ?? 720, H = o.height ?? 1280;
+    const parts: string[] = [];
+    const tmpFiles: string[] = [];
+    if (o.watermark?.text?.trim()) {
+      const font = findCjkFont(); // 常規字重：低調不搶戲
+      if (font) {
+        const wm = watermarkDrawtext(o.watermark.text.trim(), font, { position: o.watermark.position, opacity: o.watermark.opacity, canvasH: H, canvasW: W });
+        parts.push(wm.filter); tmpFiles.push(...wm.files);
+      }
+    }
+    if (o.progressBar) {
+      const dur = o.durationSec ?? await probeDuration(o.video);
+      parts.push(progressBarFilter({ color: o.progressBar.color, position: o.progressBar.position, canvasH: H, durationSec: dur }));
+    }
+    if (o.filmFinish) parts.push(filmFinishFilter({ intensity: o.filmFinish.intensity }));
+    if (parts.length === 0) return o.video; // 沒有任何收尾 → 不動、不重編碼
+    const args = ["-y", "-i", o.video, "-vf", parts.join(","), "-c:a", "copy", ...VIDEO_ARGS, o.out];
     const { code, stderr } = await run(FFMPEG, args);
-    for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
-    if (code !== 0) throw new Error(`ffmpeg watermark failed (${code}): ${stderr.slice(-1000)}`);
-    return o.out;
-  }
-
-  /**
-   * 進度條一次性合成：把隨播放增長的橫條燒進成片（重編碼視訊、音訊 copy）。durationSec 不給則 probe。
-   */
-  async progressBar(o: {
-    video: string; out: string; durationSec?: number; color?: string; thickness?: number;
-    position?: 'top' | 'bottom'; height?: number;
-  }): Promise<string> {
-    const dur = o.durationSec ?? await probeDuration(o.video);
-    const filter = progressBarFilter({ color: o.color, thickness: o.thickness, position: o.position, canvasH: o.height, durationSec: dur });
-    const args = ["-y", "-i", o.video, "-vf", filter, "-c:a", "copy", ...VIDEO_ARGS, o.out];
-    const { code, stderr } = await run(FFMPEG, args);
-    if (code !== 0) throw new Error(`ffmpeg progressBar failed (${code}): ${stderr.slice(-1000)}`);
+    for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
+    if (code !== 0) throw new Error(`ffmpeg finish failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
 
@@ -1025,11 +1026,4 @@ export class Compositor {
     return o.out;
   }
 
-  /** 電影感收尾一次性合成：膠片噪點＋暗角（重編碼視訊、音訊 copy）。 */
-  async filmFinish(o: { video: string; out: string; intensity?: 'subtle' | 'strong' }): Promise<string> {
-    const args = ["-y", "-i", o.video, "-vf", filmFinishFilter({ intensity: o.intensity }), "-c:a", "copy", ...VIDEO_ARGS, o.out];
-    const { code, stderr } = await run(FFMPEG, args);
-    if (code !== 0) throw new Error(`ffmpeg filmFinish failed (${code}): ${stderr.slice(-1000)}`);
-    return o.out;
-  }
 }

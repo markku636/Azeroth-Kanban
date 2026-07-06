@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -228,6 +228,14 @@ describe('watermarkDrawtext（品牌浮水印）', () => {
     expect(hi.filter).toContain('white@1'); clean(hi);
     const lo = watermarkDrawtext('@x', 'C:/f.ttf', { opacity: 0 });
     expect(lo.filter).toContain('white@0.15'); clean(lo);
+  });
+});
+
+describe('Compositor.finish（收尾覆蓋合併一次編碼）', () => {
+  it('無任何收尾 → 回原檔、不重編碼（不 spawn ffmpeg）', async () => {
+    const comp = new Compositor();
+    const r = await comp.finish({ video: 'input.mp4', out: 'output.mp4' });
+    expect(r).toBe('input.mp4'); // 直接回原檔（parts 為空的 early return）
   });
 });
 

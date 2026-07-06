@@ -624,42 +624,24 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     await comp.stitch({ clips, out: final, fades: Array(seams).fill(0.6), transitions: Array(seams).fill('fadeblack') });
   }
 
-  // 品牌浮水印（頻道 handle，全片常駐）：來源＝專案 spec.watermark（免 schema，日後 UI/API 可寫入）或全域 env
-  // STUDIO_WATERMARK。有文字才做（一次重編碼、音訊 copy）。皆未設＝零回歸。
+  // 成片收尾覆蓋（品牌浮水印 + 進度條 + 電影感收尾）：全部來源＝各自 spec.* 或對應 env，合併成**單一 -vf 一次
+  // 重編碼**（避免逐項各重編碼一次疊加畫質流失、也更快）。皆未設＝零回歸（comp.finish 不重編碼、回原檔）。
   const wmCfg = (project?.spec as { watermark?: { text?: unknown; position?: unknown; opacity?: unknown } } | null)?.watermark;
   const wmText = (typeof wmCfg?.text === 'string' ? wmCfg.text : process.env.STUDIO_WATERMARK ?? '').trim();
-  if (wmText) {
-    const posRaw = typeof wmCfg?.position === 'string' ? wmCfg.position : undefined;
-    const position = (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === posRaw);
-    const opacity = typeof wmCfg?.opacity === 'number' ? wmCfg.opacity : undefined;
-    const { cw, ch } = await projectDims(projectId);
-    const wmOut = join(outDir, 'final_wm.mp4');
-    await comp.watermark({ video: final, out: wmOut, text: wmText, width: cw, height: ch, position, opacity });
-    if (existsSync(wmOut) && wmOut !== final) { copyFileSync(wmOut, final); try { unlinkSync(wmOut); } catch { /* ignore */ } }
-  }
-
-  // 進度條（隨播放增長的橫條，完播率輔助）：來源＝專案 spec.progressBar.enabled 或全域 env STUDIO_PROGRESS_BAR。
-  // color/position 可選（預設金、底部）。未啟用＝零回歸。
   const pbCfg = (project?.spec as { progressBar?: { enabled?: unknown; color?: unknown; position?: unknown } } | null)?.progressBar;
   const pbOn = pbCfg?.enabled === true || (process.env.STUDIO_PROGRESS_BAR ?? 'off').toLowerCase() !== 'off';
-  if (pbOn) {
-    const { ch } = await projectDims(projectId);
-    const color = typeof pbCfg?.color === 'string' ? pbCfg.color : undefined;
-    const position = pbCfg?.position === 'top' ? 'top' : 'bottom';
-    const pbOut = join(outDir, 'final_pb.mp4');
-    await comp.progressBar({ video: final, out: pbOut, height: ch, color, position });
-    if (existsSync(pbOut) && pbOut !== final) { copyFileSync(pbOut, final); try { unlinkSync(pbOut); } catch { /* ignore */ } }
-  }
-
-  // 電影感收尾（膠片噪點＋暗角）：spec.filmFinish.enabled 或 env STUDIO_FILM_FINISH。最後一道（疊在所有東西上，
-  // 質感才均勻）。未啟用＝零回歸。
   const ffCfg = (project?.spec as { filmFinish?: { enabled?: unknown; intensity?: unknown } } | null)?.filmFinish;
   const ffOn = ffCfg?.enabled === true || (process.env.STUDIO_FILM_FINISH ?? 'off').toLowerCase() !== 'off';
-  if (ffOn) {
-    const intensity = ffCfg?.intensity === 'strong' ? 'strong' : 'subtle';
-    const ffOut = join(outDir, 'final_ff.mp4');
-    await comp.filmFinish({ video: final, out: ffOut, intensity });
-    if (existsSync(ffOut) && ffOut !== final) { copyFileSync(ffOut, final); try { unlinkSync(ffOut); } catch { /* ignore */ } }
+  if (wmText || pbOn || ffOn) {
+    const { cw, ch } = await projectDims(projectId);
+    const finishOut = join(outDir, 'final_finish.mp4');
+    await comp.finish({
+      video: final, out: finishOut, width: cw, height: ch,
+      watermark: wmText ? { text: wmText, position: (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === wmCfg?.position), opacity: typeof wmCfg?.opacity === 'number' ? wmCfg.opacity : undefined } : undefined,
+      progressBar: pbOn ? { color: typeof pbCfg?.color === 'string' ? pbCfg.color : undefined, position: pbCfg?.position === 'top' ? 'top' : 'bottom' } : undefined,
+      filmFinish: ffOn ? { intensity: ffCfg?.intensity === 'strong' ? 'strong' : 'subtle' } : undefined,
+    });
+    if (existsSync(finishOut) && finishOut !== final) { copyFileSync(finishOut, final); try { unlinkSync(finishOut); } catch { /* ignore */ } }
   }
 
   // 字幕檔（SRT/VTT）：每鏡旁白對齊實際時間軸 → 可上傳 YouTube CC / 無障礙 / 二次剪輯。片頭卡開啟時整片位移
