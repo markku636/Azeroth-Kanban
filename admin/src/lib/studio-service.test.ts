@@ -219,6 +219,36 @@ describe('parseProgressBar（spec → 進度條設定）', () => {
   });
 });
 
+describe('影片風格模板（stylePreset）', () => {
+  it('非法模板 id → VALIDATION_ERROR', async () => {
+    const r = await updateProject('owner', 'p', { stylePreset: 'nope' as any });
+    expect(r.code).toBe(ApiReturnCode.VALIDATION_ERROR);
+  });
+  it('合法新模板通過驗證（進到 DB 查詢）', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue(null);
+    const r = await updateProject('owner', 'p', { stylePreset: 'clean-explainer' as any });
+    expect(r.code).not.toBe(ApiReturnCode.VALIDATION_ERROR);
+  });
+  it('一鍵套用模板 → 把 sceneTitles/autoSfx 寫進 spec（clean-explainer）', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { stylePreset: 'clean-explainer' as any });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect(data.stylePreset).toBe('clean-explainer');
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).sceneTitles).toBe(true);
+    expect((data.spec as any).autoSfx).toBe(true);
+  });
+  it('套用模板時同批明確設定者以明確為準（autoSfx:false 不被模板覆蓋）', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { stylePreset: 'clean-explainer' as any, autoSfx: false });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).autoSfx).toBeUndefined(); // 明確 false → 不被模板的 true 覆蓋
+    expect((data.spec as any).sceneTitles).toBe(true);   // 未明確 → 用模板
+  });
+});
+
 describe('createProject 標題驗證（DB 之前）', () => {
   it('空標題 → VALIDATION_ERROR 且不建立', async () => {
     const r = await createProject('owner', { title: '' });

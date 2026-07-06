@@ -4,7 +4,7 @@
 import type { SubStyle } from "./assemble";
 import type { SfxName } from "./sfx";
 
-export type StylePresetId = 'meme-comedy' | 'dark-horror';
+export type StylePresetId = 'meme-comedy' | 'dark-horror' | 'clean-explainer' | 'tech-review' | 'vlog';
 
 /** 一組影片風格的完整預設。全部欄位皆為「預設值」語意：專案有自訂時以專案為準。 */
 export interface StylePreset {
@@ -24,6 +24,13 @@ export interface StylePreset {
   /** 片頭／片尾卡片（付費解說片標配）。intro=片頭標題卡（題名+前提，疊在首幀）、outro=片尾行動呼籲卡（CTA）。
    *  cta=片尾大字（取代舊「完」），accent=品牌強調色（片頭/CTA 下方色條）。未設＝不強制加卡（沿用 env 開關）。 */
   cards?: { intro?: boolean; outro?: boolean; cta?: string; accent?: string };
+  /** 一鍵套用時的預設開關（選此模板即寫進 spec 當起點，使用者之後可個別調整）。 */
+  sceneTitles?: boolean;   // 章節標題 lower-third
+  autoSfx?: boolean;       // 換場景自動 whoosh
+  filmFinish?: { intensity: 'subtle' | 'strong' }; // 電影感收尾
+  /** UI 顯示用：模板中文名＋一句話簡介（供選單/卡片）。 */
+  label?: string;
+  blurb?: string;
 }
 
 export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
@@ -37,6 +44,7 @@ export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
     sfxSuggested: ['vineboom', 'scratch', 'rimshot', 'ding', 'whoosh', 'boing'],
     memeCaptions: true,
     cards: { intro: true, outro: true, cta: '喜歡就追蹤，下支更瘋', accent: '#FFD400' },
+    label: '迷因搞笑', blurb: '迷因大字＋經典音效＋俐落快切',
   },
   // 黑暗恐怖：horror 調色 + 恐怖 BGM；字幕淡灰 serif、逐句 pop-on、加底板；接縫拉長營造壓迫感。
   'dark-horror': {
@@ -48,8 +56,51 @@ export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
     sfxSuggested: ['heartbeat', 'drone', 'sting', 'giggle', 'riser', 'whisper', 'vineboom'],
     memeCaptions: false,
     cards: { intro: true, outro: true, cta: '還想被嚇？追蹤我', accent: '#C81E2E' },
+    label: '暗黑恐怖', blurb: 'horror 調色＋恐怖 BGM＋襯線字幕＋壓迫感接縫',
+  },
+  // 乾淨解說：明亮 clean 調色＋慵懶 BGM＋卡拉OK逐字高亮字幕＋片頭/CTA＋章節標題＋轉場音效＝最百搭的解說模板。
+  'clean-explainer': {
+    id: 'clean-explainer',
+    gradeStyle: 'clean',
+    bgmMood: 'chill',
+    subStyle: { segment: true, highlight: true, highlightColor: '#FFD400', fontKind: 'bold' },
+    seams: { withinScene: 0.3, sceneChange: 0.5, sceneChangeTransition: 'fadeblack' },
+    sfxSuggested: ['ding', 'whoosh', 'rimshot'],
+    memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '喜歡這支解說？訂閱看更多', accent: '#4DA6FF' },
+    sceneTitles: true, autoSfx: true,
+    label: '乾淨解說', blurb: '明亮乾淨＋逐字高亮字幕＋章節標題＋CTA，最百搭',
+  },
+  // 科技評測：cyber 霓虹調色＋史詩 BGM＋綠色逐字高亮＋微電影感收尾＝科技/開箱/評測感。
+  'tech-review': {
+    id: 'tech-review',
+    gradeStyle: 'cyber',
+    bgmMood: 'epic',
+    subStyle: { segment: true, highlight: true, highlightColor: '#22FF88', fontKind: 'bold' },
+    seams: { withinScene: 0.25, sceneChange: 0.45, sceneChangeTransition: 'fadeblack' },
+    sfxSuggested: ['ding', 'whoosh', 'riser'],
+    memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '追蹤第一手評測', accent: '#22FF88' },
+    sceneTitles: true, autoSfx: true, filmFinish: { intensity: 'subtle' },
+    label: '科技評測', blurb: '霓虹 cyber＋史詩 BGM＋綠色高亮＋微膠片感',
+  },
+  // 生活 vlog：溫暖 film 底片調色＋慵懶 BGM＋柔和字幕＋膠片感＝抒情/日常/vlog。
+  vlog: {
+    id: 'vlog',
+    gradeStyle: 'film',
+    bgmMood: 'chill',
+    subStyle: { segment: true, highlight: false, plate: false, fontKind: 'bold' },
+    seams: { withinScene: 0.35, sceneChange: 0.6, sceneChangeTransition: 'fadeblack' },
+    sfxSuggested: ['whoosh', 'ding'],
+    memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '一起把日子過好，追蹤我', accent: '#FF8A5B' },
+    filmFinish: { intensity: 'subtle' },
+    label: '生活 Vlog', blurb: '溫暖底片感＋慵懶 BGM＋柔和字幕＋膠片質感',
   },
 };
+
+/** 所有模板 id（供選單/驗證用，單一來源）。 */
+export const STYLE_PRESET_IDS = Object.keys(STYLE_PRESETS) as StylePresetId[];
 
 /** 依 id 取風格預設；未知 / 未設定回 undefined（呼叫端 fallback 既有行為 = 零回歸）。 */
 export function getStylePreset(id?: string | null): StylePreset | undefined {

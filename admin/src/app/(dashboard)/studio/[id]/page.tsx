@@ -719,13 +719,14 @@ export default function StoryboardPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '更新失敗'); }
   };
 
-  // 切換影片風格預設（meme-comedy=迷因搞笑 / dark-horror=暗黑恐怖 / 空=預設不指定）。影響之後 AI 生成與重生內容的風格走向。
+  // 一鍵套用影片風格模板（空＝不指定）。選模板會一併套上該模板的調色/BGM/字幕/卡片/章節/音效等預設，可再個別調整。
   const updateStylePreset = async (stylePreset: string) => {
     if (!data || stylePreset === (data.project.stylePreset ?? '')) return;
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stylePreset: stylePreset || null }) });
       if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '更新失敗'); }
-      toast.success(stylePreset === 'meme-comedy' ? '已切換為迷因搞笑風格' : stylePreset === 'dark-horror' ? '已切換為暗黑恐怖風格' : '已改回預設風格');
+      const label = ({ 'meme-comedy': '迷因搞笑', 'clean-explainer': '乾淨解說', 'tech-review': '科技評測', vlog: '生活 Vlog', 'dark-horror': '暗黑恐怖' } as Record<string, string>)[stylePreset];
+      toast.success(label ? `已套用「${label}」模板` : '已改回預設風格');
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : '更新失敗'); }
   };
@@ -949,8 +950,9 @@ export default function StoryboardPage() {
               className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-xs text-gray-700 disabled:opacity-50 dark:bg-gray-50"
             >
               <option value="">預設風格</option>
-              <option value="meme-comedy">迷因搞笑</option>
-              <option value="dark-horror">暗黑恐怖</option>
+              {([['meme-comedy', '迷因搞笑'], ['clean-explainer', '乾淨解說'], ['tech-review', '科技評測'], ['vlog', '生活 Vlog'], ['dark-horror', '暗黑恐怖']] as const).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
             </select>
             <span>· 共 {totalShots} 個分鏡</span>
             {totalShots > 0 && (

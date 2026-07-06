@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { ApiResponse, ApiReturnCode, type ApiResult } from '@/lib/api-response';
 import { createAuditLog } from '@/lib/audit-log-service';
 import { projectOutputInfo, projectHasSubtitles, projectHasChapters, sceneOutputInfo, shotHasClip, projectDir } from '@/lib/studio/storage';
+import { STYLE_PRESET_IDS, getStylePreset } from '@/lib/engine/style-preset';
 import { rm } from 'node:fs/promises';
 
 // 分鏡看板與 kanban 同演算法：scene = 欄，shot = 卡；sortOrder 走 SORT_GAP 分數插入 + normalize。
@@ -299,8 +300,8 @@ export async function updateProject(
   if (patch.bgmGain != null && (typeof patch.bgmGain !== 'number' || patch.bgmGain < 0 || patch.bgmGain > 1)) {
     return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, 'BGM 音量需在 0~1 之間', 'studio.bgm_gain_invalid');
   }
-  if (patch.stylePreset != null && !['meme-comedy', 'dark-horror'].includes(patch.stylePreset)) {
-    return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, '影片風格僅支援 meme-comedy 或 dark-horror', 'studio.style_preset_invalid');
+  if (patch.stylePreset != null && !(STYLE_PRESET_IDS as string[]).includes(patch.stylePreset)) {
+    return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, `影片風格模板僅支援：${STYLE_PRESET_IDS.join(' / ')}`, 'studio.style_preset_invalid');
   }
   try {
     const existing = await prisma.studioProject.findFirst({ where: ownerWhere(id, ownerId, options) as Prisma.StudioProjectWhereInput });
@@ -375,6 +376,21 @@ export async function updateProject(
         const scale = typeof pl.scale === 'number' ? Math.min(0.6, Math.max(0.05, pl.scale)) : (typeof cur?.scale === 'number' ? cur.scale : 0.18);
         spec.watermarkLogo = { src, position, scale };
       }
+      data.spec = spec as Prisma.InputJsonValue;
+    }
+    // 一鍵套用模板：選了帶「開關預設」的模板 → 把 sceneTitles/autoSfx/filmFinish 寫進 spec 當起點（同批已明確
+    // 指定者以明確為準）。模板的調色/BGM/字幕/卡片是 render 端即時讀 preset，不必寫進 spec。
+    if (patch.stylePreset && getStylePreset(patch.stylePreset)) {
+      const preset = getStylePreset(patch.stylePreset)!;
+      const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
+      // 清掉會蓋過模板的 render-time 覆寫，讓模板的調色/BGM 生效（使用者之後可再自訂）。字幕自訂為 DB 欄位、
+      // 不在此清（避免動到既有 subtitleStyle）；新專案無自訂時模板 subStyle 本就生效。
+      if (patch.look === undefined) delete spec.look;
+      if (patch.bgmMood === undefined) delete spec.bgmMood;
+      // 套用模板的開關預設（同批已明確指定者以明確為準）
+      if (preset.sceneTitles !== undefined && patch.sceneTitles === undefined) { if (preset.sceneTitles) spec.sceneTitles = true; else delete spec.sceneTitles; }
+      if (preset.autoSfx !== undefined && patch.autoSfx === undefined) { if (preset.autoSfx) spec.autoSfx = true; else delete spec.autoSfx; }
+      if (preset.filmFinish !== undefined && patch.filmFinish === undefined) spec.filmFinish = { enabled: true, intensity: preset.filmFinish.intensity };
       data.spec = spec as Prisma.InputJsonValue;
     }
     const p = await prisma.studioProject.update({ where: { id }, data });
