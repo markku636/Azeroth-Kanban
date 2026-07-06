@@ -132,7 +132,9 @@ async function adaptOnce(
   count: number,
   story: StoryContext | undefined,
   ctx: { batch: AdaptBatch; prevTail: string } | null,
+  styleHint?: string,
 ): Promise<PlannedShot[]> {
+  const style = styleHint?.trim() ? `\n【本次風格指定（優先於來源原本的調性）】${styleHint.trim()}` : '';
   let instruction: string;
   if (ctx) {
     const { batch, prevTail } = ctx;
@@ -143,9 +145,10 @@ async function adaptOnce(
     instruction =
       `這是${position}。全片共分 ${batch.total} 段改編，此段只負責 ${count} 個分鏡。` +
       (prevTail ? `\n上一段最後的旁白是：「${prevTail}」，請自然承接、延續同一主角外觀錨點與畫風，且不要重複上一段講過的內容。` : '') +
+      style +
       `\n以下是參考影片對應此段的字幕／腳本節錄（萃取其節奏與轉折、改編成原創內容，勿逐字照抄）：\n"""\n${src}\n"""\n請只為「此段」產生 ${count} 個分鏡。`;
   } else {
-    instruction = `參考影片腳本／字幕逐字稿如下（請萃取其節奏與結構、改編成原創分鏡）：\n"""\n${src}\n"""\n請產生 ${count} 個分鏡。`;
+    instruction = `參考影片腳本／字幕逐字稿如下（請萃取其節奏與結構、改編成原創分鏡）：${style}\n"""\n${src}\n"""\n請產生 ${count} 個分鏡。`;
   }
   const text = await complete({
     system: withStorySystem(ADAPT_SYSTEM, story),
@@ -162,10 +165,11 @@ async function adaptBatch(
   count: number,
   story: StoryContext | undefined,
   ctx: { batch: AdaptBatch; prevTail: string } | null,
+  styleHint?: string,
 ): Promise<PlannedShot[]> {
-  const first = await adaptOnce(src, count, story, ctx);
+  const first = await adaptOnce(src, count, story, ctx, styleHint);
   if (first.length) return first;
-  return adaptOnce(src, count, story, ctx);
+  return adaptOnce(src, count, story, ctx, styleHint);
 }
 
 /**
@@ -173,10 +177,10 @@ async function adaptBatch(
  * 目標鏡數 ≤ ADAPT_SINGLE_MAX 走單次呼叫（與舊行為相容）；更多鏡（如 ~2 分鐘片需 ~30 鏡）
  * **分批改編**：把逐字稿依比例切成數段、每段改編成一批分鏡並帶承接脈絡，突破單次 token/品質瓶頸。
  */
-export async function adaptStoryboardFromSource(source: string, count = 8, story?: StoryContext): Promise<PlannedShot[]> {
+export async function adaptStoryboardFromSource(source: string, count = 8, story?: StoryContext, styleHint?: string): Promise<PlannedShot[]> {
   const src = source.trim().slice(0, 24000); // 上限保護：長參考片保留更多結構（2 分鐘旁白遠小於此）
   const n = Math.max(1, Math.floor(count));
-  if (n <= ADAPT_SINGLE_MAX) return adaptBatch(src, n, story, null);
+  if (n <= ADAPT_SINGLE_MAX) return adaptBatch(src, n, story, null, styleHint);
 
   const batches = planAdaptationBatches(n);
   const out: PlannedShot[] = [];
@@ -186,7 +190,7 @@ export async function adaptStoryboardFromSource(source: string, count = 8, story
     const slice = sliceByFraction(src, b.startFrac, b.endFrac) || src; // 切片異常時退回整段
     let shots: PlannedShot[];
     try {
-      shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail });
+      shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail }, styleHint);
     } catch (e) {
       // 單批整批失敗（如 provider 429/500）→ 保留其他批，別讓整支 2 分鐘生成前功盡棄。
       lastErr = e;

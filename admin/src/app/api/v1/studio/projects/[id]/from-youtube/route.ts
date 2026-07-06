@@ -34,7 +34,7 @@ export const POST = withPermission(
     if (!memberId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
     const { id } = await params;
 
-    let body: { url?: unknown; source?: unknown; sceneId?: unknown; count?: unknown; persist?: unknown; shots?: unknown };
+    let body: { url?: unknown; source?: unknown; sceneId?: unknown; count?: unknown; persist?: unknown; shots?: unknown; styleHint?: unknown };
     try { body = await request.json(); } catch { return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '請求格式錯誤'); }
 
     const bypass = await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_EDIT_ALL);
@@ -77,11 +77,12 @@ export const POST = withPermission(
     const persist = body.persist === true;
     const rawCount = typeof body.count === 'number' ? Math.floor(body.count) : 8;
     const count = Math.min(MAX_SHOTS, Math.max(1, rawCount));
+    const styleHint = typeof body.styleHint === 'string' ? body.styleHint.trim().slice(0, 200) : undefined; // 可選：本次改編的風格傾向
 
     let shots;
     try {
       const story = await buildStoryContext(id);
-      shots = await adaptStoryboardFromSource(source, count, story);
+      shots = await adaptStoryboardFromSource(source, count, story, styleHint);
     } catch (e) {
       const raw = e instanceof Error ? e.message : '';
       return ApiResponse.fail(ApiReturnCode.INTERNAL_ERROR, 'AI 改編分鏡失敗' + (raw ? `：${raw}` : ''));

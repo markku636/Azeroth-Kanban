@@ -8,6 +8,15 @@ import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
 import { checkStoryboard, CAPTION_MAX } from '@/lib/studio/storyboard-checks';
 
+// 風格快選：沿用來源＝不帶 hint；其餘把風格傾向帶進改編（優先於來源原本調性）。
+const STYLE_PRESETS: { label: string; hint: string }[] = [
+  { label: '沿用來源', hint: '' },
+  { label: '迷因吐槽', hint: '改編成迷因吐槽搞笑風格：情緒誇張、用 setup→反轉的爆點結構，多放大字幕與卡點音效。' },
+  { label: '溫馨勵志', hint: '改編成溫馨勵志風格：情感真摯、節奏舒緩、結尾給人溫暖或啟發。' },
+  { label: '懸疑反轉', hint: '改編成懸疑風格：開場拋出懸念、中段堆疊張力、結尾一個意想不到的反轉。' },
+  { label: '知識科普', hint: '改編成知識科普風格：條理清楚、每一鏡給一個新資訊點、口吻專業但好懂。' },
+];
+
 /** 前端審核用的分鏡（對齊 server PlannedShot 欄位；只放 UI 需要的）。 */
 interface ReviewShot {
   visual: string;
@@ -32,6 +41,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [url, setUrl] = useState('');
   const [source, setSource] = useState('');
   const [count, setCount] = useState(8);
+  const [styleHint, setStyleHint] = useState(''); // 風格傾向（空＝沿用來源）
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<'input' | 'review'>('input');
   const [shots, setShots] = useState<ReviewShot[]>([]);
@@ -54,7 +64,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/from-youtube`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(40, Math.max(1, count)), persist: false }),
+        body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(40, Math.max(1, count)), styleHint: styleHint || undefined, persist: false }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.code !== 0) throw new Error(j.message ?? '改編失敗');
@@ -178,6 +188,27 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                 className="w-20 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:bg-gray-50"
               />
               <span className="text-xs text-gray-400">≈ {estimatedSeconds(count)} 秒 · {count} 鏡{count > 12 ? '（分批改編，會多花點時間）' : ''}</span>
+            </div>
+
+            <label className="mb-1 mt-4 block text-sm font-medium text-gray-700">④ 風格（沿用來源的節奏，換成你要的調性）</label>
+            <div className="flex flex-wrap gap-1.5">
+              {STYLE_PRESETS.map((p) => {
+                const active = styleHint === p.hint;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setStyleHint(p.hint)}
+                    className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                      active
+                        ? 'border-red-600 bg-red-600 text-white'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-700'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (

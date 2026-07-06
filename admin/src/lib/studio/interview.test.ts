@@ -150,6 +150,19 @@ describe('adaptStoryboardFromSource（YouTube 分批改編）', () => {
     expect(shots).toHaveLength(8);
   });
 
+  it('風格傾向 styleHint 會帶進改編提示（可把來源抄成不同調性）', async () => {
+    vi.mocked(complete as any).mockResolvedValue(arr(6, 'st'));
+    await adaptStoryboardFromSource('大家好。今天開箱。'.repeat(3), 6, undefined, '改編成迷因吐槽搞笑風格');
+    const content = vi.mocked(complete as any).mock.calls[0][0].messages[0].content;
+    expect(content).toContain('風格指定');
+    expect(content).toContain('迷因吐槽');
+  });
+  it('沒給 styleHint → 提示不含風格指定（沿用來源）', async () => {
+    vi.mocked(complete as any).mockResolvedValue(arr(6, 'ns'));
+    await adaptStoryboardFromSource('大家好。', 6);
+    expect(vi.mocked(complete as any).mock.calls[0][0].messages[0].content).not.toContain('風格指定');
+  });
+
   it('maxTokens 隨鏡數放寬（避免長批 JSON 被 4096 預設截斷）', async () => {
     vi.mocked(complete as any).mockResolvedValue(arr(12, 'e'));
     await adaptStoryboardFromSource('大家好。', 12); // 12 鏡＝單次路徑：700+12*320=4540
