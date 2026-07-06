@@ -290,7 +290,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               <span className="text-xs text-gray-400">≈ {estimatedSeconds(count)} 秒 · {count} 鏡{count > 12 ? '（分批改編，會多花點時間）' : ''}</span>
             </div>
 
-            <label className="mb-1 mt-4 block text-sm font-medium text-gray-700">④ 風格（沿用來源的節奏，換成你要的調性）</label>
+            <label className="mb-1 mt-4 block text-sm font-medium text-gray-700">④ 風格（預設「好笑有趣」，沿用來源節奏、換成你要的調性）</label>
             <div className="flex flex-wrap gap-1.5">
               {STYLE_PRESETS.map((p) => {
                 const active = styleHint === p.hint;
