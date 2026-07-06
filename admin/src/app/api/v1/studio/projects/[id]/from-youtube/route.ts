@@ -8,7 +8,7 @@ import { PERMISSIONS } from '@/config/permissions';
 import { createShot, getProject, getStoryboard, type StudioActor } from '@/lib/studio-service';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 import { adaptStoryboardFromSource, coercePlannedShots, type PlannedShot } from '@/lib/studio/interview';
-import { fetchYoutubeSource } from '@/lib/studio/youtube-import';
+import { fetchYoutubeSource, cleanSourceTranscript } from '@/lib/studio/youtube-import';
 import { buildStoryContext } from '@/lib/studio/story-context';
 import { providerConfigured, resolveProvider } from '@/lib/studio/llm';
 
@@ -71,6 +71,7 @@ export const POST = withPermission(
         return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, e instanceof Error ? e.message : '抓取 YouTube 字幕失敗，請改用貼上逐字稿');
       }
     }
+    source = cleanSourceTranscript(source); // 剝除時間碼／SRT/VTT 結構／[音樂]／重複行 → 讓 AI 看到乾淨敘事
     if (source.length < 20) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '來源內容太短，無法改編（請貼上較完整的字幕/腳本）');
 
     const persist = body.persist === true;

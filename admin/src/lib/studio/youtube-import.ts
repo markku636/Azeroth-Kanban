@@ -52,6 +52,34 @@ function cleanTranscript(s: string): string {
   return s.replace(/\r/g, '').replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
 }
 
+// 非語音字幕提示（只剝這些已知關鍵詞的括號段，避免誤刪劇本裡正常的括號旁白）。
+const CUE_MARKER = /[[(【]\s*(music|applause|laughter|laughs?|chuckles?|cheering|silence|background music|sound effects?|inaudible|音樂|音乐|背景音樂|配樂|掌聲|掌声|笑聲|笑声|歡呼|欢呼|過場|转场|轉場|靜音|无声)\s*[)\]】]/gi;
+
+/**
+ * 清理「使用者貼上的逐字稿／字幕」雜訊：時間碼、SRT/VTT 結構列、非語音提示、自動字幕的滾動重複行。
+ * 讓 AI 改編時看到的是乾淨的敘事文字（時間碼與 [音樂] 之類會稀釋結構判讀）。純函式、可測、對乾淨腳本近乎無操作。
+ */
+export function cleanSourceTranscript(input: string): string {
+  let s = (input ?? '').replace(/\r/g, '');
+  if (!s.trim()) return '';
+  s = s.replace(/^﻿?WEBVTT[^\n]*/i, ''); // VTT 檔頭
+  const out: string[] = [];
+  for (const rawLine of s.split('\n')) {
+    let line = rawLine.trim();
+    if (!line) continue;
+    if (/^\d+$/.test(line)) continue; // SRT 序號整列
+    if (/-->/.test(line) && /\d{1,2}:\d{2}/.test(line)) continue; // SRT/VTT cue 時間列
+    // 行首時間碼：0:00 / 00:04 / 1:23:45 / [00:04] /（0:04）等（可能連續多個）
+    line = line.replace(/^\s*(?:[[(（]\s*)?(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?\s*(?:[)\]）]\s*)?/g, '').trim();
+    line = line.replace(CUE_MARKER, ' '); // 非語音提示
+    line = line.replace(/[ \t]+/g, ' ').trim();
+    if (!line) continue;
+    if (out.length && out[out.length - 1] === line) continue; // 去掉相鄰重複行（自動字幕滾動）
+    out.push(line);
+  }
+  return out.join('\n').replace(/\n{2,}/g, '\n').trim();
+}
+
 export interface YoutubeSource { videoId: string; title: string; transcript: string }
 
 /**

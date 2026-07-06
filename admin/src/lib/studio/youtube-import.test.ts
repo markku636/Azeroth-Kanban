@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseYoutubeId, parseTimedText, extractJsonArrayAfter } from './youtube-import';
+import { parseYoutubeId, parseTimedText, extractJsonArrayAfter, cleanSourceTranscript } from './youtube-import';
 
 describe('parseYoutubeId（各種 YouTube 網址格式）', () => {
   it('watch?v=', () => { expect(parseYoutubeId('https://www.youtube.com/watch?v=My3zF7omEfw')).toBe('My3zF7omEfw'); });
@@ -39,6 +39,38 @@ describe('parseTimedText（字幕解析）', () => {
     expect(r.codePointAt(0)).toBe(0x1f600);
   });
   it('空輸入 → 空字串', () => { expect(parseTimedText('')).toBe(''); });
+});
+
+describe('cleanSourceTranscript（貼上逐字稿雜訊清理）', () => {
+  it('剝除行首時間碼（0:00 / 00:04 / 1:23:45）', () => {
+    const r = cleanSourceTranscript('0:00 大家好\n0:04 今天要來挑戰\n1:23:45 最後結果');
+    expect(r).toBe('大家好\n今天要來挑戰\n最後結果');
+  });
+  it('剝除 [00:04] /（0:04）帶括號的時間碼', () => {
+    expect(cleanSourceTranscript('[00:04] 你好\n（0:07）世界')).toBe('你好\n世界');
+  });
+  it('剝除 SRT 序號與 cue 時間列、只留台詞', () => {
+    const srt = '1\n00:00:01,000 --> 00:00:04,000\n你好\n\n2\n00:00:04,000 --> 00:00:06,000\n世界';
+    expect(cleanSourceTranscript(srt)).toBe('你好\n世界');
+  });
+  it('剝除 WEBVTT 檔頭與 cue 時間列', () => {
+    const vtt = 'WEBVTT\n\n00:00.000 --> 00:02.000\n第一句\n\n00:02.000 --> 00:04.000\n第二句';
+    expect(cleanSourceTranscript(vtt)).toBe('第一句\n第二句');
+  });
+  it('剝除非語音提示 [音樂]/[Music]/(掌聲)', () => {
+    expect(cleanSourceTranscript('[音樂] 開場白\n(掌聲)\n[Music] 結尾')).toBe('開場白\n結尾');
+  });
+  it('去掉自動字幕的相鄰重複行', () => {
+    expect(cleanSourceTranscript('我從小\n我從小\n就有夢想')).toBe('我從小\n就有夢想');
+  });
+  it('乾淨腳本近乎不動（只 trim）', () => {
+    expect(cleanSourceTranscript('大家好。\n今天要來挑戰一件事。')).toBe('大家好。\n今天要來挑戰一件事。');
+  });
+  it('不誤刪劇本裡正常的括號旁白', () => {
+    const r = cleanSourceTranscript('他說（其實我早就知道了）然後笑了');
+    expect(r).toContain('（其實我早就知道了）');
+  });
+  it('空輸入 → 空字串', () => { expect(cleanSourceTranscript('')).toBe(''); });
 });
 
 // 括號平衡抽取：修掉原本 lazy regex 遇到巢狀陣列（如 name.runs）就截斷、導致有字幕影片也抓不到的 bug。
