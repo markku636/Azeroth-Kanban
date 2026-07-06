@@ -2,6 +2,7 @@ import { complete } from './llm';
 import type { StoryContext } from './story-context';
 // 容忍 LLM 尾逗號的 JSON 解析（共用）。stripTrailingCommas re-export 供既有測試沿用。
 import { stripTrailingCommas, tolerantJsonParse } from './json-tolerant';
+import { ADAPT_SINGLE_MAX, planAdaptationBatches, sliceByFraction, type AdaptBatch } from './pacing';
 export { stripTrailingCommas };
 
 /** 把故事聖經併進 system；preamble 由各函式接在第一則 user 訊息前。 */
@@ -116,14 +117,57 @@ ${SHORT_FORM_CRAFT}
 ${SHOT_FIELDS}
 若專案已有〈故事聖經〉/角色，改編時要融入其設定與角色外觀錨點。只回傳 JSON 陣列，不要任何其他文字或 markdown。`;
 
-/** 參考影片腳本/字幕逐字稿 → 改編成本專案的分鏡表（相同節奏、內容原創）。source 可為字幕逐字稿或腳本文字。 */
-export async function adaptStoryboardFromSource(source: string, count = 8, story?: StoryContext): Promise<PlannedShot[]> {
-  const src = source.trim().slice(0, 12000); // 上限保護：太長截斷（保留前段結構即可）
+/** 單批改編：ctx=null 走整支單次呼叫（短片）；ctx 有值時只改編來源的一段、帶批次定位與承接脈絡（長片分批）。 */
+async function adaptOnce(
+  src: string,
+  count: number,
+  story: StoryContext | undefined,
+  ctx: { batch: AdaptBatch; prevTail: string } | null,
+): Promise<PlannedShot[]> {
+  let instruction: string;
+  if (ctx) {
+    const { batch, prevTail } = ctx;
+    const position =
+      batch.index === 0 ? '整支影片的「開頭段」——第一鏡要放全片最強的鉤子'
+      : batch.index === batch.total - 1 ? '整支影片的「結尾段」——最後一鏡要收在記得住的爆點／回扣開頭'
+      : `整支影片的「第 ${batch.index + 1}/${batch.total} 段」（中段）——持續加碼、把觀眾推向結尾`;
+    instruction =
+      `這是${position}。全片共分 ${batch.total} 段改編，此段只負責 ${count} 個分鏡。` +
+      (prevTail ? `\n上一段最後的旁白是：「${prevTail}」，請自然承接、延續同一主角外觀錨點與畫風，且不要重複上一段講過的內容。` : '') +
+      `\n以下是參考影片對應此段的字幕／腳本節錄（萃取其節奏與轉折、改編成原創內容，勿逐字照抄）：\n"""\n${src}\n"""\n請只為「此段」產生 ${count} 個分鏡。`;
+  } else {
+    instruction = `參考影片腳本／字幕逐字稿如下（請萃取其節奏與結構、改編成原創分鏡）：\n"""\n${src}\n"""\n請產生 ${count} 個分鏡。`;
+  }
   const text = await complete({
     system: withStorySystem(ADAPT_SYSTEM, story),
-    messages: [{ role: 'user', content: `${storyPreamble(story)}參考影片腳本／字幕逐字稿如下（請萃取其節奏與結構、改編成原創分鏡）：\n"""\n${src}\n"""\n請產生 ${count} 個分鏡。` }],
+    messages: [{ role: 'user', content: `${storyPreamble(story)}${instruction}` }],
+    // 依鏡數放寬 token 上限，避免長批 JSON 被 4096 預設截斷（每鏡 JSON ~250–320 tokens）。
+    maxTokens: Math.min(8000, 700 + count * 320),
   });
   return parseShotArray(text);
+}
+
+/**
+ * 參考影片腳本/字幕逐字稿 → 改編成本專案的分鏡表（相同節奏、內容原創）。
+ * 目標鏡數 ≤ ADAPT_SINGLE_MAX 走單次呼叫（與舊行為相容）；更多鏡（如 ~2 分鐘片需 ~30 鏡）
+ * **分批改編**：把逐字稿依比例切成數段、每段改編成一批分鏡並帶承接脈絡，突破單次 token/品質瓶頸。
+ */
+export async function adaptStoryboardFromSource(source: string, count = 8, story?: StoryContext): Promise<PlannedShot[]> {
+  const src = source.trim().slice(0, 24000); // 上限保護：長參考片保留更多結構（2 分鐘旁白遠小於此）
+  const n = Math.max(1, Math.floor(count));
+  if (n <= ADAPT_SINGLE_MAX) return adaptOnce(src, n, story, null);
+
+  const batches = planAdaptationBatches(n);
+  const out: PlannedShot[] = [];
+  let prevTail = '';
+  for (const b of batches) {
+    const slice = sliceByFraction(src, b.startFrac, b.endFrac) || src; // 切片異常時退回整段
+    const shots = await adaptOnce(slice, b.shots, story, { batch: b, prevTail });
+    out.push(...shots);
+    // 承接脈絡：把這批最後 1–2 句旁白帶給下一批，避免斷裂/重複。
+    prevTail = shots.slice(-2).map((s) => s.tts).filter(Boolean).join(' / ').slice(0, 120);
+  }
+  return out;
 }
 
 // ─────────────────────────── 腳本層（logline + 分場大綱） ───────────────────────────

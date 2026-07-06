@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { Button, Input, Textarea } from 'rizzui';
 import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
+import { DURATION_PRESETS, shotsForDuration, estimatedSeconds } from '@/lib/studio/pacing';
 
 /**
  * 「YouTube 改編」：貼上 YouTube 網址或字幕逐字稿 → AI 依其敘事結構與節奏，改編成本專案的**原創**分鏡
@@ -21,10 +22,11 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
     if (busy) return; // 防重複送出（鍵盤 Enter 連按會建立重複分鏡）
     if (!source.trim() && !url.trim()) { toast.error('請貼上字幕逐字稿，或填入 YouTube 網址'); return; }
     setBusy(true);
+    if (count > 12) toast('長片會分批改編，約需 30～60 秒，請稍候…', { icon: '🎬' });
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/from-youtube`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(20, Math.max(1, count)), persist: true }),
+        body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(40, Math.max(1, count)), persist: true }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.code !== 0) throw new Error(j.message ?? '改編失敗');
@@ -78,15 +80,35 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
             inputClassName="bg-white text-gray-900 dark:bg-gray-50"
           />
 
+          <label className="mb-1 block text-sm font-medium text-gray-700">③ 目標片長</label>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {DURATION_PRESETS.map((p) => {
+              const active = count === shotsForDuration(p.seconds);
+              return (
+                <button
+                  key={p.seconds}
+                  type="button"
+                  onClick={() => setCount(shotsForDuration(p.seconds))}
+                  className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                    active
+                      ? 'border-red-600 bg-red-600 text-white'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-700'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">分鏡數量</label>
+            <span className="text-xs text-gray-500">進階：分鏡數</span>
             <input
-              type="number" min={1} max={20} value={count}
-              onChange={(e) => setCount(Number(e.target.value) || 8)}
+              type="number" min={1} max={40} value={count}
+              onChange={(e) => setCount(Math.min(40, Math.max(1, Number(e.target.value) || 8)))}
               aria-label="分鏡數量"
               className="w-20 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:bg-gray-50"
             />
-            <span className="text-xs text-gray-400">（1～20；約 4 鏡≈15s、8 鏡≈30s、16 鏡≈60s）</span>
+            <span className="text-xs text-gray-400">≈ {estimatedSeconds(count)} 秒 · {count} 鏡{count > 12 ? '（分批改編，會多花點時間）' : ''}</span>
           </div>
         </div>
 

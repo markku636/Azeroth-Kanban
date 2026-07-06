@@ -61,7 +61,7 @@ export const POST = withPermission(
     const sceneId = typeof body.sceneId === 'string' && body.sceneId && body.sceneId !== '__unassigned__' ? body.sceneId : null;
     const persist = body.persist === true;
     const rawCount = typeof body.count === 'number' ? Math.floor(body.count) : 8;
-    const count = Math.min(20, Math.max(1, rawCount)); // 一次上限 20 鏡
+    const count = Math.min(40, Math.max(1, rawCount)); // 一次上限 40 鏡（~2.5 分鐘；>12 鏡走分批改編）
 
     let shots;
     try {
