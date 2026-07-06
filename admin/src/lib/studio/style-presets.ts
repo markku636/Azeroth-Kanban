@@ -4,7 +4,7 @@
 export interface StylePreset { label: string; hint: string; comedy?: boolean }
 
 export const STYLE_PRESETS: StylePreset[] = [
-  { label: '好笑有趣', comedy: true, hint: '改編成「好笑、有趣、娛樂性高」的版本：放大反差與意外轉折、用生活化的吐槽與誇張反應製造笑點，節奏輕快、每一鏡都想讓人笑或想看下一鏡；就算來源本身很正經，也要找到能玩的哏把它變好看。' },
+  { label: '好笑有趣', comedy: true, hint: '改編成「好笑、有趣、娛樂性高」的版本：放大反差與意外轉折、用生活化的吐槽與誇張反應製造笑點，節奏輕快、每一鏡都想讓人笑或想看下一鏡；就算來源本身很正經，也要找到能玩的哏把它變好看。在最好笑的反轉／爆點鏡把 punch 設 true、caption 放鋪陳、punchline 放吐槽爆點，並配一個卡點音效 sfx（vineboom／rimshot／scratch 擇一）讓笑點更炸。' },
   { label: '迷因吐槽', comedy: true, hint: '改編成迷因吐槽搞笑風格：情緒誇張、用 setup→反轉的爆點結構，多放大字幕與卡點音效。' },
   { label: '溫馨勵志', hint: '改編成溫馨勵志風格：情感真摯、節奏舒緩、結尾給人溫暖或啟發。' },
   { label: '懸疑反轉', hint: '改編成懸疑風格：開場拋出懸念、中段堆疊張力、結尾一個意想不到的反轉。' },
