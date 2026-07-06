@@ -632,16 +632,22 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   const pbOn = pbCfg?.enabled === true || (process.env.STUDIO_PROGRESS_BAR ?? 'off').toLowerCase() !== 'off';
   const ffCfg = (project?.spec as { filmFinish?: { enabled?: unknown; intensity?: unknown } } | null)?.filmFinish;
   const ffOn = ffCfg?.enabled === true || (process.env.STUDIO_FILM_FINISH ?? 'off').toLowerCase() !== 'off';
-  if (wmText || pbOn || ffOn) {
+  const logoCfg = (project?.spec as { watermarkLogo?: { src?: unknown; position?: unknown; scale?: unknown } } | null)?.watermarkLogo;
+  const logoSrc = typeof logoCfg?.src === 'string' && logoCfg.src ? logoCfg.src : undefined;
+  if (wmText || pbOn || ffOn || logoSrc) {
     const { cw, ch } = await projectDims(projectId);
     const finishOut = join(outDir, 'final_finish.mp4');
-    await comp.finish({
-      video: final, out: finishOut, width: cw, height: ch,
-      watermark: wmText ? { text: wmText, position: (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === wmCfg?.position), opacity: typeof wmCfg?.opacity === 'number' ? wmCfg.opacity : undefined } : undefined,
-      progressBar: pbOn ? { color: typeof pbCfg?.color === 'string' ? pbCfg.color : undefined, position: pbCfg?.position === 'top' ? 'top' : 'bottom' } : undefined,
-      filmFinish: ffOn ? { intensity: ffCfg?.intensity === 'strong' ? 'strong' : 'subtle' } : undefined,
-    });
-    if (existsSync(finishOut) && finishOut !== final) { copyFileSync(finishOut, final); try { unlinkSync(finishOut); } catch { /* ignore */ } }
+    // best-effort：收尾（浮水印/logo/進度條/膠片）任何一步失敗都不該讓整支成片作廢——保留未收尾的 final。
+    try {
+      await comp.finish({
+        video: final, out: finishOut, width: cw, height: ch,
+        watermark: wmText ? { text: wmText, position: (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === wmCfg?.position), opacity: typeof wmCfg?.opacity === 'number' ? wmCfg.opacity : undefined } : undefined,
+        logo: logoSrc ? { src: logoSrc, position: (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === logoCfg?.position), scale: typeof logoCfg?.scale === 'number' ? logoCfg.scale : undefined } : undefined,
+        progressBar: pbOn ? { color: typeof pbCfg?.color === 'string' ? pbCfg.color : undefined, position: pbCfg?.position === 'top' ? 'top' : 'bottom' } : undefined,
+        filmFinish: ffOn ? { intensity: ffCfg?.intensity === 'strong' ? 'strong' : 'subtle' } : undefined,
+      });
+      if (existsSync(finishOut) && finishOut !== final) { copyFileSync(finishOut, final); try { unlinkSync(finishOut); } catch { /* ignore */ } }
+    } catch (e) { console.warn('[assemble] finish overlays failed (kept un-finished final)', e); }
   }
 
   // 字幕檔（SRT/VTT）：每鏡旁白對齊實際時間軸 → 可上傳 YouTube CC / 無障礙 / 二次剪輯。片頭卡開啟時整片位移

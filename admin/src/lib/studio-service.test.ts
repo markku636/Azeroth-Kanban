@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 vi.mock('@/lib/audit-log-service', () => ({ createAuditLog: vi.fn() }));
 
-import { updateProject, createProject, parseWatermark, parseProgressBar, parseFilmFinish } from './studio-service';
+import { updateProject, createProject, parseWatermark, parseProgressBar, parseFilmFinish, parseWatermarkLogo } from './studio-service';
 import { prisma } from '@/lib/prisma';
 import { ApiReturnCode } from '@/lib/api-response';
 
@@ -146,6 +146,36 @@ describe('updateProject 浮水印合併進 spec', () => {
   it('parseFilmFinish：未設→false/subtle；strong 帶出', () => {
     expect(parseFilmFinish({})).toEqual({ enabled: false, intensity: 'subtle' });
     expect(parseFilmFinish({ filmFinish: { enabled: true, intensity: 'strong' } })).toEqual({ enabled: true, intensity: 'strong' });
+  });
+  it('parseWatermarkLogo：不外洩 base64、回 hasLogo/position/scale（scale 夾 0.05~0.6）', () => {
+    expect(parseWatermarkLogo({})).toEqual({ hasLogo: false, position: 'tl', scale: 0.18 });
+    const info = parseWatermarkLogo({ watermarkLogo: { src: 'data:image/png;base64,AAAA', position: 'br', scale: 9 } });
+    expect(info).toEqual({ hasLogo: true, position: 'br', scale: 0.6 });
+    expect(JSON.stringify(info)).not.toContain('AAAA'); // 不外洩 base64
+  });
+  it('watermarkLogo：上傳存 src / 只改位置沿用既有 src / null 移除', async () => {
+    // 上傳
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { watermarkLogo: { src: 'data:image/png;base64,ZZZ', position: 'br', scale: 0.3 } });
+    let data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).watermarkLogo).toEqual({ src: 'data:image/png;base64,ZZZ', position: 'br', scale: 0.3 });
+    // 只改位置（不送 src）→ 沿用既有 src
+    vi.clearAllMocks();
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { watermarkLogo: { src: 'data:image/png;base64,KEEP', position: 'tl', scale: 0.18 } } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { watermarkLogo: { position: 'tr' } });
+    data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).watermarkLogo).toEqual({ src: 'data:image/png;base64,KEEP', position: 'tr', scale: 0.18 });
+    // 移除
+    vi.clearAllMocks();
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, watermarkLogo: { src: 'data:image/png;base64,X' } } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { watermarkLogo: null });
+    data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).watermarkLogo).toBeUndefined();
   });
   it('bgmMood 字串存 / null 移除，保留其他鍵', async () => {
     vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });

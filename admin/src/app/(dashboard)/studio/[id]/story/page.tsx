@@ -44,6 +44,8 @@ export default function StoryPage() {
   const [bgmMood, setBgmMood] = useState<string>('');
   const [hasSubs, setHasSubs] = useState(false);
   const [film, setFilm] = useState<{ enabled: boolean; intensity: string }>({ enabled: false, intensity: 'subtle' });
+  const [logo, setLogo] = useState<{ hasLogo: boolean; position: string; scale: number }>({ hasLogo: false, position: 'tl', scale: 0.18 });
+  const [logoPreview, setLogoPreview] = useState<string>('');
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -90,6 +92,8 @@ export default function StoryPage() {
         setHasSubs(pJson.data.hasSubtitles === true);
         const ff = pJson.data.filmFinish as { enabled?: boolean; intensity?: string } | null;
         if (ff && typeof ff === 'object') setFilm({ enabled: ff.enabled === true, intensity: ff.intensity === 'strong' ? 'strong' : 'subtle' });
+        const lg = pJson.data.watermarkLogo as { hasLogo?: boolean; position?: string; scale?: number } | null;
+        if (lg && typeof lg === 'object') setLogo({ hasLogo: lg.hasLogo === true, position: lg.position === 'tr' || lg.position === 'bl' || lg.position === 'br' ? lg.position : 'tl', scale: typeof lg.scale === 'number' ? lg.scale : 0.18 });
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -156,6 +160,29 @@ export default function StoryPage() {
   const saveFilm = (next: { enabled: boolean; intensity: string }) => {
     setFilm(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filmFinish: next }) });
+  };
+  const patchProject = (body: unknown) => fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  // logo：讀檔為 base64 data URI（限 250KB）存進 spec；只改位置/大小時不重送圖（後端沿用既有 src）；移除送 null。
+  const onLogoFile = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 250 * 1024) { toast.error('Logo 檔案請小於 250KB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const src = String(reader.result || '');
+      if (!src.startsWith('data:image/')) { toast.error('請選擇圖片檔'); return; }
+      setLogo((prev) => ({ ...prev, hasLogo: true }));
+      setLogoPreview(src);
+      void patchProject({ watermarkLogo: { src, position: logo.position, scale: logo.scale } });
+    };
+    reader.readAsDataURL(file);
+  };
+  const saveLogoOpts = (next: { position: string; scale: number }) => {
+    setLogo((prev) => ({ ...prev, ...next }));
+    void patchProject({ watermarkLogo: { position: next.position, scale: next.scale } });
+  };
+  const removeLogo = () => {
+    setLogo({ hasLogo: false, position: 'tl', scale: 0.18 }); setLogoPreview('');
+    void patchProject({ watermarkLogo: null });
   };
   // key 對應引擎 MOOD_KEYS（此處寫死 label，避免把 music.ts（含 Buffer）拉進 client bundle）。'' ＝自動。
   const BGM_MOODS: { key: string; label: string }[] = [
@@ -478,6 +505,39 @@ export default function StoryPage() {
               </span>
             )}
           </div>
+        </div>
+
+        {/* 品牌 logo（圖片浮水印）*/}
+        <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-200">
+          <div className="mb-1 text-xs font-medium text-gray-700">品牌 logo（圖片浮水印）</div>
+          <p className="mb-2 text-xs text-gray-400">上傳透明背景 PNG 最佳（≤250KB）；燒在成片角落，與文字 handle 可並存。</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">
+              {logo.hasLogo ? '更換 logo' : '上傳 logo'}
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => onLogoFile(e.target.files?.[0])} />
+            </label>
+            {logo.hasLogo && (
+              <>
+                <select aria-label="logo 位置" value={logo.position} onChange={(e) => saveLogoOpts({ position: e.target.value, scale: logo.scale })} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 dark:bg-gray-50">
+                  <option value="tl">左上</option>
+                  <option value="tr">右上</option>
+                  <option value="bl">左下</option>
+                  <option value="br">右下</option>
+                </select>
+                <label className="flex items-center gap-1 text-xs text-gray-500">大小
+                  <input type="range" min={5} max={40} value={Math.round(logo.scale * 100)} onChange={(e) => saveLogoOpts({ position: logo.position, scale: Number(e.target.value) / 100 })} className="accent-blue-600" />
+                </label>
+                <button type="button" onClick={removeLogo} className="text-xs text-red-600 hover:underline">移除</button>
+              </>
+            )}
+          </div>
+          {logo.hasLogo && (
+            <div className={`relative mt-2 h-24 overflow-hidden rounded bg-gray-800`}>
+              {logoPreview
+                ? <img src={logoPreview} alt="logo 預覽" style={{ width: `${logo.scale * 100}%` }} className={`absolute max-h-full object-contain ${logo.position === 'tl' ? 'left-2 top-2' : logo.position === 'tr' ? 'right-2 top-2' : logo.position === 'bl' ? 'bottom-2 left-2' : 'bottom-2 right-2'}`} />
+                : <span className="absolute left-2 top-2 text-xs text-gray-400">已設定 logo（上傳新檔可更換）</span>}
+            </div>
+          )}
         </div>
       </section>
 

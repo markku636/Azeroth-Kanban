@@ -66,6 +66,7 @@ export const PATCH = withPermission(
           sceneTitles: typeof body.sceneTitles === 'boolean' ? body.sceneTitles : undefined,
           bgmMood: body.bgmMood === null ? null : (typeof body.bgmMood === 'string' ? body.bgmMood : undefined),
           filmFinish: body.filmFinish && typeof body.filmFinish === 'object' ? (body.filmFinish as { enabled?: boolean; intensity?: string }) : undefined,
+          watermarkLogo: body.watermarkLogo === null ? null : (body.watermarkLogo && typeof body.watermarkLogo === 'object' ? (body.watermarkLogo as { src?: string | null; position?: string; scale?: number }) : undefined),
         },
         buildActor(session, request),
         { bypassOwnership: bypass },

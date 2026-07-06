@@ -982,6 +982,7 @@ export class Compositor {
   async finish(o: {
     video: string; out: string; width?: number; height?: number; durationSec?: number;
     watermark?: { text: string; position?: WatermarkPos; opacity?: number };
+    logo?: { src: string; position?: WatermarkPos; scale?: number }; // src＝data:image/... 或本機路徑
     progressBar?: { color?: string; position?: 'top' | 'bottom' };
     filmFinish?: { intensity?: 'subtle' | 'strong' };
   }): Promise<string> {
@@ -1000,8 +1001,36 @@ export class Compositor {
       parts.push(progressBarFilter({ color: o.progressBar.color, position: o.progressBar.position, canvasH: H, durationSec: dur }));
     }
     if (o.filmFinish) parts.push(filmFinishFilter({ intensity: o.filmFinish.intensity }));
-    if (parts.length === 0) return o.video; // 沒有任何收尾 → 不動、不重編碼
-    const args = ["-y", "-i", o.video, "-vf", parts.join(","), "-c:a", "copy", ...VIDEO_ARGS, o.out];
+
+    // 品牌 logo 圖：data URI → 暫存 PNG；否則當本機路徑。疊在噪點之上（crisp）。位置預設左上（避開右上文字 handle）。
+    let logoFile: string | undefined;
+    if (o.logo?.src) {
+      if (o.logo.src.startsWith('data:image/')) {
+        try {
+          logoFile = join(tmpdir(), `logo_${randomUUID()}.png`);
+          writeFileSync(logoFile, Buffer.from(o.logo.src.slice(o.logo.src.indexOf(',') + 1), 'base64'));
+          tmpFiles.push(logoFile);
+        } catch { logoFile = undefined; }
+      } else if (existsSync(o.logo.src)) {
+        logoFile = o.logo.src;
+      }
+    }
+
+    if (parts.length === 0 && !logoFile) return o.video; // 沒有任何收尾 → 不動、不重編碼
+
+    const chain = parts.length ? parts.join(",") : "null";
+    let args: string[];
+    if (logoFile) {
+      const logoW = Math.max(1, Math.round(W * Math.min(0.6, Math.max(0.05, o.logo?.scale ?? 0.18))));
+      const M = Math.round(W * 0.045);
+      const pos = o.logo?.position ?? 'tl';
+      const x = pos === 'tr' || pos === 'br' ? `W-w-${M}` : `${M}`;   // overlay：W/H 大寫＝主畫面、w/h＝logo
+      const y = pos === 'bl' || pos === 'br' ? `H-h-${M}` : `${M}`;
+      const filter = `[0:v]${chain}[base];[1:v]scale=${logoW}:-1[lg];[base][lg]overlay=${x}:${y}[out]`;
+      args = ["-y", "-i", o.video, "-i", logoFile, "-filter_complex", filter, "-map", "[out]", "-map", "0:a", "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    } else {
+      args = ["-y", "-i", o.video, "-vf", chain, "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    }
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg finish failed (${code}): ${stderr.slice(-1000)}`);

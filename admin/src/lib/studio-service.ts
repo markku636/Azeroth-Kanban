@@ -39,6 +39,21 @@ export interface ProgressBarConfig { enabled: boolean; color: string; position: 
 /** 電影感收尾設定（存於 spec.filmFinish）。enabled=false＝不加。 */
 export interface FilmFinishConfig { enabled: boolean; intensity: 'subtle' | 'strong' }
 
+/** 品牌 logo 浮水印（存於 spec.watermarkLogo；src 為 base64 data URI）。DTO 只回是否有＋位置/大小，不回 base64。 */
+export interface WatermarkLogoInfo { hasLogo: boolean; position: 'tl' | 'tr' | 'bl' | 'br'; scale: number }
+
+/** 從 spec 解析 logo 資訊（不含 base64，避免列表 payload 爆量）。 */
+export function parseWatermarkLogo(spec: unknown): WatermarkLogoInfo {
+  const lg = (spec as { watermarkLogo?: { src?: unknown; position?: unknown; scale?: unknown } } | null)?.watermarkLogo;
+  const hasLogo = typeof lg?.src === 'string' && lg.src.startsWith('data:image/');
+  const position = (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === lg?.position) ?? 'tl';
+  const scale = typeof lg?.scale === 'number' ? Math.min(0.6, Math.max(0.05, lg.scale)) : 0.18;
+  return { hasLogo, position, scale };
+}
+
+/** logo base64 上限（字元數）；約 300KB 圖。過大不存（前端也應先擋）。 */
+const WATERMARK_LOGO_MAX = 400_000;
+
 /** 從 spec 解析電影感收尾；恆回設定物件（未設＝enabled:false + subtle）。 */
 export function parseFilmFinish(spec: unknown): FilmFinishConfig {
   const ff = (spec as { filmFinish?: { enabled?: unknown; intensity?: unknown } } | null)?.filmFinish;
@@ -69,6 +84,8 @@ export type ProjectDto = Pick<
   bgmMood: string | null;
   /** 電影感收尾（膠片噪點＋暗角）設定；恆有值（未設＝enabled:false） */
   filmFinish: FilmFinishConfig;
+  /** 品牌 logo 浮水印資訊（不含 base64）；恆有值（未設＝hasLogo:false） */
+  watermarkLogo: WatermarkLogoInfo;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 是否已有匯出的字幕檔 final.srt（供「下載字幕」；舊成片重生一次才有） */
@@ -122,6 +139,7 @@ function projectToDto(
     sceneTitles: (p.spec as { sceneTitles?: unknown } | null)?.sceneTitles === true,
     bgmMood: typeof (p.spec as { bgmMood?: unknown } | null)?.bgmMood === 'string' ? (p.spec as { bgmMood: string }).bgmMood : null,
     filmFinish: parseFilmFinish(p.spec),
+    watermarkLogo: parseWatermarkLogo(p.spec),
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     hasSubtitles: out.hasOutput && projectHasSubtitles(p.id),
@@ -254,6 +272,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   bgmMood?: string | null;
   /** 電影感收尾：合併進 spec.filmFinish。enabled=false＝移除。 */
   filmFinish?: { enabled?: boolean; intensity?: string };
+  /** 品牌 logo 浮水印：合併進 spec.watermarkLogo。null 或 src=null＝移除；src=data:image base64＝設定。 */
+  watermarkLogo?: { src?: string | null; position?: string; scale?: number } | null;
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -329,6 +349,21 @@ export async function updateProject(
       const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
       if (!patch.filmFinish?.enabled) delete spec.filmFinish; // 關閉＝移除
       else spec.filmFinish = { enabled: true, intensity: patch.filmFinish.intensity === 'strong' ? 'strong' : 'subtle' };
+      data.spec = spec as Prisma.InputJsonValue;
+    }
+    if (patch.watermarkLogo !== undefined) {
+      const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
+      const pl = patch.watermarkLogo;
+      const cur = spec.watermarkLogo && typeof spec.watermarkLogo === 'object' ? (spec.watermarkLogo as { src?: string; position?: string; scale?: number }) : undefined;
+      // src：新上傳(data:image 且未過大) > 既有；只改位置/大小時沿用既有 src
+      const newSrc = typeof pl?.src === 'string' && pl.src.startsWith('data:image/') && pl.src.length <= WATERMARK_LOGO_MAX ? pl.src : undefined;
+      const src = newSrc ?? cur?.src;
+      if (!pl || pl.src === null || !src) delete spec.watermarkLogo; // 移除 / 無 logo 可設 → 移除
+      else {
+        const position = (['tl', 'tr', 'bl', 'br'] as const).find((x) => x === pl.position) ?? cur?.position ?? 'tl';
+        const scale = typeof pl.scale === 'number' ? Math.min(0.6, Math.max(0.05, pl.scale)) : (typeof cur?.scale === 'number' ? cur.scale : 0.18);
+        spec.watermarkLogo = { src, position, scale };
+      }
       data.spec = spec as Prisma.InputJsonValue;
     }
     const p = await prisma.studioProject.update({ where: { id }, data });
