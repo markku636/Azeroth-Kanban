@@ -25,6 +25,8 @@ export const CAPTION_MAX = 14;
 export const TTS_MAX = 42;
 // 研究：短影音完播率在 ~45–60s 後明顯下滑；目標超過此值時提醒中段要持續加碼。
 export const LONG_TARGET_SECONDS = 75;
+// 研究：鉤子要在前 2–3 秒講完（50–60% 觀眾在前 3 秒滑走）；第 1 鏡旁白過長＝開場太慢。
+export const HOOK_TTS_MAX = 22;
 
 const len = (s?: string) => (s ?? '').trim().length;
 
@@ -53,12 +55,17 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
     }
   }
 
-  // ② 全靜態單調（沒有任何 i2v 動態鏡）
+  // ② 開場鉤子要快（研究：前 2–3 秒決定去留；第 1 鏡旁白過長＝鉤子太慢）
+  if (n >= 2 && len(shots[0].tts) > HOOK_TTS_MAX) {
+    out.push({ level: 'warn', code: 'slow-hook', message: `開場要快——第 1 鏡旁白 ${len(shots[0].tts)} 字偏長，鉤子最好 2–3 秒內講完，把最有看點/最衝突的一句放到最前面。`, shotIndex: 0 });
+  }
+
+  // ③ 全靜態單調（沒有任何 i2v 動態鏡）
   if (n >= 4 && shots.every((s) => (s.branch ?? 'still') !== 'i2v')) {
     out.push({ level: 'info', code: 'all-still', message: '全部是靜態鏡；把幾個關鍵鏡改成「動態 i2v」能讓 2 分鐘的片更耐看、不呆板。' });
   }
 
-  // ③ 逐鏡：空鏡、字幕過長、旁白過長
+  // ④ 逐鏡：空鏡、字幕過長、旁白過長
   shots.forEach((s, i) => {
     if (!len(s.tts) && !len(s.caption)) {
       out.push({ level: 'info', code: 'silent', message: `第 ${i + 1} 鏡沒有旁白也沒有大字幕（純畫面）。`, shotIndex: i });
@@ -69,7 +76,7 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
     if (len(s.punchline) > CAPTION_MAX) {
       out.push({ level: 'warn', code: 'punchline-long', message: `第 ${i + 1} 鏡反轉下字幕 ${len(s.punchline)} 字，超過建議的 ${CAPTION_MAX} 字。`, shotIndex: i });
     }
-    if (len(s.tts) > TTS_MAX) {
+    if (i > 0 && len(s.tts) > TTS_MAX) { // 第 1 鏡由 slow-hook 專門把關，避免重複提醒
       out.push({ level: 'info', code: 'tts-long', message: `第 ${i + 1} 鏡旁白 ${len(s.tts)} 字偏長，短句更跟得上快節奏。`, shotIndex: i });
     }
   });

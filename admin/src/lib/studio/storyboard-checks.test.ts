@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkStoryboard, summarizeChecks, CAPTION_MAX, TTS_MAX, type CheckShot } from './storyboard-checks';
+import { checkStoryboard, summarizeChecks, CAPTION_MAX, TTS_MAX, HOOK_TTS_MAX, type CheckShot } from './storyboard-checks';
 
 const shot = (o: Partial<CheckShot> = {}): CheckShot => ({ visual: 'x', tts: '一句旁白', branch: 'still', ...o });
 // 讓每鏡旁白夠長，加總約 3.8s/鏡 → 32 鏡 ≈ 120s（配合字數估算）
@@ -55,9 +55,29 @@ describe('checkStoryboard — 內容品質', () => {
     const checks = checkStoryboard([shot({ punchline: '這是一句非常非常長的反轉下字幕會爆版' })]);
     expect(checks.some((x) => x.code === 'punchline-long' && x.level === 'warn')).toBe(true);
   });
-  it('旁白過長 → info', () => {
-    const checks = checkStoryboard([shot({ tts: '字'.repeat(TTS_MAX + 1) })]);
-    expect(checks.find((x) => x.code === 'tts-long')?.level).toBe('info');
+  it('旁白過長（非第 1 鏡）→ info', () => {
+    const checks = checkStoryboard([shot(), shot({ tts: '字'.repeat(TTS_MAX + 1) })]);
+    const c = checks.find((x) => x.code === 'tts-long');
+    expect(c?.level).toBe('info');
+    expect(c?.shotIndex).toBe(1);
+  });
+  it('開場鉤子太慢：第 1 鏡旁白過長 → warn（slow-hook）', () => {
+    const checks = checkStoryboard([shot({ tts: '字'.repeat(HOOK_TTS_MAX + 1) }), shot()]);
+    const c = checks.find((x) => x.code === 'slow-hook');
+    expect(c?.level).toBe('warn');
+    expect(c?.shotIndex).toBe(0);
+  });
+  it('第 1 鏡旁白很長 → 只報 slow-hook，不重複報 tts-long', () => {
+    const checks = checkStoryboard([shot({ tts: '字'.repeat(TTS_MAX + 5) }), shot()]);
+    expect(checks.some((x) => x.code === 'slow-hook')).toBe(true);
+    expect(checks.some((x) => x.code === 'tts-long' && x.shotIndex === 0)).toBe(false);
+  });
+  it('第 1 鏡旁白簡短 → 不報 slow-hook', () => {
+    const checks = checkStoryboard([shot({ tts: '你絕對想不到' }), shot()]);
+    expect(checks.some((x) => x.code === 'slow-hook')).toBe(false);
+  });
+  it('只有 1 鏡 → 不做鉤子檢查', () => {
+    expect(checkStoryboard([shot({ tts: '字'.repeat(HOOK_TTS_MAX + 10) })]).some((x) => x.code === 'slow-hook')).toBe(false);
   });
   it('無旁白也無大字幕 → info（純畫面）', () => {
     const checks = checkStoryboard([shot({ tts: '', caption: '' })]);
