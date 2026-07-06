@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -204,6 +204,30 @@ describe('cardDraws（片頭／片尾卡片建構器）', () => {
     const r = cardDraws('C:/f.ttf', { bigText: 'X', accent: '#FF0000;drawbox=evil', kind: 'title' }, 1280, 720);
     expect(r.draws.join(';')).not.toContain('evil');
     clean(r);
+  });
+});
+
+describe('watermarkDrawtext（品牌浮水印）', () => {
+  const clean = (r: { files: string[] }) => { for (const f of r.files) { try { unlinkSync(f); } catch { /* noop */ } } };
+  it('預設右上：x 靠右(w-text_w)、y 靠上邊距、半透明白字，寫一個暫存檔', () => {
+    const r = watermarkDrawtext('@markku', 'C:/f.ttf', { canvasH: 1280, canvasW: 720 });
+    expect(r.filter).toContain('w-text_w-'); // 靠右
+    expect(r.filter).toContain('fontcolor=white@0.55'); // 預設不透明度
+    expect(r.filter).not.toContain('h-text_h-'); // 頂部，非底部
+    expect(r.files.length).toBe(1);
+    clean(r);
+  });
+  it('左下：x 為邊距數字、y 靠下邊距', () => {
+    const r = watermarkDrawtext('@x', 'C:/f.ttf', { position: 'bl', canvasH: 1280, canvasW: 720 });
+    expect(r.filter).toContain('h-text_h-'); // 底部
+    expect(r.filter).toMatch(/:x=\d+:/); // 左：x 為固定邊距數字
+    clean(r);
+  });
+  it('不透明度夾在 0.15~1', () => {
+    const hi = watermarkDrawtext('@x', 'C:/f.ttf', { opacity: 2 });
+    expect(hi.filter).toContain('white@1'); clean(hi);
+    const lo = watermarkDrawtext('@x', 'C:/f.ttf', { opacity: 0 });
+    expect(lo.filter).toContain('white@0.15'); clean(lo);
   });
 });
 

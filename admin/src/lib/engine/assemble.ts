@@ -453,6 +453,35 @@ export function cardDraws(
   return { draws, files };
 }
 
+/** 浮水印角落位置：tl 左上 / tr 右上 / bl 左下 / br 右下。 */
+export type WatermarkPos = 'tl' | 'tr' | 'bl' | 'br';
+
+/**
+ * 品牌浮水印（頻道 handle）drawtext：角落、半透明白字＋細描邊/投影，全片常駐。位置/不透明度可調；字級與邊距
+ * 隨畫布等比縮放。預設右上（避開置中字幕與底部旁白字幕的衝突）。exported for unit testing; 純（只寫暫存檔）。
+ */
+export function watermarkDrawtext(
+  text: string, font: string,
+  o: { position?: WatermarkPos; opacity?: number; canvasH?: number; canvasW?: number } = {},
+): { filter: string; files: string[] } {
+  const canvasH = o.canvasH && o.canvasH > 0 ? o.canvasH : 1280;
+  const canvasW = o.canvasW && o.canvasW > 0 ? o.canvasW : Math.round((canvasH * 9) / 16);
+  const s = capScale(canvasH);
+  const pos = o.position ?? 'tr';
+  const op = Math.max(0.15, Math.min(1, o.opacity ?? 0.55));
+  const size = Math.round(26 * s);
+  const M = Math.round(canvasW * 0.045);
+  const f = join(tmpdir(), `wm_${randomUUID()}.txt`);
+  writeFileSync(f, text, 'utf8');
+  const x = pos === 'tl' || pos === 'bl' ? `${M}` : `w-text_w-${M}`;
+  const y = pos === 'tl' || pos === 'tr' ? `${M}` : `h-text_h-${M}`;
+  const filter =
+    `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
+    `fontcolor=white@${op}:fontsize=${size}:borderw=${Math.max(1, Math.round(1 * s))}:bordercolor=black@${(op * 0.7).toFixed(2)}:` +
+    `shadowcolor=black@${(op * 0.5).toFixed(2)}:shadowx=${Math.round(1 * s)}:shadowy=${Math.round(1 * s)}:x=${x}:y=${y}`;
+  return { filter, files: [f] };
+}
+
 export interface StillOpts {
   image: string;
   voice?: string;
@@ -867,6 +896,24 @@ export class Compositor {
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg cardClip failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
+  /**
+   * 品牌浮水印一次性合成：把頻道 handle 燒在成片角落（重編碼視訊、音訊 copy）。text 為空或找不到字型 → 直接
+   * 回傳原檔路徑（不動）。宽/高供字級與邊距等比縮放（不傳＝以 720×1280 估）。
+   */
+  async watermark(o: {
+    video: string; out: string; text: string;
+    width?: number; height?: number; position?: WatermarkPos; opacity?: number; fontfile?: string;
+  }): Promise<string> {
+    const font = o.fontfile ?? findCjkFont(); // 常規字重：低調不搶戲
+    if (!font || !o.text?.trim()) return o.video; // 無字型/無文字 → 不加，回原檔
+    const { filter, files } = watermarkDrawtext(o.text.trim(), font, { position: o.position, opacity: o.opacity, canvasH: o.height, canvasW: o.width });
+    const args = ["-y", "-i", o.video, "-vf", filter, "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
+    if (code !== 0) throw new Error(`ffmpeg watermark failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
 }

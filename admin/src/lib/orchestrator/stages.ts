@@ -586,6 +586,20 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     const seams = Math.max(1, clips.length - 1);
     await comp.stitch({ clips, out: final, fades: Array(seams).fill(0.6), transitions: Array(seams).fill('fadeblack') });
   }
+
+  // 品牌浮水印（頻道 handle，全片常駐）：來源＝專案 spec.watermark（免 schema，日後 UI/API 可寫入）或全域 env
+  // STUDIO_WATERMARK。有文字才做（一次重編碼、音訊 copy）。皆未設＝零回歸。
+  const wmCfg = (project?.spec as { watermark?: { text?: unknown; position?: unknown; opacity?: unknown } } | null)?.watermark;
+  const wmText = (typeof wmCfg?.text === 'string' ? wmCfg.text : process.env.STUDIO_WATERMARK ?? '').trim();
+  if (wmText) {
+    const posRaw = typeof wmCfg?.position === 'string' ? wmCfg.position : undefined;
+    const position = (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === posRaw);
+    const opacity = typeof wmCfg?.opacity === 'number' ? wmCfg.opacity : undefined;
+    const { cw, ch } = await projectDims(projectId);
+    const wmOut = join(outDir, 'final_wm.mp4');
+    await comp.watermark({ video: final, out: wmOut, text: wmText, width: cw, height: ch, position, opacity });
+    if (existsSync(wmOut) && wmOut !== final) { copyFileSync(wmOut, final); try { unlinkSync(wmOut); } catch { /* ignore */ } }
+  }
   return final;
 }
 
