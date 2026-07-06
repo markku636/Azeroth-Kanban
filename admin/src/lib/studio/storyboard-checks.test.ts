@@ -55,6 +55,18 @@ describe('checkStoryboard — 內容品質', () => {
     const checks = checkStoryboard([shot({ punchline: '這是一句非常非常長的反轉下字幕會爆版' })]);
     expect(checks.some((x) => x.code === 'punchline-long' && x.level === 'warn')).toBe(true);
   });
+  it('畫面描述含中文 → info（SDXL 會渲成亂碼）', () => {
+    const checks = checkStoryboard([shot({ visual: '一個中年男子站在道館前面' })]);
+    expect(checks.find((x) => x.code === 'cjk-visual')?.shotIndex).toBe(0);
+  });
+  it('英文畫面描述 → 不報 cjk-visual', () => {
+    const checks = checkStoryboard([shot({ visual: 'a middle-aged man at a gym entrance, cinematic' })]);
+    expect(checks.some((x) => x.code === 'cjk-visual')).toBe(false);
+  });
+  it('畫面只有零星一兩個中文字（如專有名詞）→ 不誤報', () => {
+    const checks = checkStoryboard([shot({ visual: 'a Pokemon 皮 gym, cinematic lighting' })]);
+    expect(checks.some((x) => x.code === 'cjk-visual')).toBe(false);
+  });
   it('旁白過長（非第 1 鏡）→ info', () => {
     const checks = checkStoryboard([shot(), shot({ tts: '字'.repeat(TTS_MAX + 1) })]);
     const c = checks.find((x) => x.code === 'tts-long');

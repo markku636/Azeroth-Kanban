@@ -87,6 +87,10 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
     if (i > 0 && len(s.tts) > TTS_MAX) { // 第 1 鏡由 slow-hook 專門把關，避免重複提醒
       out.push({ level: 'info', code: 'tts-long', message: `第 ${i + 1} 鏡旁白 ${len(s.tts)} 字偏長，短句更跟得上快節奏。`, shotIndex: i });
     }
+    // visual 應為英文 SDXL 提示；含較多中文＝LLM 寫了中文、或要求畫面出現中文字 → SDXL 渲成亂碼、傷畫質
+    if (((s.visual ?? '').match(/[一-鿿]/g)?.length ?? 0) >= 4) {
+      out.push({ level: 'info', code: 'cjk-visual', message: `第 ${i + 1} 鏡的畫面描述含中文，SDXL 無法正確渲染文字（會變亂碼）；用「換一個」重寫成英文、或把文字交給字幕欄位。`, shotIndex: i });
+    }
   });
 
   // ⑤ 相鄰重複旁白（分批改編偶爾承接沒接好 → 相鄰鏡講一樣的話，拖節奏）。保守：正規化後完全相同、長度≥4。
