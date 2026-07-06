@@ -56,6 +56,8 @@ export type ProjectDto = Pick<
   progressBar: ProgressBarConfig;
   /** 章節標題 lower-third（每個場景第一鏡疊段落標題）是否開啟 */
   sceneTitles: boolean;
+  /** BGM 情緒覆寫（MOOD_KEYS 之一，優先於風格預設/自動推導）；null＝自動 */
+  bgmMood: string | null;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 成片最後產生時間（ISO），無成片時為 null */
@@ -105,6 +107,7 @@ function projectToDto(
     look: typeof (p.spec as { look?: unknown } | null)?.look === 'string' ? (p.spec as { look: string }).look : null,
     progressBar: parseProgressBar(p.spec),
     sceneTitles: (p.spec as { sceneTitles?: unknown } | null)?.sceneTitles === true,
+    bgmMood: typeof (p.spec as { bgmMood?: unknown } | null)?.bgmMood === 'string' ? (p.spec as { bgmMood: string }).bgmMood : null,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
@@ -232,6 +235,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   progressBar?: { enabled?: boolean; color?: string; position?: string };
   /** 章節標題 lower-third：合併進 spec.sceneTitles（true 存、false 移除）。 */
   sceneTitles?: boolean;
+  /** BGM 情緒覆寫：合併進 spec.bgmMood（免 schema）。null 或空＝清除（自動）。 */
+  bgmMood?: string | null;
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -295,6 +300,12 @@ export async function updateProject(
       if (patch.sceneTitles !== undefined) {
         if (patch.sceneTitles) spec.sceneTitles = true; else delete spec.sceneTitles;
       }
+      data.spec = spec as Prisma.InputJsonValue;
+    }
+    if (patch.bgmMood !== undefined) {
+      const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
+      if (!patch.bgmMood || typeof patch.bgmMood !== 'string') delete spec.bgmMood; // 非法在 render 端(resolveBgmMood)也會被忽略
+      else spec.bgmMood = patch.bgmMood.slice(0, 20);
       data.spec = spec as Prisma.InputJsonValue;
     }
     const p = await prisma.studioProject.update({ where: { id }, data });

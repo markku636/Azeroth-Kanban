@@ -18,7 +18,7 @@ import { i2v } from '@/lib/engine/i2v';
 import { lipsync } from '@/lib/engine/lipsync';
 import { makePad } from '@/lib/engine/music';
 import { pickTransition } from '@/lib/engine/transitions';
-import { moodFromProject } from './mood';
+import { moodFromProject, resolveBgmMood } from './mood';
 import { publishProgress } from './events';
 
 const COMFY_HOST = (process.env.COMFYUI_URL ?? 'http://127.0.0.1:8188').replace(/^https?:\/\//, '');
@@ -533,7 +533,11 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   // array keeps the same length/semantics as before so the SFX-start math below is unaffected.
   // 專案 + 情緒先算出來（轉場選擇要吃 mood；後段配樂/卡片/浮水印也重用，故整個 assemble 只查這一次）。
   const project = await prisma.studioProject.findUnique({ where: { id: projectId } });
-  const mood = moodFromProject(project, shots);
+  const mood = moodFromProject(project, shots); // 情緒讀取 → 給轉場（sceneseam 沉穩判定）
+  // BGM 情緒：per-project spec.bgmMood 覆寫 ＞ 風格預設 preset.bgmMood ＞ 自動推導。修正舊行為：dark-horror 的
+  // horror 配樂原本沒被套用（assemble 只用自動推導、永遠不會回 horror）；改由此處把 preset/override 貫通進配樂。
+  const preset = getStylePreset(project?.stylePreset ?? null);
+  const bgmMood = resolveBgmMood((project?.spec as { bgmMood?: unknown } | null)?.bgmMood as string | undefined, preset?.bgmMood, mood);
   const fades: number[] = [];
   const transitions: string[] = [];
   for (let i = 1; i < present.length; i++) {
@@ -577,14 +581,14 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   if (project?.bgmPath && existsSync(project.bgmPath)) {
     await loopAudioTo(project.bgmPath, +(dur + 0.5).toFixed(2), bgm); // 使用者上傳的 BGM，循環/裁切到片長
   } else {
-    writeFileSync(bgm, makePad(dur + 0.5, { gain: 0.8, mood })); // 預設：依情緒的程序化 pad
+    writeFileSync(bgm, makePad(dur + 0.5, { gain: 0.8, mood: bgmMood })); // 預設：依情緒的程序化 pad
   }
   // Opt-in cinematic wrapper: opening title (over a darkened/blurred first keyframe) + 「完」end card,
   // joined to the film with dip-to-black. Gated by STUDIO_TITLECARD (default off → zero regression). The
   // served file is always output/final.mp4, so when on we mix to an intermediate then wrap into final.
   // 片頭標題卡 ＋ 片尾行動呼籲(CTA)卡：付費解說片標配。啟用來源＝風格預設的 cards（meme/horror 各自帶 CTA/強調色），
   // 否則沿用全域 env STUDIO_TITLECARD（此時 CTA 文字取 STUDIO_OUTRO_CTA，未設則回退經典「完」）。皆未啟用＝零回歸。
-  const preset = getStylePreset(project?.stylePreset ?? null);
+  // preset 已在頂端（BGM 情緒解析）算好，此處重用。
   const envCards = (process.env.STUDIO_TITLECARD ?? 'off').toLowerCase() !== 'off';
   const introOn = Boolean(project?.title) && (preset?.cards?.intro ?? envCards);
   const outroOn = preset?.cards?.outro ?? envCards;
@@ -602,14 +606,14 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     if (introOn) {
       // generate a longer pad (its swell/env are tuned for long beds) and let cardClip trim to the card —
       // the opening seconds are the natural build-up, which suits a title swell.
-      const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95, mood }));
+      const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95, mood: bgmMood }));
       const titleClip = join(outDir, 'title.mp4');
       await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8, audio: titlePad, accent, kind: 'title' });
       clips.push(titleClip);
     }
     clips.push(mixOut);
     if (outroOn) {
-      const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8, mood }));
+      const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8, mood: bgmMood }));
       const endClip = join(outDir, 'end.mp4');
       // 有 CTA 文字 → 行動呼籲卡（品牌強調色 kicker）；否則回退經典「完」。
       await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: ctaText || '完', dur: ctaText ? 2.8 : 2.4, audio: endPad, accent, kind: ctaText ? 'cta' : 'end' });

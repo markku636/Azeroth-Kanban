@@ -17,7 +17,16 @@ const MOODS: Record<string, { chords: number[][]; roots: number[]; tremHz?: numb
   // octave; near-static 0.07Hz tremolo, a constant 36.7Hz sub-drone and occasional semitone friction
   // give cold dread while staying at the same mixed level as the other moods.
   horror:  { chords: [[110, 130.81, 164.81], [130.81, 174.61, 207.65], [130.81, 155.56, 196], [155.56, 185, 220]], roots: [55, 87.31, 98, 77.78], tremHz: 0.07, droneHz: 36.7, droneGain: 0.08, friction: true }, // Am–Fm–Cm/G–E♭dim
+  // epic：C–G–Am–F 大調＋落到次八度的低音根(壯闊/重量感)，適合勵志/總結/高潮段。
+  epic:    { chords: [[261.63, 329.63, 392], [196, 246.94, 293.66], [220, 261.63, 329.63], [174.61, 220, 261.63]], roots: [65.41, 49, 55, 43.65] },
+  // chill：Am–Dm–G–C 收在大調、慢速 0.09Hz 顫音的慵懶 lo-fi 感，適合日常/vlog/療癒。
+  chill:   { chords: [[220, 261.63, 329.63], [146.83, 174.61, 220], [196, 246.94, 293.66], [261.63, 329.63, 392]], roots: [110, 73.42, 98, 130.81], tremHz: 0.09 },
+  // playful：C–A–F–G 明亮＋較快 0.35Hz 顫音的輕快跳動感，適合搞笑/開箱/輕鬆解說。
+  playful: { chords: [[261.63, 329.63, 392], [220, 277.18, 329.63], [174.61, 220, 261.63], [196, 246.94, 293.66]], roots: [130.81, 110, 87.31, 98], tremHz: 0.35 },
 };
+
+/** 所有 BGM 情緒 key（供 UI 列選項與 per-project override 驗證）。 */
+export const MOOD_KEYS = Object.keys(MOODS);
 
 export function makePad(durationSec: number, opts: { sampleRate?: number; gain?: number; mood?: string } = {}): Buffer {
   const sr = opts.sampleRate ?? 44100;

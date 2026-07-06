@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { moodFromProject, moodFromToneGenre, moodFromEmotion } from './mood';
+import { moodFromProject, moodFromToneGenre, moodFromEmotion, resolveBgmMood } from './mood';
+
+describe('resolveBgmMood（覆寫 ＞ 預設 ＞ 自動；只採合法 key）', () => {
+  it('合法 override 優先', () => { expect(resolveBgmMood('epic', 'horror', 'warm')).toBe('epic'); });
+  it('override 非法/空 → 退 preset', () => {
+    expect(resolveBgmMood('nope', 'horror', 'warm')).toBe('horror');
+    expect(resolveBgmMood('', 'horror', 'warm')).toBe('horror');
+    expect(resolveBgmMood(null, 'chill', 'warm')).toBe('chill');
+  });
+  it('override 與 preset 都無效 → 自動', () => {
+    expect(resolveBgmMood(undefined, undefined, 'somber')).toBe('somber');
+    expect(resolveBgmMood('bad', 'alsoBad', 'tense')).toBe('tense');
+  });
+  it('修正：dark-horror 的 preset horror 現在會被採用', () => {
+    expect(resolveBgmMood(undefined, 'horror', 'tense')).toBe('horror');
+  });
+});
 
 describe('moodFromToneGenre（tone/genre → 配樂情緒，與原版一致）', () => {
   it('喜劇/溫暖 → warm', () => { expect(moodFromToneGenre('喜劇 溫暖')).toBe('warm'); });

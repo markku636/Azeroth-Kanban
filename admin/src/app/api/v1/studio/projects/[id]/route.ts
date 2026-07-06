@@ -64,6 +64,7 @@ export const PATCH = withPermission(
           look: body.look === null ? null : (typeof body.look === 'string' ? body.look : undefined),
           progressBar: body.progressBar && typeof body.progressBar === 'object' ? (body.progressBar as { enabled?: boolean; color?: string; position?: string }) : undefined,
           sceneTitles: typeof body.sceneTitles === 'boolean' ? body.sceneTitles : undefined,
+          bgmMood: body.bgmMood === null ? null : (typeof body.bgmMood === 'string' ? body.bgmMood : undefined),
         },
         buildActor(session, request),
         { bypassOwnership: bypass },

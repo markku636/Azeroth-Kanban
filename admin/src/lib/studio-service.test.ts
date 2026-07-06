@@ -129,6 +129,20 @@ describe('updateProject 浮水印合併進 spec', () => {
     expect((data.spec as any).keep).toBe(1);
     expect((data.spec as any).sceneTitles).toBeUndefined();
   });
+  it('bgmMood 字串存 / null 移除，保留其他鍵', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { bgmMood: 'epic' });
+    let data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).bgmMood).toBe('epic');
+    vi.clearAllMocks();
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, bgmMood: 'epic' } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { bgmMood: null });
+    data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).bgmMood).toBeUndefined();
+  });
 });
 
 describe('parseProgressBar（spec → 進度條設定）', () => {

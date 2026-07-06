@@ -1,4 +1,16 @@
 // 依專案挑程序化配樂(makePad)的情緒。純函式、無外部相依（供 stages.ts 用、可獨立單元測試）。
+import { MOOD_KEYS } from '@/lib/engine/music';
+
+/**
+ * BGM 情緒最終決定：per-project 覆寫（spec.bgmMood）＞ 風格預設（preset.bgmMood）＞ 自動推導（tone/genre/分鏡情緒）。
+ * 只有「合法 MOOD key」才採用（否則往下一層退），避免存進非法值時整段配樂退成 neutral 而無感。純函式、可測。
+ */
+export function resolveBgmMood(override: string | null | undefined, presetMood: string | null | undefined, autoMood: string): string {
+  const ok = (m: string | null | undefined): m is string => typeof m === 'string' && MOOD_KEYS.includes(m);
+  if (ok(override)) return override;
+  if (ok(presetMood)) return presetMood;
+  return autoMood;
+}
 
 // tone/genre → mood（與原版完全一致：明確 tone/genre 的專案配樂情緒不變＝零回歸）。
 export function moodFromToneGenre(txt: string): string {

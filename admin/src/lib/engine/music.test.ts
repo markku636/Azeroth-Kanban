@@ -1,5 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { makePad } from './music';
+import { makePad, MOOD_KEYS } from './music';
+
+describe('新增 BGM 情緒（epic/chill/playful）', () => {
+  it('MOOD_KEYS 含新舊全部', () => {
+    for (const k of ['neutral', 'warm', 'somber', 'tense', 'horror', 'epic', 'chill', 'playful']) {
+      expect(MOOD_KEYS).toContain(k);
+    }
+  });
+  it('epic/chill/playful 都產出非靜音、時長正確的有效 WAV', () => {
+    const sr = 44100, dur = 2;
+    for (const mood of ['epic', 'chill', 'playful']) {
+      const buf = makePad(dur, { mood, gain: 0.8 });
+      expect(buf.toString('ascii', 0, 4), mood).toBe('RIFF');
+      expect(buf.length, mood).toBe(44 + Math.floor(dur * sr) * 4);
+      let peak = 0;
+      for (let o = 44; o + 1 < buf.length; o += 2) peak = Math.max(peak, Math.abs(buf.readInt16LE(o)));
+      expect(peak, mood).toBeGreaterThan(500); // 非靜音
+    }
+  });
+});
 
 // 未上傳 BGM 時，每支成片都用 makePad 的程序化配樂墊底 → 驗證它產出有效 WAV、時長對應、各 mood 都穩。
 describe('makePad（程序化配樂）', () => {

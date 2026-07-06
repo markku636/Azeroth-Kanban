@@ -41,6 +41,7 @@ export default function StoryPage() {
   const [look, setLookState] = useState<string>('');
   const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
   const [sceneTitles, setSceneTitles] = useState(false);
+  const [bgmMood, setBgmMood] = useState<string>('');
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -83,6 +84,7 @@ export default function StoryPage() {
         const pbData = pJson.data.progressBar as { enabled?: boolean; color?: string; position?: string } | null;
         if (pbData && typeof pbData === 'object') setPb({ enabled: pbData.enabled === true, color: typeof pbData.color === 'string' ? pbData.color : '#FFD400', position: pbData.position === 'top' ? 'top' : 'bottom' });
         setSceneTitles(pJson.data.sceneTitles === true);
+        setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -140,6 +142,23 @@ export default function StoryPage() {
     setSceneTitles(v);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sceneTitles: v }) });
   };
+  // BGM 情緒：'' ＝自動（送 null）。改後需重新「生成影片」套用。
+  const saveBgmMood = (v: string) => {
+    setBgmMood(v);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bgmMood: v || null }) });
+  };
+  // key 對應引擎 MOOD_KEYS（此處寫死 label，避免把 music.ts（含 Buffer）拉進 client bundle）。'' ＝自動。
+  const BGM_MOODS: { key: string; label: string }[] = [
+    { key: '', label: '自動（依題材/情緒）' },
+    { key: 'warm', label: '溫暖・勵志' },
+    { key: 'epic', label: '史詩・壯闊' },
+    { key: 'playful', label: '輕快・搞笑' },
+    { key: 'chill', label: '慵懶・日常' },
+    { key: 'somber', label: '感傷・療傷' },
+    { key: 'tense', label: '緊張・懸疑' },
+    { key: 'horror', label: '恐怖・驚悚' },
+    { key: 'neutral', label: '中性・平穩' },
+  ];
   // key 對應引擎 GRADE_STYLES；css 只是 UI 近似預覽（非精確，實際以 ffmpeg 為準）。'' ＝跟隨風格預設。
   const LOOKS: { key: string; label: string; css: string }[] = [
     { key: '', label: '跟隨風格', css: 'none' },
@@ -488,6 +507,15 @@ export default function StoryPage() {
           <input type="checkbox" checked={sceneTitles} onChange={(e) => saveSceneTitles(e.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
           <span className="text-xs leading-relaxed text-gray-600"><span className="font-medium text-gray-700">顯示章節標題</span>：每個場景開頭疊出段落標題（強調色沿用影片風格）。</span>
         </label>
+      </section>
+
+      {/* 配樂情緒 */}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">配樂情緒（背景音樂）</h2>
+        <p className="mb-3 text-xs text-gray-400">程序化背景音樂的氛圍。「自動」＝依題材/分鏡情緒推導；也可直接指定一種。（自行上傳 BGM 時以上傳為準。）改後需重新「② 生成影片」套用。</p>
+        <select aria-label="配樂情緒" value={bgmMood} onChange={(e) => saveBgmMood(e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50 sm:w-72">
+          {BGM_MOODS.map((m) => <option key={m.key || 'auto'} value={m.key}>{m.label}</option>)}
+        </select>
       </section>
 
       {/* 專案角色 */}
