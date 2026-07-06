@@ -45,6 +45,9 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
     if (!title.trim()) { toast.error('先幫這支片取個名'); return; }
     if (!source.trim() && !url.trim()) { toast.error('貼上字幕逐字稿，或填 YouTube 網址'); return; }
     setBusy(true);
+    // 專案 id 提到 try 外：就算第 2 步（改編）連線層失敗掉進 catch，也知道專案已建、帶使用者過去，
+    // 避免留孤兒專案＋使用者重按又建立第二個。
+    let createdId: string | undefined;
     try {
       // 1) 建立專案
       const pr = await fetch('/api/v1/studio/projects', {
@@ -52,12 +55,12 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
         body: JSON.stringify({ title: title.trim(), aspect }),
       });
       const pj = await pr.json().catch(() => ({}));
-      const id = pj?.data?.id as string | undefined;
-      if (!pr.ok || !id) throw new Error(pj?.message ?? '建立專案失敗');
+      createdId = pj?.data?.id as string | undefined;
+      if (!pr.ok || !createdId) throw new Error(pj?.message ?? '建立專案失敗');
 
       // 2) 一步改編落庫（長片會分批，先給預期）
       if (count > 12) toast('長片會分批改編，約需 30～60 秒，請稍候…', { icon: '🎬' });
-      const ir = await fetch(`/api/v1/studio/projects/${id}/from-youtube`, {
+      const ir = await fetch(`/api/v1/studio/projects/${createdId}/from-youtube`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(40, Math.max(1, count)), persist: true }),
       });
@@ -65,13 +68,14 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
       if (!ir.ok || ij.code !== 0) {
         // 專案已建立、改編失敗 → 仍帶去看板讓使用者重試匯入（不留孤兒感）
         toast.error((ij?.message ?? '改編失敗') + '；已建立專案，可在看板重試匯入');
-        router.push(`/studio/${id}`);
+        router.push(`/studio/${createdId}`);
         return;
       }
       toast.success('已從影片建立專案並改編分鏡 🎬');
-      router.push(`/studio/${id}`);
+      router.push(`/studio/${createdId}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '失敗');
+      if (createdId) { router.push(`/studio/${createdId}`); return; } // 專案已建、只是改編連線失敗 → 帶過去重試，別留孤兒/重複建立
       setBusy(false);
     }
   };

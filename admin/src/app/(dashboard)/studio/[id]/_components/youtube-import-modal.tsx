@@ -379,13 +379,13 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                       <button type="button" onClick={() => void rewriteOne(i)} disabled={rewriting !== null || busy} aria-label={`第 ${i + 1} 鏡換一個`} title="AI 換一個版本（依前後鏡重寫這一鏡）" className="me-1 text-gray-400 transition-colors hover:text-red-600 disabled:opacity-30 disabled:hover:text-gray-400">
                         <PiArrowsClockwiseBold className={`h-3.5 w-3.5 ${rewriting === i ? 'animate-spin' : ''}`} />
                       </button>
-                      <button type="button" onClick={() => moveShot(i, -1)} disabled={i === 0} aria-label={`第 ${i + 1} 鏡上移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
+                      <button type="button" onClick={() => moveShot(i, -1)} disabled={i === 0 || rewriting !== null || busy} aria-label={`第 ${i + 1} 鏡上移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
                         <PiArrowUpBold className="h-3.5 w-3.5" />
                       </button>
-                      <button type="button" onClick={() => moveShot(i, 1)} disabled={i === shots.length - 1} aria-label={`第 ${i + 1} 鏡下移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
+                      <button type="button" onClick={() => moveShot(i, 1)} disabled={i === shots.length - 1 || rewriting !== null || busy} aria-label={`第 ${i + 1} 鏡下移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
                         <PiArrowDownBold className="h-3.5 w-3.5" />
                       </button>
-                      <button type="button" onClick={() => removeShot(i)} aria-label={`刪除第 ${i + 1} 鏡`} className="ms-1 text-gray-400 transition-colors hover:text-red-600">
+                      <button type="button" onClick={() => removeShot(i)} disabled={rewriting !== null || busy} aria-label={`刪除第 ${i + 1} 鏡`} className="ms-1 text-gray-400 transition-colors hover:text-red-600 disabled:opacity-30 disabled:hover:text-gray-400">
                         <PiTrashBold className="h-4 w-4" />
                       </button>
                     </div>
