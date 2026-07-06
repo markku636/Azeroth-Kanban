@@ -282,7 +282,7 @@ export default function StudioProjectsPage() {
       ) : projects.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-gray-400">
           <PiFilmReelDuotone className="h-14 w-14 text-gray-300" />
-          <div className="text-sm text-gray-500">還沒有專案。先取個片名建立專案，建立後用「✨ AI 訪談」一句話就能生成分鏡。</div>
+          <div className="text-sm text-gray-500">還沒有專案。想抄一支影片的節奏？用上方「<b className="text-red-600">從 YouTube 建立</b>」貼一支影片就能一步生成分鏡；或先取個片名建立專案，再用「✨ AI 訪談」一句話生成。</div>
           <div className="flex flex-col items-center gap-1.5">
             <div className="text-xs text-gray-400">沒靈感？點一個試試（會填入上方片名）：</div>
             <div className="flex max-w-xl flex-wrap justify-center gap-1.5">
