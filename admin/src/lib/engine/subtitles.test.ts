@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatSrtTime, buildSrt, buildVtt } from './subtitles';
+import { formatSrtTime, buildSrt, buildVtt, formatChapterTime, buildChapters } from './subtitles';
 
 describe('formatSrtTime', () => {
   it('HH:MM:SS,mmm；負值夾 0', () => {
@@ -30,5 +30,33 @@ describe('buildVtt', () => {
     const vtt = buildVtt([{ start: 0, end: 2, text: 'hi' }]);
     expect(vtt.startsWith('WEBVTT')).toBe(true);
     expect(vtt).toContain('00:00:00.000 --> 00:00:02.000\nhi');
+  });
+});
+
+describe('formatChapterTime', () => {
+  it('<1h 用 M:SS；≥1h 用 H:MM:SS', () => {
+    expect(formatChapterTime(0)).toBe('0:00');
+    expect(formatChapterTime(65)).toBe('1:05');
+    expect(formatChapterTime(3725)).toBe('1:02:05');
+  });
+});
+
+describe('buildChapters', () => {
+  it('第一章強制 0:00、排序、去空白、單調遞增', () => {
+    const txt = buildChapters([
+      { start: 2.2, title: '開場' },   // 片頭卡位移 → 但第一章必為 0:00
+      { start: 40, title: '轉折' },
+      { start: 40, title: '同秒也要遞增' },
+      { start: 10, title: '  ' },       // 空白 → 濾掉
+    ]);
+    const lines = txt.split('\n');
+    expect(lines[0]).toBe('0:00 開場');
+    expect(lines[1]).toBe('0:40 轉折');
+    expect(lines[2]).toBe('0:41 同秒也要遞增'); // 單調遞增 +1s
+    expect(txt).not.toContain('  '); // 空白標題不出現
+  });
+  it('無有效章節 → 空字串', () => {
+    expect(buildChapters([{ start: 0, title: '' }])).toBe('');
+    expect(buildChapters([])).toBe('');
   });
 });

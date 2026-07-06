@@ -18,7 +18,7 @@ import { i2v } from '@/lib/engine/i2v';
 import { lipsync } from '@/lib/engine/lipsync';
 import { makePad } from '@/lib/engine/music';
 import { pickTransition } from '@/lib/engine/transitions';
-import { buildSrt, buildVtt } from '@/lib/engine/subtitles';
+import { buildSrt, buildVtt, buildChapters } from '@/lib/engine/subtitles';
 import { moodFromProject, resolveBgmMood } from './mood';
 import { publishProgress } from './events';
 
@@ -676,6 +676,27 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     writeFileSync(join(outDir, 'final.srt'), buildSrt(cueEntries), 'utf8');
     writeFileSync(join(outDir, 'final.vtt'), buildVtt(cueEntries), 'utf8');
   } catch (e) { console.warn('[assemble] subtitle export failed (non-fatal)', e); }
+
+  // YouTube 章節：每個場景一個章節（貼進影片說明即成可點章節）。需 ≥2 個有標題的場景；第一章強制 0:00。
+  // best-effort，失敗不影響成片。
+  try {
+    const introOffset = introOn ? 2.8 - 0.6 : 0;
+    const seen = new Set<string>();
+    const chapterStarts: { start: number; sceneId: string }[] = [];
+    for (let i = 0; i < present.length; i++) {
+      const sid = present[i].sceneId;
+      if (!sid || seen.has(sid)) continue;
+      seen.add(sid);
+      chapterStarts.push({ start: introOffset + starts[i], sceneId: sid });
+    }
+    if (chapterStarts.length >= 2) {
+      const scenes = await prisma.scene.findMany({ where: { id: { in: Array.from(seen) } }, select: { id: true, title: true } });
+      const titleById = new Map(scenes.map((sc) => [sc.id, (sc.title ?? '').trim()]));
+      const chapters = chapterStarts.map((c) => ({ start: c.start, title: titleById.get(c.sceneId) ?? '' })).filter((c) => c.title);
+      const txt = chapters.length >= 2 ? buildChapters(chapters) : '';
+      if (txt) writeFileSync(join(outDir, 'final.chapters.txt'), txt, 'utf8');
+    }
+  } catch (e) { console.warn('[assemble] chapters export failed (non-fatal)', e); }
   return final;
 }
 

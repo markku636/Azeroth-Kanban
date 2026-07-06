@@ -5,7 +5,7 @@ import { ApiReturnCode } from '@/lib/api-response';
 import { hasPermission } from '@/lib/permission-service';
 import { PERMISSIONS } from '@/config/permissions';
 import { getProject } from '@/lib/studio-service';
-import { projectSubtitleFile } from '@/lib/studio/storage';
+import { projectSubtitleFile, projectChaptersFile } from '@/lib/studio/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,16 +21,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Re
   const proj = await getProject(memberId, id, { bypassOwnership: bypass });
   if (proj.code !== ApiReturnCode.SUCCESS) return new Response('not found', { status: 404 });
 
-  const ext = new URL(request.url).searchParams.get('format') === 'vtt' ? 'vtt' : 'srt';
-  const file = projectSubtitleFile(id, ext);
+  const fmt = new URL(request.url).searchParams.get('format');
+  const isChapters = fmt === 'chapters';
+  const isVtt = fmt === 'vtt';
+  const file = isChapters ? projectChaptersFile(id) : projectSubtitleFile(id, isVtt ? 'vtt' : 'srt');
   if (!existsSync(file)) return new Response('not generated yet', { status: 404 });
 
   const body = readFileSync(file, 'utf8');
-  const contentType = ext === 'vtt' ? 'text/vtt; charset=utf-8' : 'application/x-subrip; charset=utf-8';
+  const contentType = isChapters ? 'text/plain; charset=utf-8' : isVtt ? 'text/vtt; charset=utf-8' : 'application/x-subrip; charset=utf-8';
+  const filename = isChapters ? 'chapters.txt' : `subtitles.${isVtt ? 'vtt' : 'srt'}`;
   return new Response(body, {
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="subtitles.${ext}"`,
+      'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'no-cache',
     },
   });

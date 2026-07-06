@@ -43,6 +43,7 @@ export default function StoryPage() {
   const [sceneTitles, setSceneTitles] = useState(false);
   const [bgmMood, setBgmMood] = useState<string>('');
   const [hasSubs, setHasSubs] = useState(false);
+  const [hasChapters, setHasChapters] = useState(false);
   const [film, setFilm] = useState<{ enabled: boolean; intensity: string }>({ enabled: false, intensity: 'subtle' });
   const [logo, setLogo] = useState<{ hasLogo: boolean; position: string; scale: number }>({ hasLogo: false, position: 'tl', scale: 0.18 });
   const [logoPreview, setLogoPreview] = useState<string>('');
@@ -90,6 +91,7 @@ export default function StoryPage() {
         setSceneTitles(pJson.data.sceneTitles === true);
         setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
         setHasSubs(pJson.data.hasSubtitles === true);
+        setHasChapters(pJson.data.hasChapters === true);
         const ff = pJson.data.filmFinish as { enabled?: boolean; intensity?: string } | null;
         if (ff && typeof ff === 'object') setFilm({ enabled: ff.enabled === true, intensity: ff.intensity === 'strong' ? 'strong' : 'subtle' });
         const lg = pJson.data.watermarkLogo as { hasLogo?: boolean; position?: string; scale?: number } | null;
@@ -607,14 +609,15 @@ export default function StoryPage() {
         </select>
       </section>
 
-      {/* 字幕檔下載 */}
-      {hasSubs && (
+      {/* 字幕 / 章節下載 */}
+      {(hasSubs || hasChapters) && (
         <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
-          <h2 className="mb-1 text-sm font-semibold text-gray-700">字幕檔（CC / 二次利用）</h2>
-          <p className="mb-3 text-xs text-gray-400">已隨成片產生對齊時間軸的字幕檔，可上傳 YouTube 當 CC、做無障礙或二次剪輯。（每次「② 生成影片」會更新。）</p>
+          <h2 className="mb-1 text-sm font-semibold text-gray-700">字幕 / 章節（CC・二次利用）</h2>
+          <p className="mb-3 text-xs text-gray-400">已隨成片產生對齊時間軸的字幕與 YouTube 章節，可上傳當 CC、做無障礙、二次剪輯，或把章節貼進影片說明成為可點目錄。（每次「② 生成影片」會更新。）</p>
           <div className="flex flex-wrap gap-2">
-            <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=srt`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 SRT</a>
-            <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=vtt`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 VTT</a>
+            {hasSubs && <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=srt`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 SRT</a>}
+            {hasSubs && <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=vtt`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 VTT</a>}
+            {hasChapters && <a href={`/api/v1/studio/projects/${projectId}/subtitles?format=chapters`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 下載 YouTube 章節</a>}
           </div>
         </section>
       )}

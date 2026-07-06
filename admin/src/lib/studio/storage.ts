@@ -11,6 +11,8 @@ export const projectDir = (projectId: string): string => join(STUDIO_STORAGE_ROO
 export const projectOutputFile = (projectId: string): string => join(projectDir(projectId), 'output', 'final.mp4');
 /** 字幕檔（SRT/VTT）路徑，與 final.mp4 同目錄（assembleClips 每次成片時一併寫出）。 */
 export const projectSubtitleFile = (projectId: string, ext: 'srt' | 'vtt' = 'srt'): string => join(projectDir(projectId), 'output', `final.${ext}`);
+/** YouTube 章節檔路徑（final.chapters.txt）。 */
+export const projectChaptersFile = (projectId: string): string => join(projectDir(projectId), 'output', 'final.chapters.txt');
 export const shotClipFile = (projectId: string, shotId: string): string => join(projectDir(projectId), 'shots', shotId, 'clip.mp4');
 export const sceneOutputFile = (projectId: string, sceneId: string): string => join(projectDir(projectId), 'scenes', sceneId, 'final.mp4');
 
@@ -28,6 +30,11 @@ export function projectOutputInfo(projectId: string): OutputInfo {
 /** 此專案是否已有匯出的 SRT 字幕檔（舊成片可能沒有，重生一次即會補上）。 */
 export function projectHasSubtitles(projectId: string): boolean {
   try { return existsSync(projectSubtitleFile(projectId, 'srt')); } catch { return false; }
+}
+
+/** 此專案是否已有 YouTube 章節檔（需 ≥2 個有標題的場景才會產生）。 */
+export function projectHasChapters(projectId: string): boolean {
+  try { return existsSync(projectChaptersFile(projectId)); } catch { return false; }
 }
 
 /** 此「幕」是否已有單獨成片 scenes/<sceneId>/final.mp4，以及最後產生時間。 */
