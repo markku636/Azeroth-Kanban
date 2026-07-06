@@ -62,6 +62,12 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
     out.push({ level: 'warn', code: 'slow-hook', message: `開場要快——第 1 鏡旁白 ${len(shots[0].tts)} 字偏長，鉤子最好 2–3 秒內講完，把最有看點/最衝突的一句放到最前面。`, shotIndex: 0 });
   }
 
+  // ②b 結尾要有爆點（研究：強結尾＝重看/留言）。最後一鏡若無旁白也無任何字幕＝收在空拍，弱。
+  const last = n - 1;
+  if (n >= 2 && !len(shots[last].tts) && !len(shots[last].caption) && !len(shots[last].punchline)) {
+    out.push({ level: 'info', code: 'weak-ending', message: `結尾鏡沒有旁白也沒有大字幕；短影音收在一句記得住的話（回扣開頭或爆點）更有力，也更容易引導留言。`, shotIndex: last });
+  }
+
   // ③ 全靜態單調（沒有任何 i2v 動態鏡）
   if (n >= 4 && shots.every((s) => (s.branch ?? 'still') !== 'i2v')) {
     out.push({ level: 'info', code: 'all-still', message: '全部是靜態鏡；把幾個關鍵鏡改成「動態 i2v」能讓 2 分鐘的片更耐看、不呆板。' });
@@ -69,7 +75,7 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
 
   // ④ 逐鏡：空鏡、字幕過長、旁白過長
   shots.forEach((s, i) => {
-    if (!len(s.tts) && !len(s.caption)) {
+    if (i < n - 1 && !len(s.tts) && !len(s.caption)) { // 最後一鏡由 weak-ending 專管
       out.push({ level: 'info', code: 'silent', message: `第 ${i + 1} 鏡沒有旁白也沒有大字幕（純畫面）。`, shotIndex: i });
     }
     if (len(s.caption) > CAPTION_MAX) {

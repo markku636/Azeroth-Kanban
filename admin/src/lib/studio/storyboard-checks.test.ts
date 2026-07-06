@@ -93,9 +93,18 @@ describe('checkStoryboard — 內容品質', () => {
     const checks = checkStoryboard([shot({ tts: '對啊' }), shot({ tts: '對啊' })]);
     expect(checks.some((x) => x.code === 'dup-narration')).toBe(false);
   });
-  it('無旁白也無大字幕 → info（純畫面）', () => {
-    const checks = checkStoryboard([shot({ tts: '', caption: '' })]);
-    expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(0);
+  it('中間鏡無旁白也無大字幕 → info silent（純畫面）', () => {
+    const checks = checkStoryboard([shot(), shot({ tts: '', caption: '' }), shot()]);
+    expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(1);
+  });
+  it('結尾鏡無旁白/字幕 → weak-ending（不重複報 silent）', () => {
+    const checks = checkStoryboard([shot(), shot(), shot({ tts: '', caption: '', punchline: undefined })]);
+    expect(checks.find((x) => x.code === 'weak-ending')?.shotIndex).toBe(2);
+    expect(checks.some((x) => x.code === 'silent' && x.shotIndex === 2)).toBe(false);
+  });
+  it('結尾鏡有旁白 → 不報 weak-ending', () => {
+    const checks = checkStoryboard([shot(), shot({ tts: '收在一句爆點' })]);
+    expect(checks.some((x) => x.code === 'weak-ending')).toBe(false);
   });
   it('乾淨且達標的分鏡（甜蜜點片長）→ 無提示', () => {
     // 目標落在完播率甜蜜點（< LONG_TARGET_SECONDS），且估算片長貼合目標、有動態鏡、無爆版字幕
