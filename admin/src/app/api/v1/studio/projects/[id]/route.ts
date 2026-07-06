@@ -65,6 +65,7 @@ export const PATCH = withPermission(
           progressBar: body.progressBar && typeof body.progressBar === 'object' ? (body.progressBar as { enabled?: boolean; color?: string; position?: string }) : undefined,
           sceneTitles: typeof body.sceneTitles === 'boolean' ? body.sceneTitles : undefined,
           bgmMood: body.bgmMood === null ? null : (typeof body.bgmMood === 'string' ? body.bgmMood : undefined),
+          filmFinish: body.filmFinish && typeof body.filmFinish === 'object' ? (body.filmFinish as { enabled?: boolean; intensity?: string }) : undefined,
         },
         buildActor(session, request),
         { bypassOwnership: bypass },

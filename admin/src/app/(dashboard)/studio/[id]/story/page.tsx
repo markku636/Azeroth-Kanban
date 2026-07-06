@@ -43,6 +43,7 @@ export default function StoryPage() {
   const [sceneTitles, setSceneTitles] = useState(false);
   const [bgmMood, setBgmMood] = useState<string>('');
   const [hasSubs, setHasSubs] = useState(false);
+  const [film, setFilm] = useState<{ enabled: boolean; intensity: string }>({ enabled: false, intensity: 'subtle' });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -87,6 +88,8 @@ export default function StoryPage() {
         setSceneTitles(pJson.data.sceneTitles === true);
         setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
         setHasSubs(pJson.data.hasSubtitles === true);
+        const ff = pJson.data.filmFinish as { enabled?: boolean; intensity?: string } | null;
+        if (ff && typeof ff === 'object') setFilm({ enabled: ff.enabled === true, intensity: ff.intensity === 'strong' ? 'strong' : 'subtle' });
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -148,6 +151,11 @@ export default function StoryPage() {
   const saveBgmMood = (v: string) => {
     setBgmMood(v);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bgmMood: v || null }) });
+  };
+  // 電影感收尾：送完整物件；enabled=false 後端會移除。改後需重新「生成影片」套用。
+  const saveFilm = (next: { enabled: boolean; intensity: string }) => {
+    setFilm(next);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filmFinish: next }) });
   };
   // key 對應引擎 MOOD_KEYS（此處寫死 label，避免把 music.ts（含 Buffer）拉進 client bundle）。'' ＝自動。
   const BGM_MOODS: { key: string; label: string }[] = [
@@ -497,6 +505,25 @@ export default function StoryPage() {
             <div className={`relative h-8 flex-1 overflow-hidden rounded bg-gray-800 ${pb.position === 'top' ? 'flex items-start' : 'flex items-end'}`}>
               <span className="h-1.5 w-3/5 rounded-sm" style={{ backgroundColor: pb.color }} />
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* 電影感收尾 */}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">電影感收尾（膠片質感）</h2>
+        <p className="mb-3 text-xs text-gray-400">在成片最後疊一層細膠片噪點＋暗角，把乾淨數位感變成「拍出來的」電影質感。改後需重新「② 生成影片」套用。</p>
+        <label className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
+          <input type="checkbox" checked={film.enabled} onChange={(e) => saveFilm({ ...film, enabled: e.target.checked })} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600"><span className="font-medium text-gray-700">開啟電影感收尾</span></span>
+        </label>
+        {film.enabled && (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-xs text-gray-500">強度</span>
+            <select aria-label="電影感強度" value={film.intensity} onChange={(e) => saveFilm({ ...film, intensity: e.target.value })} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 dark:bg-gray-50">
+              <option value="subtle">低調</option>
+              <option value="strong">明顯（復古）</option>
+            </select>
           </div>
         )}
       </section>

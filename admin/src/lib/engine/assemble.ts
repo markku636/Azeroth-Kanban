@@ -546,6 +546,17 @@ export function progressBarFilter(
   return `drawbox=x=0:y=${y}:w='iw*min(1\\,t/${dur.toFixed(2)})':h=${h}:color=${boxColor}:t=fill`;
 }
 
+/**
+ * 電影感收尾 filter：細顆粒膠片噪點（temporal 動態，像真底片）＋暗角 vignette，讓成片有「拍出來的」質感而非乾淨
+ * 數位感。intensity 'subtle'（預設，低調）/'strong'（明顯復古）。純函式（解析度無關）。exported for unit testing。
+ */
+export function filmFinishFilter(o: { intensity?: 'subtle' | 'strong' } = {}): string {
+  const strong = o.intensity === 'strong';
+  const grain = strong ? 18 : 9;          // noise 強度
+  const vig = strong ? 'PI/4' : 'PI/5';   // vignette 角度（越小越暗）
+  return `noise=alls=${grain}:allf=t+u,vignette=${vig}`;
+}
+
 export interface StillOpts {
   image: string;
   voice?: string;
@@ -1011,6 +1022,14 @@ export class Compositor {
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg lowerThird failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
+  /** 電影感收尾一次性合成：膠片噪點＋暗角（重編碼視訊、音訊 copy）。 */
+  async filmFinish(o: { video: string; out: string; intensity?: 'subtle' | 'strong' }): Promise<string> {
+    const args = ["-y", "-i", o.video, "-vf", filmFinishFilter({ intensity: o.intensity }), "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    if (code !== 0) throw new Error(`ffmpeg filmFinish failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
 }

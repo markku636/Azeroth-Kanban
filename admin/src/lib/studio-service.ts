@@ -36,6 +36,15 @@ export function parseWatermark(spec: unknown): WatermarkConfig | null {
 /** 進度條設定（存於 spec.progressBar）。enabled=false＝不加。 */
 export interface ProgressBarConfig { enabled: boolean; color: string; position: 'top' | 'bottom' }
 
+/** 電影感收尾設定（存於 spec.filmFinish）。enabled=false＝不加。 */
+export interface FilmFinishConfig { enabled: boolean; intensity: 'subtle' | 'strong' }
+
+/** 從 spec 解析電影感收尾；恆回設定物件（未設＝enabled:false + subtle）。 */
+export function parseFilmFinish(spec: unknown): FilmFinishConfig {
+  const ff = (spec as { filmFinish?: { enabled?: unknown; intensity?: unknown } } | null)?.filmFinish;
+  return { enabled: ff?.enabled === true, intensity: ff?.intensity === 'strong' ? 'strong' : 'subtle' };
+}
+
 /** 從 project.spec 解析進度條設定；恆回設定物件（未設＝enabled:false + 預設值），方便 UI 顯示。 */
 export function parseProgressBar(spec: unknown): ProgressBarConfig {
   const pb = (spec as { progressBar?: { enabled?: unknown; color?: unknown; position?: unknown } } | null)?.progressBar;
@@ -58,6 +67,8 @@ export type ProjectDto = Pick<
   sceneTitles: boolean;
   /** BGM 情緒覆寫（MOOD_KEYS 之一，優先於風格預設/自動推導）；null＝自動 */
   bgmMood: string | null;
+  /** 電影感收尾（膠片噪點＋暗角）設定；恆有值（未設＝enabled:false） */
+  filmFinish: FilmFinishConfig;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 是否已有匯出的字幕檔 final.srt（供「下載字幕」；舊成片重生一次才有） */
@@ -110,6 +121,7 @@ function projectToDto(
     progressBar: parseProgressBar(p.spec),
     sceneTitles: (p.spec as { sceneTitles?: unknown } | null)?.sceneTitles === true,
     bgmMood: typeof (p.spec as { bgmMood?: unknown } | null)?.bgmMood === 'string' ? (p.spec as { bgmMood: string }).bgmMood : null,
+    filmFinish: parseFilmFinish(p.spec),
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     hasSubtitles: out.hasOutput && projectHasSubtitles(p.id),
@@ -240,6 +252,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   sceneTitles?: boolean;
   /** BGM 情緒覆寫：合併進 spec.bgmMood（免 schema）。null 或空＝清除（自動）。 */
   bgmMood?: string | null;
+  /** 電影感收尾：合併進 spec.filmFinish。enabled=false＝移除。 */
+  filmFinish?: { enabled?: boolean; intensity?: string };
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -309,6 +323,12 @@ export async function updateProject(
       const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
       if (!patch.bgmMood || typeof patch.bgmMood !== 'string') delete spec.bgmMood; // 非法在 render 端(resolveBgmMood)也會被忽略
       else spec.bgmMood = patch.bgmMood.slice(0, 20);
+      data.spec = spec as Prisma.InputJsonValue;
+    }
+    if (patch.filmFinish !== undefined) {
+      const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
+      if (!patch.filmFinish?.enabled) delete spec.filmFinish; // 關閉＝移除
+      else spec.filmFinish = { enabled: true, intensity: patch.filmFinish.intensity === 'strong' ? 'strong' : 'subtle' };
       data.spec = spec as Prisma.InputJsonValue;
     }
     const p = await prisma.studioProject.update({ where: { id }, data });

@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 vi.mock('@/lib/audit-log-service', () => ({ createAuditLog: vi.fn() }));
 
-import { updateProject, createProject, parseWatermark, parseProgressBar } from './studio-service';
+import { updateProject, createProject, parseWatermark, parseProgressBar, parseFilmFinish } from './studio-service';
 import { prisma } from '@/lib/prisma';
 import { ApiReturnCode } from '@/lib/api-response';
 
@@ -128,6 +128,24 @@ describe('updateProject 浮水印合併進 spec', () => {
     data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
     expect((data.spec as any).keep).toBe(1);
     expect((data.spec as any).sceneTitles).toBeUndefined();
+  });
+  it('filmFinish enabled 存(驗 intensity)/false 移除', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { filmFinish: { enabled: true, intensity: 'weird' } });
+    let data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).filmFinish).toEqual({ enabled: true, intensity: 'subtle' }); // 非法 intensity → subtle
+    vi.clearAllMocks();
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, filmFinish: { enabled: true } } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { filmFinish: { enabled: false } });
+    data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).filmFinish).toBeUndefined();
+  });
+  it('parseFilmFinish：未設→false/subtle；strong 帶出', () => {
+    expect(parseFilmFinish({})).toEqual({ enabled: false, intensity: 'subtle' });
+    expect(parseFilmFinish({ filmFinish: { enabled: true, intensity: 'strong' } })).toEqual({ enabled: true, intensity: 'strong' });
   });
   it('bgmMood 字串存 / null 移除，保留其他鍵', async () => {
     vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });

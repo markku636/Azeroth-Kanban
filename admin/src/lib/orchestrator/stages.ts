@@ -651,6 +651,17 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
     if (existsSync(pbOut) && pbOut !== final) { copyFileSync(pbOut, final); try { unlinkSync(pbOut); } catch { /* ignore */ } }
   }
 
+  // 電影感收尾（膠片噪點＋暗角）：spec.filmFinish.enabled 或 env STUDIO_FILM_FINISH。最後一道（疊在所有東西上，
+  // 質感才均勻）。未啟用＝零回歸。
+  const ffCfg = (project?.spec as { filmFinish?: { enabled?: unknown; intensity?: unknown } } | null)?.filmFinish;
+  const ffOn = ffCfg?.enabled === true || (process.env.STUDIO_FILM_FINISH ?? 'off').toLowerCase() !== 'off';
+  if (ffOn) {
+    const intensity = ffCfg?.intensity === 'strong' ? 'strong' : 'subtle';
+    const ffOut = join(outDir, 'final_ff.mp4');
+    await comp.filmFinish({ video: final, out: ffOut, intensity });
+    if (existsSync(ffOut) && ffOut !== final) { copyFileSync(ffOut, final); try { unlinkSync(ffOut); } catch { /* ignore */ } }
+  }
+
   // 字幕檔（SRT/VTT）：每鏡旁白對齊實際時間軸 → 可上傳 YouTube CC / 無障礙 / 二次剪輯。片頭卡開啟時整片位移
   // (片頭卡 2.8s − 首縫交疊 0.6 ＝ body 在成片上的起點)。best-effort，失敗不影響成片。
   try {

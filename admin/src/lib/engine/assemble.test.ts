@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -228,6 +228,17 @@ describe('watermarkDrawtext（品牌浮水印）', () => {
     expect(hi.filter).toContain('white@1'); clean(hi);
     const lo = watermarkDrawtext('@x', 'C:/f.ttf', { opacity: 0 });
     expect(lo.filter).toContain('white@0.15'); clean(lo);
+  });
+});
+
+describe('filmFinishFilter（電影感收尾）', () => {
+  it('含膠片噪點 noise 與暗角 vignette；strong 比 subtle 顆粒更重、暗角更強', () => {
+    const subtle = filmFinishFilter();
+    const strong = filmFinishFilter({ intensity: 'strong' });
+    expect(subtle).toContain('noise=alls=9');
+    expect(subtle).toContain('vignette=PI/5');
+    expect(strong).toContain('noise=alls=18');
+    expect(strong).toContain('vignette=PI/4');
   });
 });
 
