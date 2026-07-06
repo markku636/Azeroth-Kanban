@@ -3,6 +3,8 @@ import { complete } from './llm';
 import { buildStoryContext } from './story-context';
 import { SHORT_FORM_CRAFT } from './interview';
 import { tolerantJsonParse } from './json-tolerant';
+import { checkStoryboard } from './storyboard-checks';
+import { estimateStoryboardSeconds } from './pacing';
 
 // 「影片健檢」：把目前分鏡當成短影音初稿，用短影音黃金法則做評分 + 具體可執行的改進建議。
 // 唯讀（不改專案），給使用者「這支會不會紅 / 哪裡要改」的回饋閉環。provider 由 LLM_PROVIDER 決定。
@@ -85,6 +87,20 @@ export async function auditStoryboard(projectId: string): Promise<StoryboardAudi
     ].filter(Boolean);
     lines.push(`#${s.shotNo} [${s.branch}] ${bits.join(' ') || (s.visual ?? '').slice(0, 60)}`);
   }
+  // 用確定性檢查接地：LLM 不擅長算時長/數鏡，把系統算好的預估片長與結構問題直接餵給它，健檢更準更具體。
+  // 只在未截斷（全片都載入）時提供，避免用抽樣的頭尾鏡誤算整體。
+  if (!truncated) {
+    const checkShots = shots.map((s) => ({
+      tts: s.tts ?? undefined, caption: s.caption ?? undefined, punchline: s.punchline ?? undefined, branch: s.branch ?? undefined,
+    }));
+    lines.push('', `【系統客觀數據】依旁白字數估計片長約 ${estimateStoryboardSeconds(checkShots)} 秒。`);
+    const detected = checkStoryboard(checkShots);
+    if (detected.length) {
+      lines.push('【系統已偵測到的具體問題（請務必在評估與建議中一併考量、可直接引用並補充如何改）】');
+      for (const c of detected) lines.push(`- ${c.message}`);
+    }
+  }
+
   lines.push('', '請對這支影片做健檢並給出評分與具體改進建議。');
 
   const system = AUDIT_SYSTEM + (story.system ? `\n\n${story.system}` : '');

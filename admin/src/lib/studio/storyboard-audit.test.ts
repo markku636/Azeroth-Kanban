@@ -61,3 +61,32 @@ describe('auditStoryboard 長度修正 (R73)', () => {
     expect(audit.truncated).toBe(true);
   });
 });
+
+describe('auditStoryboard 用確定性檢查接地', () => {
+  it('未截斷：prompt 帶系統估計片長，讓 LLM 有客觀時長依據', async () => {
+    vi.mocked(prisma.shot.findMany as any).mockResolvedValue(shots(8));
+    vi.mocked(prisma.shot.count as any).mockResolvedValue(8);
+    await auditStoryboard('proj1');
+    expect(captured).toContain('系統客觀數據');
+    expect(captured).toMatch(/估計片長約 \d+ 秒/);
+  });
+
+  it('偵測到的結構問題（如大字幕過長）會寫進 prompt 供 LLM 引用', async () => {
+    const withLongCaption = [
+      { shotNo: 1, visual: 'v1', tts: 't1', caption: '這是一句非常非常長的大字幕會被切掉的', punchline: null, branch: 'still', punch: false },
+      { shotNo: 2, visual: 'v2', tts: 't2', caption: null, punchline: null, branch: 'still', punch: false },
+    ];
+    vi.mocked(prisma.shot.findMany as any).mockResolvedValue(withLongCaption);
+    vi.mocked(prisma.shot.count as any).mockResolvedValue(2);
+    await auditStoryboard('proj1');
+    expect(captured).toContain('系統已偵測到的具體問題');
+    expect(captured).toContain('大字幕');
+  });
+
+  it('截斷（>40 鏡抽樣）時不塞客觀數據，避免用頭尾鏡誤算整體', async () => {
+    vi.mocked(prisma.shot.findMany as any).mockResolvedValue(shots(40));
+    vi.mocked(prisma.shot.count as any).mockResolvedValue(60);
+    await auditStoryboard('proj1');
+    expect(captured).not.toContain('系統客觀數據');
+  });
+});
