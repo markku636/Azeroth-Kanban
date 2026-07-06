@@ -79,6 +79,20 @@ describe('checkStoryboard — 內容品質', () => {
   it('只有 1 鏡 → 不做鉤子檢查', () => {
     expect(checkStoryboard([shot({ tts: '字'.repeat(HOOK_TTS_MAX + 10) })]).some((x) => x.code === 'slow-hook')).toBe(false);
   });
+  it('相鄰鏡旁白重複 → warn（dup-narration）', () => {
+    const checks = checkStoryboard([shot({ tts: '我今天超級無敵倒楣' }), shot({ tts: '我今天超級無敵倒楣！' })]);
+    const c = checks.find((x) => x.code === 'dup-narration');
+    expect(c?.level).toBe('warn');
+    expect(c?.shotIndex).toBe(1);
+  });
+  it('相鄰鏡旁白不同 → 不報重複', () => {
+    const checks = checkStoryboard([shot({ tts: '我今天超級倒楣' }), shot({ tts: '結果峰迴路轉' })]);
+    expect(checks.some((x) => x.code === 'dup-narration')).toBe(false);
+  });
+  it('極短的重複（<4 字）不報，避免誤傷「對啊」「真的」這類口語', () => {
+    const checks = checkStoryboard([shot({ tts: '對啊' }), shot({ tts: '對啊' })]);
+    expect(checks.some((x) => x.code === 'dup-narration')).toBe(false);
+  });
   it('無旁白也無大字幕 → info（純畫面）', () => {
     const checks = checkStoryboard([shot({ tts: '', caption: '' })]);
     expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(0);
@@ -86,7 +100,8 @@ describe('checkStoryboard — 內容品質', () => {
   it('乾淨且達標的分鏡（甜蜜點片長）→ 無提示', () => {
     // 目標落在完播率甜蜜點（< LONG_TARGET_SECONDS），且估算片長貼合目標、有動態鏡、無爆版字幕
     // → 這是一支「內容乾淨」的分鏡，不該有任何品質提示（long-target 只在長片目標才提醒）。
-    const arr = Array.from({ length: 16 }, (_, i) => fullShot({ branch: i % 3 === 0 ? 'i2v' : 'still' }));
+    // 每鏡旁白皆不同（避免相鄰重複檢查誤判），長度都 ~16 字撐住片長
+    const arr = Array.from({ length: 16 }, (_, i) => fullShot({ branch: i % 3 === 0 ? 'i2v' : 'still', tts: `第${i}鏡的旁白內容大約十五個字這樣` }));
     expect(checkStoryboard(arr, { targetSeconds: 60 })).toHaveLength(0);
   });
   it('空陣列 → 無提示', () => { expect(checkStoryboard([])).toEqual([]); });

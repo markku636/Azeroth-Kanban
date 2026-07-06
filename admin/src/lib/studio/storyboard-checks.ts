@@ -29,6 +29,8 @@ export const LONG_TARGET_SECONDS = 75;
 export const HOOK_TTS_MAX = 22;
 
 const len = (s?: string) => (s ?? '').trim().length;
+// 比對相鄰旁白是否重複：去掉空白與標點再比（只抓「內容真的一樣」，不做模糊相似）。
+const normTts = (s?: string) => (s ?? '').replace(/[\s，。、！？!?.…~～「」『』（）()]/g, '').trim();
 
 /**
  * 對一組分鏡做即時結構健檢。opts.targetSeconds 有值時，比對預估片長與目標並提示要增/減幾鏡。
@@ -80,6 +82,14 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
       out.push({ level: 'info', code: 'tts-long', message: `第 ${i + 1} 鏡旁白 ${len(s.tts)} 字偏長，短句更跟得上快節奏。`, shotIndex: i });
     }
   });
+
+  // ⑤ 相鄰重複旁白（分批改編偶爾承接沒接好 → 相鄰鏡講一樣的話，拖節奏）。保守：正規化後完全相同、長度≥4。
+  for (let i = 1; i < n; i++) {
+    const a = normTts(shots[i - 1].tts);
+    if (a.length >= 4 && a === normTts(shots[i].tts)) {
+      out.push({ level: 'warn', code: 'dup-narration', message: `第 ${i} 與第 ${i + 1} 鏡旁白幾乎一樣，改寫其一避免重複、讓劇情往前推。`, shotIndex: i });
+    }
+  }
 
   // 警告優先（modal 只顯示前幾條，重要的先出）。Array.sort 穩定 → 同級維持原順序。
   return out.sort((a, b) => (a.level === b.level ? 0 : a.level === 'warn' ? -1 : 1));
