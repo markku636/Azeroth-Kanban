@@ -126,7 +126,7 @@ async function projectDims(projectId: string): Promise<{ kfW: number; kfH: numbe
 async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; preset?: StylePreset }> {
   const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true, stylePreset: true } });
   const preset = getStylePreset(p?.stylePreset ?? null);
-  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown } | null;
+  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown; highlight?: unknown; highlightColor?: unknown } | null;
   if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
   const pos = s.position;
   return {
@@ -137,6 +137,9 @@ async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; p
       segment: s.segment === true,
       plate: s.plate === true,
       fontKind: s.fontKind === 'serif' || s.fontKind === 'bold' ? s.fontKind : undefined,
+      // 卡拉OK逐字高亮（需 segment=true 才生效）；highlightColor 可自訂高亮色
+      highlight: s.highlight === true,
+      highlightColor: typeof s.highlightColor === 'string' ? s.highlightColor : undefined,
     },
     preset,
   };

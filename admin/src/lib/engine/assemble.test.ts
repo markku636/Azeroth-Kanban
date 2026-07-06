@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -127,6 +127,51 @@ describe('subDrawtext filter 合約', () => {
     const f = filterOf('好', { segment: true }, { narrationDur: 2, totalDur: 2.4 });
     expect(f).not.toContain('between(t'); // 單段 → 走整段淡入路徑
     expect(f).toContain("alpha='if(lt(t\\,0.35)");
+  });
+});
+
+describe('charAdvance（逐字排版寬度）', () => {
+  it('CJK 全形字 ≈ 1em；ASCII 半形 ≈ 0.5em；空白為細縫', () => {
+    expect(charAdvance('字', 40)).toBe(40);      // 漢字全形
+    expect(charAdvance('。', 40)).toBe(40);      // 全形標點
+    expect(charAdvance('A', 40)).toBe(20);       // 半形英數
+    expect(charAdvance('7', 40)).toBe(20);
+    expect(charAdvance(' ', 40)).toBeCloseTo(12.8); // 空白 0.32em
+  });
+});
+
+describe('subDrawtext 卡拉OK逐字高亮（highlight）合約', () => {
+  it('segment+highlight：每字雙層（base white + highlight #FFD400）、逐字 reveal 時間遞增、逐字排版(非 text_w)', () => {
+    const f = filterOf('三十年了，我才發現真相。', { segment: true, highlight: true, color: 'white' }, { narrationDur: 4, totalDur: 4.4 });
+    // 逐字排版：x 用「(w-行寬)/2+位移」而非 text_w 置中
+    expect(f).toContain(')/2+');
+    expect(f).not.toContain('text_w');
+    // 兩層等量：每個可高亮字元各一 base + 一 highlight
+    const base = f.split('fontcolor=white').length - 1;
+    const hi = f.split('fontcolor=#FFD400').length - 1;
+    expect(hi).toBeGreaterThanOrEqual(4);
+    expect(hi).toBe(base);
+    // 逐字 reveal 時間非遞減（依朗讀進度填色）
+    const reveals = Array.from(f.matchAll(/#FFD400:enable='between\(t\\,([\d.]+)\\,/g), (m) => parseFloat(m[1]));
+    expect(reveals.length).toBe(hi);
+    for (let i = 1; i < reveals.length; i++) expect(reveals[i]).toBeGreaterThanOrEqual(reveals[i - 1]);
+  });
+
+  it('highlightColor 可覆寫高亮色', () => {
+    const f = filterOf('前面一句話，後面又一句。', { segment: true, highlight: true, highlightColor: '#00FF88' }, { narrationDur: 3, totalDur: 3.4 });
+    expect(f).toContain('fontcolor=#00FF88');
+    expect(f).not.toContain('#FFD400');
+  });
+
+  it('highlight 需要 segment：無 segment 時不走逐字（零回歸）', () => {
+    const f = filterOf('一句沒開逐句的旁白', { highlight: true, color: 'white' }, { narrationDur: 3, totalDur: 3.4 });
+    expect(f).not.toContain('#FFD400');
+    expect(f).toContain("alpha='if(lt(t\\,0.35)"); // 走整段淡入
+  });
+
+  it('highlight 時忽略 plate 底板（避免逐字底板疊成塊）', () => {
+    const f = filterOf('忙背景也要逐字高亮的句子。', { segment: true, highlight: true, plate: true }, { narrationDur: 3, totalDur: 3.4 });
+    expect(f).not.toContain('box=1');
   });
 });
 

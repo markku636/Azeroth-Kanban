@@ -36,7 +36,7 @@ export default function StoryPage() {
   const [loading, setLoading] = useState(true);
   const [pickId, setPickId] = useState('');
   const [pickRole, setPickRole] = useState('');
-  const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false });
+  const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false, highlight: false, highlightColor: '#FFD400' });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -71,8 +71,8 @@ export default function StoryPage() {
       const pJson = await pRes.json().catch(() => ({}));
       if (pRes.ok && pJson.data) {
         setTitle(pJson.data.title ?? '');
-        const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean } | null;
-        if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true });
+        const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; highlight?: boolean; highlightColor?: string } | null;
+        if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true, highlight: ss.highlight === true, highlightColor: typeof ss.highlightColor === 'string' ? ss.highlightColor : '#FFD400' });
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -106,7 +106,7 @@ export default function StoryPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '儲存失敗'); }
   };
 
-  const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean; plate: boolean }) => {
+  const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }) => {
     setSub(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtitleStyle: next }) });
   };
@@ -281,7 +281,7 @@ export default function StoryPage() {
                 key={label}
                 type="button"
                 aria-pressed={active}
-                onClick={() => saveSub({ ...preset, segment: sub.segment, plate: sub.plate })}
+                onClick={() => saveSub({ ...preset, segment: sub.segment, plate: sub.plate, highlight: sub.highlight, highlightColor: sub.highlightColor })}
                 className={`rounded border px-2 py-0.5 ${active ? 'border-blue-400 bg-blue-50 font-medium text-blue-700 ring-1 ring-blue-300 dark:bg-blue-950/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-white dark:border-gray-300 dark:hover:bg-gray-200'}`}
               >
                 {label}
@@ -314,6 +314,25 @@ export default function StoryPage() {
             ：把整段旁白切成短句，跟著語音逐句彈出（而非整段停在畫面）。短影音保留率最高的字幕形式，建議開啟。
           </span>
         </label>
+        {/* 卡拉OK逐字高亮：需先開 Pop-on 才生效，故縮排為子選項 */}
+        <div className={`mt-2 ml-6 rounded-md border p-2.5 transition-opacity ${sub.segment ? 'border-gray-200 bg-white dark:border-gray-200 dark:bg-gray-50' : 'border-dashed border-gray-200 bg-gray-50 opacity-60 dark:bg-gray-100'}`}>
+          <label className={`flex items-start gap-2 ${sub.segment ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
+            <input type="checkbox" disabled={!sub.segment} checked={sub.highlight} onChange={(e) => saveSub({ ...sub, highlight: e.target.checked })} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+            <span className="text-xs leading-relaxed text-gray-600">
+              <span className="font-medium text-gray-700">卡拉OK逐字高亮</span>
+              ：字幕跟著語音「逐字變色」（如 Reels／Submagic 那種效果），把注意力鎖在正在講的字上。{!sub.segment && <span className="text-gray-400">（需先開啟「動態逐句字幕」）</span>}
+            </span>
+          </label>
+          {sub.highlight && sub.segment && (
+            <div className="mt-2 flex items-center gap-2 pl-6">
+              <span className="text-xs text-gray-500">高亮色</span>
+              <input type="color" aria-label="卡拉OK高亮色" value={sub.highlightColor} onChange={(e) => saveSub({ ...sub, highlightColor: e.target.value })} className="h-7 w-12 rounded border border-gray-300 bg-white" />
+              {(['#FFD400', '#22FF88', '#FF4D6D', '#4DA6FF'] as const).map((c) => (
+                <button key={c} type="button" aria-label={`高亮色 ${c}`} onClick={() => saveSub({ ...sub, highlightColor: c })} style={{ backgroundColor: c }} className={`h-5 w-5 rounded-full border ${sub.highlightColor.toUpperCase() === c ? 'border-gray-700 ring-2 ring-offset-1 ring-gray-400' : 'border-gray-300'}`} />
+              ))}
+            </div>
+          )}
+        </div>
         <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
           <input type="checkbox" checked={sub.plate} onChange={(e) => saveSub({ ...sub, plate: e.target.checked })} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
           <span className="text-xs leading-relaxed text-gray-600">
@@ -322,9 +341,16 @@ export default function StoryPage() {
           </span>
         </label>
         <div className="mt-3">
-          <div className="mb-1 text-xs text-gray-400">預覽{sub.segment ? '（實際會逐句彈出）' : ''}</div>
+          <div className="mb-1 text-xs text-gray-400">預覽{sub.segment ? (sub.highlight ? '（逐句彈出＋逐字高亮示意）' : '（實際會逐句彈出）') : ''}</div>
           <div className={`flex h-28 overflow-hidden rounded bg-gray-800 px-3 ${sub.position === 'top' ? 'items-start pt-2' : sub.position === 'center' ? 'items-center' : 'items-end pb-2'} justify-center`}>
-            <span key={sub.segment ? previewIdx : 'static'} style={{ fontSize: Math.max(10, Math.min(30, sub.fontSize * 0.35)), color: sub.color, textShadow: '0 0 2px #000,0 0 2px #000,0 0 2px #000', backgroundColor: sub.plate ? 'rgba(0,0,0,0.5)' : undefined, padding: sub.plate ? '2px 8px' : undefined, borderRadius: sub.plate ? 4 : undefined }} className="animate-in fade-in zoom-in-95 duration-200 text-center font-medium leading-tight">{sub.segment ? POP_SAMPLE[previewIdx] : '這是旁白字幕預覽'}</span>
+            <span key={sub.segment ? previewIdx : 'static'} style={{ fontSize: Math.max(10, Math.min(30, sub.fontSize * 0.35)), color: sub.color, textShadow: '0 0 2px #000,0 0 2px #000,0 0 2px #000', backgroundColor: sub.plate ? 'rgba(0,0,0,0.5)' : undefined, padding: sub.plate ? '2px 8px' : undefined, borderRadius: sub.plate ? 4 : undefined }} className="animate-in fade-in zoom-in-95 duration-200 text-center font-medium leading-tight">
+              {!sub.segment ? '這是旁白字幕預覽' : sub.highlight ? (() => {
+                // 逐字高亮示意：句子前段用高亮色（已朗讀），後段維持基本色（尚未讀到）
+                const chars = Array.from(POP_SAMPLE[previewIdx]);
+                const k = Math.max(1, Math.ceil(chars.length * 0.6));
+                return (<>{<span style={{ color: sub.highlightColor }}>{chars.slice(0, k).join('')}</span>}{chars.slice(k).join('')}</>);
+              })() : POP_SAMPLE[previewIdx]}
+            </span>
           </div>
         </div>
       </section>

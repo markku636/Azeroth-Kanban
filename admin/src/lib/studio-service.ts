@@ -186,8 +186,9 @@ export async function createProject(
 
 const PROJECT_FIELDS = ['title', 'description', 'logline', 'status', 'aspect', 'fps', 'renderQuality', 'bgmGain', 'stylePreset'] as const;
 type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>> & {
-  /** 字幕圖層樣式 {fontSize,color,position,segment,plate}；Json 欄位，特殊處理。segment=pop-on 動態逐句字幕、plate=半透明底板。 */
-  subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean };
+  /** 字幕圖層樣式 {fontSize,color,position,segment,plate,fontKind,highlight,highlightColor}；Json 欄位，特殊處理。
+   *  segment=pop-on 動態逐句字幕、plate=半透明底板、highlight=卡拉OK逐字高亮(需 segment)、highlightColor=高亮色。 */
+  subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string };
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */

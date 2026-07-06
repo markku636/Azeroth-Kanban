@@ -62,6 +62,20 @@ export function wrapCjk(text: string, max = 13): string {
   return out.join("\n");
 }
 
+// Approximate horizontal advance (px) of one glyph at a given fontsize, used to lay out per-character
+// karaoke highlighting so the highlight glyph sits exactly on its base glyph. CJK/kana/fullwidth punct
+// are square full-width (≈1em); ASCII/Latin/halfwidth are ≈0.5em; a space is a thin gap. This mirrors
+// how a CJK font advances (no kerning), so a line's total = Σ advances matches ffmpeg's text_w closely.
+// Exported for unit testing; pure.
+export function charAdvance(ch: string, fontsize: number): number {
+  if (ch === " ") return fontsize * 0.32;
+  const code = ch.codePointAt(0) ?? 0;
+  // halfwidth: everything up to CJK radicals (Latin/Greek/Cyrillic/punct) + halfwidth kana/hangul blocks
+  const halfWidth =
+    code <= 0x2e7f || (code >= 0xff61 && code <= 0xffdc) || (code >= 0xffe8 && code <= 0xffee);
+  return halfWidth ? fontsize * 0.5 : fontsize;
+}
+
 // Split a narration line into short "pop-on" caption segments (highest short-form retention). Breaks at
 // sentence/clause punctuation first, then chunks any long run to <=maxLen; sub-minLen fragments are merged
 // forward so no caption flashes too briefly to read. Soft clause punctuation (，、；：) is trimmed from
@@ -168,6 +182,11 @@ export interface SubStyle {
   plate?: boolean;
   /** 字體種類：'serif'=襯線明/宋體（文藝/驚悚氛圍）；預設 'bold'=粗黑體（零回歸）。o.fontfile 仍優先。 */
   fontKind?: 'bold' | 'serif';
+  /** highlight=true → 卡拉OK逐字高亮：在 pop-on 逐句字幕上，字隨語音進度由 color 逐字「填成」highlightColor
+   *  （短影音/Reels 最吸睛的字幕形式）。只在 segment=true 時生效；預設關＝零回歸。 */
+  highlight?: boolean;
+  /** 卡拉OK高亮色（字名或 #RRGGBB）；預設亮金 #FFD400（在畫面上最跳）。 */
+  highlightColor?: string;
 }
 
 // All caption pixel sizes/offsets below were tuned for a 720×1280 (H=1280) canvas. Scaling them by
@@ -268,6 +287,52 @@ export function subDrawtext(
     });
   };
 
+  // 卡拉OK逐字高亮（highlight=true）：在 pop-on 逐句字幕之上，字隨語音進度由 color「填成」highlightColor。
+  // base 與 highlight 兩層都用 charAdvance 逐字排版（同一 x），故 highlight glyph 精準疊在 base glyph 上；
+  // 逐字揭示時間依「已朗讀字元比例」映射到該句的語音窗。plate 底板在逐字模式忽略（避免每字重疊成塊；border+
+  // shadow 已足夠可讀）。exported-behaviour 透過 subDrawtext 測試（斷言雙層/逐字 enable 遞增）。
+  const hlColor = (style?.highlightColor ?? '#FFD400').replace(/[^#\w@.]/g, '') || '#FFD400';
+  const renderKaraoke = (lines: string[], start: number, end: number, fadeExpr: string, yAnim: string): string[] => {
+    const n = Math.max(1, lines.length);
+    const baseTop =
+      style?.position === 'top'
+        ? `${Math.round(180 * s)}`
+        : style?.position === 'center'
+          ? `(h-${n * lineH})/2`
+          : `h-${Math.round(240 * s) + (n - 1) * lineH}`;
+    const nHi = Math.max(1, lines.join('').replace(/ /g, '').length); // 可高亮字元總數（不含空白）
+    const fillEnd = Math.max(start + 0.01, Math.min(end, timing!.narrationDur)); // 逐字填色只跨語音窗（末句不含尾靜音）
+    const et = end.toFixed(2);
+    const out: string[] = [];
+    let k = 0; // 全句累計可高亮字元序（跨行連續 → 逐字填色不會每行重來）
+    for (let li = 0; li < lines.length; li++) {
+      const chars = Array.from(lines[li]);
+      const lineW = Math.round(chars.reduce((a, ch) => a + charAdvance(ch, fontsize), 0));
+      const yBase = `${baseTop}+${li * lineH}`;
+      const yExpr = yAnim ? `'${yBase}${yAnim}'` : yBase;
+      let cx = 0;
+      for (const ch of chars) {
+        const adv = charAdvance(ch, fontsize);
+        if (ch === ' ') { cx += adv; continue; } // 空白不畫、只推進
+        const f = join(tmpdir(), `sub_${randomUUID()}.txt`);
+        writeFileSync(f, ch, 'utf8');
+        subFiles.push(f);
+        const x = `(w-${lineW})/2+${Math.round(cx)}`;
+        const reveal = (start + (k / nHi) * (fillEnd - start)).toFixed(2);
+        const common =
+          `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:` +
+          `fontsize=${fontsize}:borderw=${border}:bordercolor=black@0.85:` +
+          `shadowcolor=black@0.45:shadowx=${sh}:shadowy=${sh}:x=${x}:y=${yExpr}`;
+        // base（底層，全句顯示窗）＋ highlight（上層，讀到該字才亮並持續到句末）
+        out.push(`${common}:fontcolor=${color}:enable='between(t\\,${start.toFixed(2)}\\,${et})':alpha='${fadeExpr}'`);
+        out.push(`${common}:fontcolor=${hlColor}:enable='between(t\\,${reveal}\\,${et})':alpha='${fadeExpr}'`);
+        k += 1;
+        cx += adv;
+      }
+    }
+    return out;
+  };
+
   // Pop-on 動態逐句字幕：把整段旁白切成短句、依語音長度逐句彈出（每句只在自己的時間窗顯示）。
   // kinetic 進場＝0.12s alpha 淡入 ＋ 由下往上 ~22px 滑入（0.18s 內回位）＝現代短影音動態字幕觀感（研究：kinetic
   // typography 提升保留率）。短影音保留率最高的字幕形式。需要 timing（語音長度）才能對齊；否則退回整段模式。
@@ -283,7 +348,8 @@ export function subDrawtext(
         const fadeExpr = `if(lt(t-${st}\\,0.12)\\,(t-${st})/0.12\\,1)`;
         // 由 +rise（畫面偏下）在 0.18s 內滑回 0；逗號在 max() 內，靠 yExpr 的單引號保護。
         const yAnim = `+${rise}*max(0,1-(t-${st})/0.18)`;
-        filters.push(...renderGroup(lines, enable, fadeExpr, yAnim));
+        if (style?.highlight) filters.push(...renderKaraoke(lines, start, end, fadeExpr, yAnim));
+        else filters.push(...renderGroup(lines, enable, fadeExpr, yAnim));
       }
       return { filter: filters.join(','), subFiles };
     }
