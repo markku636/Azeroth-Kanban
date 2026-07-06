@@ -7,15 +7,7 @@ import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiA
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
 import { checkStoryboard, CAPTION_MAX } from '@/lib/studio/storyboard-checks';
-
-// 風格快選：沿用來源＝不帶 hint；其餘把風格傾向帶進改編（優先於來源原本調性）。
-const STYLE_PRESETS: { label: string; hint: string }[] = [
-  { label: '沿用來源', hint: '' },
-  { label: '迷因吐槽', hint: '改編成迷因吐槽搞笑風格：情緒誇張、用 setup→反轉的爆點結構，多放大字幕與卡點音效。' },
-  { label: '溫馨勵志', hint: '改編成溫馨勵志風格：情感真摯、節奏舒緩、結尾給人溫暖或啟發。' },
-  { label: '懸疑反轉', hint: '改編成懸疑風格：開場拋出懸念、中段堆疊張力、結尾一個意想不到的反轉。' },
-  { label: '知識科普', hint: '改編成知識科普風格：條理清楚、每一鏡給一個新資訊點、口吻專業但好懂。' },
-];
+import { STYLE_PRESETS, DEFAULT_STYLE_HINT } from '@/lib/studio/style-presets';
 
 /** 前端審核用的分鏡（對齊 server PlannedShot 欄位；只放 UI 需要的）。 */
 interface ReviewShot {
@@ -41,7 +33,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [url, setUrl] = useState('');
   const [source, setSource] = useState('');
   const [count, setCount] = useState(8);
-  const [styleHint, setStyleHint] = useState(''); // 風格傾向（空＝沿用來源）
+  const [styleHint, setStyleHint] = useState(DEFAULT_STYLE_HINT); // 預設＝好笑有趣（使用者要好笑的成片）
   const [sceneName, setSceneName] = useState(''); // 選填：把這批分鏡放進新場景（空＝未分場）
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<'input' | 'review'>('input');

@@ -7,6 +7,7 @@ import { Button, Input, Textarea } from 'rizzui';
 import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiWarningBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds } from '@/lib/studio/pacing';
+import { STYLE_PRESETS, DEFAULT_STYLE_HINT } from '@/lib/studio/style-presets';
 
 /**
  * 「從 YouTube 快速建立」：貼一支影片（或逐字稿）＋取個片名 → 一步建立專案並依來源節奏改編出**原創**分鏡，
@@ -18,6 +19,7 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
   const [url, setUrl] = useState('');
   const [source, setSource] = useState('');
   const [count, setCount] = useState(shotsForDuration(120)); // 預設鎖 2 分鐘
+  const [styleHint, setStyleHint] = useState(DEFAULT_STYLE_HINT); // 預設＝好笑有趣
   const [busy, setBusy] = useState(false);
   const [aiReady, setAiReady] = useState<boolean | null>(null);
 
@@ -62,7 +64,7 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
       if (count > 12) toast('長片會分批改編，約需 30～60 秒，請稍候…', { icon: '🎬' });
       const ir = await fetch(`/api/v1/studio/projects/${createdId}/from-youtube`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(40, Math.max(1, count)), persist: true }),
+        body: JSON.stringify({ url: url.trim() || undefined, source: source.trim() || undefined, count: Math.min(40, Math.max(1, count)), styleHint: styleHint || undefined, persist: true }),
       });
       const ij = await ir.json().catch(() => ({}));
       if (!ir.ok || ij.code !== 0) {
@@ -135,6 +137,19 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
               );
             })}
             <span className="self-center text-xs text-gray-400">≈ {estimatedSeconds(count)} 秒 · {count} 鏡</span>
+          </div>
+
+          <label className="mb-1 mt-4 block text-sm font-medium text-gray-700">④ 風格（預設「好笑有趣」）</label>
+          <div className="flex flex-wrap gap-1.5">
+            {STYLE_PRESETS.map((p) => {
+              const active = styleHint === p.hint;
+              return (
+                <button key={p.label} type="button" onClick={() => setStyleHint(p.hint)}
+                  className={`rounded-full border px-3 py-1 text-sm transition-colors ${active ? 'border-red-600 bg-red-600 text-white' : 'border-gray-300 bg-white text-gray-700 hover:border-red-300 hover:text-red-700'}`}>
+                  {p.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
