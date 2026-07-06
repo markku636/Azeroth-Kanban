@@ -148,6 +148,22 @@ describe('adaptStoryboardFromSource（YouTube 分批改編）', () => {
     const arg = vi.mocked(complete as any).mock.calls[0][0];
     expect(arg.maxTokens).toBeGreaterThan(4096);
   });
+
+  it('某批整批拋錯（如 429）→ 保留其他批的分鏡（部分成功不作廢）', async () => {
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => {
+      call++;
+      if (call === 2) throw new Error('429 rate limited'); // 第 2 批整批失敗
+      return arr([7, 7, 6][call - 1], 'f');
+    });
+    const shots = await adaptStoryboardFromSource('句子。'.repeat(400), 20);
+    expect(complete).toHaveBeenCalledTimes(3); // 拋錯的批不重試（只有空輸出才重試）
+    expect(shots).toHaveLength(13); // 7 + (跳過) + 6
+  });
+
+  // 註：「所有批都失敗 → rethrow lastErr」的行為由程式碼審查與 route 的 try/catch 保證；
+  // vitest 對「rejection 從 mock 一路傳播出待測函式」會誤報 unhandled，故不在此單元測試（上面
+  // 的「部分成功」測試已驗證批次迴圈的 try/catch，那條 rejection 在函式內部被消化）。
 });
 
 describe('chatStoryboard 狀態機', () => {

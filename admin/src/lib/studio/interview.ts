@@ -178,13 +178,22 @@ export async function adaptStoryboardFromSource(source: string, count = 8, story
   const batches = planAdaptationBatches(n);
   const out: PlannedShot[] = [];
   let prevTail = '';
+  let lastErr: unknown = null;
   for (const b of batches) {
     const slice = sliceByFraction(src, b.startFrac, b.endFrac) || src; // 切片異常時退回整段
-    const shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail });
+    let shots: PlannedShot[];
+    try {
+      shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail });
+    } catch (e) {
+      // 單批整批失敗（如 provider 429/500）→ 保留其他批，別讓整支 2 分鐘生成前功盡棄。
+      lastErr = e;
+      continue;
+    }
     out.push(...shots);
     // 承接脈絡：把這批最後 1–2 句旁白帶給下一批，避免斷裂/重複。
     prevTail = shots.slice(-2).map((s) => s.tts).filter(Boolean).join(' / ').slice(0, 120);
   }
+  if (!out.length && lastErr) throw lastErr; // 全數失敗才把真錯誤浮上來（否則會被誤報成「沒產生分鏡」）
   return out;
 }
 
