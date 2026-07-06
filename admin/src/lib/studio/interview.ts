@@ -153,6 +153,18 @@ async function adaptOnce(
   return parseShotArray(text);
 }
 
+/** 單批改編＋空輸出重試一次（LLM 偶發回空/壞 JSON → 整批消失，對長片傷害大，故重試）。 */
+async function adaptBatch(
+  src: string,
+  count: number,
+  story: StoryContext | undefined,
+  ctx: { batch: AdaptBatch; prevTail: string } | null,
+): Promise<PlannedShot[]> {
+  const first = await adaptOnce(src, count, story, ctx);
+  if (first.length) return first;
+  return adaptOnce(src, count, story, ctx);
+}
+
 /**
  * 參考影片腳本/字幕逐字稿 → 改編成本專案的分鏡表（相同節奏、內容原創）。
  * 目標鏡數 ≤ ADAPT_SINGLE_MAX 走單次呼叫（與舊行為相容）；更多鏡（如 ~2 分鐘片需 ~30 鏡）
@@ -161,14 +173,14 @@ async function adaptOnce(
 export async function adaptStoryboardFromSource(source: string, count = 8, story?: StoryContext): Promise<PlannedShot[]> {
   const src = source.trim().slice(0, 24000); // 上限保護：長參考片保留更多結構（2 分鐘旁白遠小於此）
   const n = Math.max(1, Math.floor(count));
-  if (n <= ADAPT_SINGLE_MAX) return adaptOnce(src, n, story, null);
+  if (n <= ADAPT_SINGLE_MAX) return adaptBatch(src, n, story, null);
 
   const batches = planAdaptationBatches(n);
   const out: PlannedShot[] = [];
   let prevTail = '';
   for (const b of batches) {
     const slice = sliceByFraction(src, b.startFrac, b.endFrac) || src; // 切片異常時退回整段
-    const shots = await adaptOnce(slice, b.shots, story, { batch: b, prevTail });
+    const shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail });
     out.push(...shots);
     // 承接脈絡：把這批最後 1–2 句旁白帶給下一批，避免斷裂/重複。
     prevTail = shots.slice(-2).map((s) => s.tts).filter(Boolean).join(' / ').slice(0, 120);

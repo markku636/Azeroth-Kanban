@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // interview.ts import './llm'（會拉進 LLM client）；parseShotArray 純函式，不需要 llm，故 stub 掉。
 vi.mock('./llm', () => ({ complete: vi.fn() }));
 
-import { parseShotArray, chatStoryboard, stripTrailingCommas, coercePlannedShots } from './interview';
+import { parseShotArray, chatStoryboard, stripTrailingCommas, coercePlannedShots, adaptStoryboardFromSource } from './interview';
 import { complete } from './llm';
 
 describe('parseShotArray', () => {
@@ -93,6 +93,60 @@ describe('coercePlannedShots（前端審核後的分鏡陣列 → 正規化落�
   it('非陣列 → 空陣列', () => {
     expect(coercePlannedShots(null as unknown as unknown[])).toEqual([]);
     expect(coercePlannedShots('x' as unknown as unknown[])).toEqual([]);
+  });
+});
+
+describe('adaptStoryboardFromSource（YouTube 分批改編）', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  beforeEach(() => vi.mocked(complete as any).mockReset());
+  const arr = (n: number, tag: string) =>
+    JSON.stringify(Array.from({ length: n }, (_, i) => ({ visual: `${tag}v${i}`, tts: `旁白${tag}${i}` })));
+
+  it('鏡數 ≤ 12 → 單次 LLM 呼叫', async () => {
+    vi.mocked(complete as any).mockResolvedValue(arr(8, 'a'));
+    const shots = await adaptStoryboardFromSource('大家好。今天要挑戰。'.repeat(5), 8);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(shots).toHaveLength(8);
+    expect(shots[0].visual).toBe('av0');
+  });
+
+  it('鏡數 > 12 → 分批（20 鏡＝3 批 7/7/6）、保序串接、總數守恆', async () => {
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => arr([7, 7, 6][call++], `b${call}`));
+    const shots = await adaptStoryboardFromSource('句子。'.repeat(400), 20);
+    expect(complete).toHaveBeenCalledTimes(3);
+    expect(shots).toHaveLength(20);
+    // 保序：第 1 批在前、最後一批在末
+    expect(shots[0].visual).toBe('b1v0');
+    expect(shots[shots.length - 1].visual).toBe('b3v5');
+  });
+
+  it('把上一批最後的旁白帶進下一批的提示（承接脈絡）', async () => {
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => arr([7, 7, 6][call++], 'c'));
+    await adaptStoryboardFromSource('句子。'.repeat(400), 20);
+    // 第 2 次呼叫的 user 內容應包含第 1 批的結尾旁白（cN 尾兩句）
+    const secondCallArg = vi.mocked(complete as any).mock.calls[1][0];
+    expect(secondCallArg.messages[0].content).toContain('旁白c6');
+  });
+
+  it('某批空輸出/壞 JSON → 自動重試一次後成功', async () => {
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => {
+      call++;
+      if (call === 1) return '抱歉我需要更多資訊'; // 無 JSON 陣列 → parse 空
+      return arr(8, 'd');
+    });
+    const shots = await adaptStoryboardFromSource('大家好。'.repeat(5), 8);
+    expect(complete).toHaveBeenCalledTimes(2); // 重試了
+    expect(shots).toHaveLength(8);
+  });
+
+  it('maxTokens 隨鏡數放寬（避免長批 JSON 被 4096 預設截斷）', async () => {
+    vi.mocked(complete as any).mockResolvedValue(arr(12, 'e'));
+    await adaptStoryboardFromSource('大家好。', 12); // 12 鏡＝單次路徑：700+12*320=4540
+    const arg = vi.mocked(complete as any).mock.calls[0][0];
+    expect(arg.maxTokens).toBeGreaterThan(4096);
   });
 });
 
