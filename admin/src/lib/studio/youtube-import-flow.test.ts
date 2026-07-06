@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // （分批改編 → 正規化落庫 → 即時健檢 → 估時長）。各單元測試各管一段，這裡驗組合面。
 vi.mock('./llm', () => ({ complete: vi.fn() }));
 
-import { adaptStoryboardFromSource, coercePlannedShots } from './interview';
+import { adaptStoryboardFromSource, coercePlannedShots, rewriteShot } from './interview';
 import { checkStoryboard } from './storyboard-checks';
 import { estimateStoryboardSeconds } from './pacing';
 import { complete } from './llm';
@@ -66,6 +66,26 @@ describe('抄 YouTube 全流程整合（~2 分鐘）', () => {
     // 被截斷的批救回部分（>0），其餘批完整 → 總數明顯多於 24（=遺失整批 8 鏡的情況）
     expect(shots.length).toBeGreaterThan(24);
     expect(shots.length).toBeLessThanOrEqual(32);
+  });
+
+  it('審核時「換一個」：以前後鏡為脈絡重寫某鏡，替換後全片仍是有效分鏡', async () => {
+    // 先產出一支storyboard
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => batchJson(8, `b${++call}`));
+    const shots = coercePlannedShots((await adaptStoryboardFromSource(transcript, 16)) as unknown[]);
+    expect(shots.length).toBeGreaterThan(0);
+
+    // 換掉第 3 鏡
+    vi.mocked(complete as any).mockReset();
+    vi.mocked(complete as any).mockResolvedValue('{"visual":"a fresh punchy scene, cinematic","tts":"這是重寫後更有梗的一句","branch":"i2v"}');
+    const i = 2;
+    const fresh = await rewriteShot({ current: shots[i], prevTts: shots[i - 1]?.tts, nextTts: shots[i + 1]?.tts });
+    expect(fresh).not.toBeNull();
+    const next = shots.map((s, idx) => (idx === i && fresh ? fresh : s));
+
+    // 替換後仍全部是有效分鏡（正規化路徑不丟）
+    expect(coercePlannedShots(next as unknown[])).toHaveLength(shots.length);
+    expect(next[i].tts).toContain('重寫後');
   });
 
   it('健檢會抓到內容瑕疵（開場鉤子太慢＋相鄰重複）供使用者在審核時修正', async () => {
