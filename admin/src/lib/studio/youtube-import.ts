@@ -69,8 +69,8 @@ export function cleanSourceTranscript(input: string): string {
     if (!line) continue;
     if (/^\d+$/.test(line)) continue; // SRT 序號整列
     if (/-->/.test(line) && /\d{1,2}:\d{2}/.test(line)) continue; // SRT/VTT cue 時間列
-    // 行首時間碼：0:00 / 00:04 / 1:23:45 / [00:04] /（0:04）等（可能連續多個）
-    line = line.replace(/^\s*(?:[[(（]\s*)?(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?\s*(?:[)\]）]\s*)?/g, '').trim();
+    // 行首時間碼：0:00 / 00:04 / 1:23:45 / [00:04] /（0:04）等，連續多個一次剝光（結尾的 + 讓整組可重複）
+    line = line.replace(/^\s*(?:(?:[[(（]\s*)?(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?\s*(?:[)\]）]\s*)?)+/, '').trim();
     line = line.replace(CUE_MARKER, ' '); // 非語音提示
     line = line.replace(/[ \t]+/g, ' ').trim();
     if (!line) continue;

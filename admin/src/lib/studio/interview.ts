@@ -49,7 +49,8 @@ function normalizeShot(s: unknown): PlannedShot {
     caption: o.caption != null && String(o.caption).trim() ? String(o.caption) : undefined,
     punchline: o.punchline != null && String(o.punchline).trim() ? String(o.punchline) : undefined,
     sfx,
-    punch: Boolean(o.punch),
+    // 不要用 Boolean()：LLM 偶爾回字串 "false" → Boolean("false")===true 會誤觸發 punch 變焦。只認真正的 true。
+    punch: o.punch === true || o.punch === 'true',
     punchAtFrac: typeof o.punchAtFrac === 'number' ? o.punchAtFrac : undefined,
     punchZoom: typeof o.punchZoom === 'number' ? o.punchZoom : undefined,
   };
@@ -201,7 +202,8 @@ export async function adaptStoryboardFromSource(source: string, count = 8, story
   let prevTail = '';
   let lastErr: unknown = null;
   for (const b of batches) {
-    const slice = sliceByFraction(src, b.startFrac, b.endFrac) || src; // 切片異常時退回整段
+    const slice = sliceByFraction(src, b.startFrac, b.endFrac);
+    if (!slice) continue; // 切片為空（極短來源＋高鏡數）→ 跳過，別把整段重餵造成重複（寧可少幾鏡）
     let shots: PlannedShot[];
     try {
       shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail }, styleHint);

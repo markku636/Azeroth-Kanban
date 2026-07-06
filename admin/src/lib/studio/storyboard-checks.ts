@@ -75,7 +75,7 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
 
   // ④ 逐鏡：空鏡、字幕過長、旁白過長
   shots.forEach((s, i) => {
-    if (i < n - 1 && !len(s.tts) && !len(s.caption)) { // 最後一鏡由 weak-ending 專管
+    if (i < n - 1 && !len(s.tts) && !len(s.caption) && !len(s.punchline)) { // 最後一鏡由 weak-ending 專管；有反轉字幕就不算純畫面
       out.push({ level: 'info', code: 'silent', message: `第 ${i + 1} 鏡沒有旁白也沒有大字幕（純畫面）。`, shotIndex: i });
     }
     if (len(s.caption) > CAPTION_MAX) {

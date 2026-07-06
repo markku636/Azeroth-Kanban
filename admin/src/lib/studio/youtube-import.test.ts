@@ -46,6 +46,10 @@ describe('cleanSourceTranscript（貼上逐字稿雜訊清理）', () => {
     const r = cleanSourceTranscript('0:00 大家好\n0:04 今天要來挑戰\n1:23:45 最後結果');
     expect(r).toBe('大家好\n今天要來挑戰\n最後結果');
   });
+  it('連續多個行首時間碼一次剝光（不只剝第一個）', () => {
+    expect(cleanSourceTranscript('0:00 0:04 大家好')).toBe('大家好');
+    expect(cleanSourceTranscript('[00:04] [00:07] 你好')).toBe('你好');
+  });
   it('剝除 [00:04] /（0:04）帶括號的時間碼', () => {
     expect(cleanSourceTranscript('[00:04] 你好\n（0:07）世界')).toBe('你好\n世界');
   });

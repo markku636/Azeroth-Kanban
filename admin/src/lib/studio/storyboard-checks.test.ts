@@ -109,6 +109,10 @@ describe('checkStoryboard — 內容品質', () => {
     const checks = checkStoryboard([shot(), shot({ tts: '', caption: '' }), shot()]);
     expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(1);
   });
+  it('中間鏡只有反轉字幕（有畫面文字）→ 不算 silent', () => {
+    const checks = checkStoryboard([shot(), shot({ tts: '', caption: '', punchline: '爆點反轉' }), shot()]);
+    expect(checks.some((x) => x.code === 'silent' && x.shotIndex === 1)).toBe(false);
+  });
   it('結尾鏡無旁白/字幕 → weak-ending（不重複報 silent）', () => {
     const checks = checkStoryboard([shot(), shot(), shot({ tts: '', caption: '', punchline: undefined })]);
     expect(checks.find((x) => x.code === 'weak-ending')?.shotIndex).toBe(2);

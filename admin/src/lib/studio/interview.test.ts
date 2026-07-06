@@ -54,6 +54,13 @@ describe('parseShotArray', () => {
     expect(shots[0]).toMatchObject({ sfx: 'vineboom', punch: true, punchAtFrac: 0.5, punchZoom: 1.8 });
   });
 
+  it('punch 為字串 "false" → false（Boolean("false")===true 的陷阱，不誤觸發變焦）', () => {
+    expect(parseShotArray('[{"visual":"x","punch":"false"}]')[0].punch).toBe(false);
+    expect(parseShotArray('[{"visual":"x","punch":"true"}]')[0].punch).toBe(true);
+    expect(parseShotArray('[{"visual":"x","punch":true}]')[0].punch).toBe(true);
+    expect(parseShotArray('[{"visual":"x"}]')[0].punch).toBe(false);
+  });
+
   it('空白 caption 視為未設定、非空 punchline 保留', () => {
     const shots = parseShotArray('[{"caption":"  ","punchline":"爆點"}]');
     expect(shots[0].caption).toBeUndefined();
@@ -177,6 +184,15 @@ describe('adaptStoryboardFromSource（YouTube 分批改編）', () => {
     // 第 2 次呼叫的 user 內容應包含第 1 批的結尾旁白（cN 尾兩句）
     const secondCallArg = vi.mocked(complete as any).mock.calls[1][0];
     expect(secondCallArg.messages[0].content).toContain('旁白c6');
+  });
+
+  it('極短來源＋高鏡數：空切片的批次跳過，不把整段重餵造成重複', async () => {
+    const short = 'x'.repeat(99) + '。'; // 100 字、唯一句界在最後 → 尾段切片為空
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => arr(7, `b${++call}`));
+    const shots = await adaptStoryboardFromSource(short, 13); // 2 批 [7,6]，尾批切片空→跳過
+    expect(complete).toHaveBeenCalledTimes(1); // 只有拿到內容的那批被呼叫（沒有重餵整段）
+    expect(shots.length).toBeGreaterThan(0);
   });
 
   it('某批空輸出/壞 JSON → 自動重試一次後成功', async () => {
