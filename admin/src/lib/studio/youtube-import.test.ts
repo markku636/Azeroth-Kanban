@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseYoutubeId, parseTimedText, extractJsonArrayAfter, cleanSourceTranscript } from './youtube-import';
+import { parseYoutubeId, parseTimedText, extractJsonArrayAfter, cleanSourceTranscript, orderCaptionTracks, type CaptionTrack } from './youtube-import';
 
 describe('parseYoutubeId（各種 YouTube 網址格式）', () => {
   it('watch?v=', () => { expect(parseYoutubeId('https://www.youtube.com/watch?v=My3zF7omEfw')).toBe('My3zF7omEfw'); });
@@ -71,6 +71,23 @@ describe('cleanSourceTranscript（貼上逐字稿雜訊清理）', () => {
     expect(r).toContain('（其實我早就知道了）');
   });
   it('空輸入 → 空字串', () => { expect(cleanSourceTranscript('')).toBe(''); });
+});
+
+describe('orderCaptionTracks（字幕軌偏好排序）', () => {
+  const t = (lang: string, kind = ''): CaptionTrack => ({ baseUrl: `u-${lang}-${kind}`, lang, kind });
+  it('中文 > 英文 > 其他', () => {
+    const ordered = orderCaptionTracks([t('ja'), t('en'), t('zh-TW')]);
+    expect(ordered.map((x) => x.lang)).toEqual(['zh-TW', 'en', 'ja']);
+  });
+  it('同語言：人工字幕優先於 asr', () => {
+    const ordered = orderCaptionTracks([t('zh', 'asr'), t('zh', '')]);
+    expect(ordered[0].kind).toBe(''); // 人工在前
+  });
+  it('不改動輸入陣列（純函式）', () => {
+    const input = [t('en'), t('zh')];
+    orderCaptionTracks(input);
+    expect(input.map((x) => x.lang)).toEqual(['en', 'zh']); // 原陣列不變
+  });
 });
 
 // 括號平衡抽取：修掉原本 lazy regex 遇到巢狀陣列（如 name.runs）就截斷、導致有字幕影片也抓不到的 bug。

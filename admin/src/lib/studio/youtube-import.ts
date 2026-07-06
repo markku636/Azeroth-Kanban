@@ -111,22 +111,28 @@ export async function fetchYoutubeSource(url: string): Promise<YoutubeSource> {
   if (!tracks.length) {
     throw new Error(`這支影片抓不到字幕軌（可能沒開字幕，或被 YouTube 擋下）。請在 YouTube 開「顯示轉錄稿」複製後貼上，或改貼腳本。${title ? `（影片：${title}）` : ''}`);
   }
-  // 偏好中文，其次任何語言；優先人工字幕（kind!=asr）
-  const pick = tracks.sort((a, b) => score(b) - score(a))[0];
-  let sub = '';
-  try {
-    const base = pick.baseUrl.replace(/&fmt=\w+/, '');
-    const r = await fetch(`${base}&fmt=json3`, { signal: AbortSignal.timeout(15_000) });
-    sub = await r.text();
-  } catch (e) {
-    throw new Error(`取得字幕內容失敗（${e instanceof Error ? e.message : e}）。請改用「貼上字幕逐字稿」。`);
+  // 依偏好排序（中文 > 英文 > 其他；人工 > asr），逐軌嘗試——第一個能抓到非空逐字稿的就用，
+  // 不再因為分數最高那軌剛好抓失敗/內容空就整個放棄（提高抓字幕成功率）。
+  let lastErr = '';
+  for (const track of orderCaptionTracks(tracks)) {
+    try {
+      const base = track.baseUrl.replace(/&fmt=\w+/, '');
+      const r = await fetch(`${base}&fmt=json3`, { signal: AbortSignal.timeout(15_000) });
+      const transcript = parseTimedText(await r.text());
+      if (transcript) return { videoId, title, transcript };
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+    }
   }
-  const transcript = parseTimedText(sub);
-  if (!transcript) throw new Error('字幕內容是空的。請改用「貼上字幕逐字稿」。');
-  return { videoId, title, transcript };
+  throw new Error(`取得字幕內容失敗${lastErr ? `（${lastErr}）` : '（內容是空的）'}。請改用「貼上字幕逐字稿」。`);
 }
 
-interface CaptionTrack { baseUrl: string; lang: string; kind: string }
+export interface CaptionTrack { baseUrl: string; lang: string; kind: string }
+
+/** 把字幕軌依偏好排序（中文 > 英文 > 其他；同語言人工字幕優先於 asr）。純函式、可測、不改動輸入陣列。 */
+export function orderCaptionTracks(tracks: CaptionTrack[]): CaptionTrack[] {
+  return [...tracks].sort((a, b) => score(b) - score(a));
+}
 
 /**
  * 從 HTML 中 key 之後抓出第一個「括號平衡」的 JSON 陣列。**正確處理巢狀陣列**（字串內、及 name:{runs:[…]}
