@@ -395,6 +395,64 @@ export function memeCaptionFilter(font: string, text: string, kind: "top" | "bot
   return { filter: filters.join(","), files };
 }
 
+/** 卡片種類：'title'（片頭標題）、'end'（經典「完」）、'cta'（片尾行動呼籲）。 */
+export type CardKind = 'title' | 'end' | 'cta';
+
+/**
+ * 卡片文字圖層的純建構器：大標（由下滑入 26px + 0.4s 淡入）＋（title/cta）品牌強調色 kicker 色條 ＋ 可選副標。
+ * 回傳依繪製順序排好的 drawbox/drawtext 片段與暫存檔（呼叫端負責 unlink）。y 表達式的逗號在單引號內保留字面值
+ * （同 subDrawtext 的 kinetic yExpr）；alpha/enable 的逗號沿用 `\,` 轉義。exported for unit testing; 純（只寫暫存檔）。
+ */
+export function cardDraws(
+  font: string,
+  o: { bigText?: string; smallText?: string; accent?: string; kind?: CardKind },
+  canvasH: number, canvasW = 720,
+): { draws: string[]; files: string[] } {
+  const s = capScale(canvasH);
+  const kind = o.kind ?? 'title';
+  // 只接受合法顏色（#hex 3–8 位 或 顏色名[@alpha]）；任何其他輸入回退預設金（同時擋注入與壞色致渲染失敗）。
+  const accent = /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+(@[0-9.]+)?$/.test(o.accent ?? '') ? (o.accent as string) : '#FFD400';
+  const accentBox = accent.startsWith('#') ? `0x${accent.slice(1)}` : accent; // drawbox 用 0xRRGGBB
+  const bigCenter = kind === 'cta' ? 'h*0.47' : 'h*0.42';
+  const files: string[] = [];
+  const draws: string[] = [];
+  // 品牌 kicker 色條（title/cta）：大標上方一小段強調色橫線，0.28s 後彈入（放上方最不會與多行標題重疊）。
+  // 注意：drawbox 的 w/h 指「色條自身」尺寸，故置中/垂直錨點必須用輸入尺寸 iw/ih（用 w/h 會算成 0/負值→跑掉）。
+  if (kind !== 'end' && o.bigText) {
+    const barW = Math.round(canvasW * (kind === 'cta' ? 0.30 : 0.18));
+    const barH = Math.max(4, Math.round(8 * s));
+    const barY = `ih*${kind === 'cta' ? '0.47' : '0.42'}-${Math.round(74 * s)}`;
+    draws.push(`drawbox=x=(iw-${barW})/2:y=${barY}:w=${barW}:h=${barH}:color=${accentBox}:t=fill:enable='gte(t\\,0.28)'`);
+  }
+  // 大標：由下滑入 26px（0.4s 內回位）＋ 0.4s 淡入。字級隨最長一行等比縮小以塞進畫面（避免長 CTA 溢出邊框）。
+  if (o.bigText) {
+    const wrapped = wrapCjk(o.bigText, 12);
+    const maxLine = Math.max(1, ...wrapped.split('\n').map((l) => l.length));
+    const fitSize = Math.floor((canvasW * 0.9) / maxLine); // CJK ≈ 全形；長標題自動縮到塞得下
+    const bigSize = Math.max(Math.round(30 * s), Math.min(Math.round(74 * s), fitSize));
+    const f = join(tmpdir(), `card_big_${randomUUID()}.txt`);
+    writeFileSync(f, wrapped, 'utf8'); files.push(f);
+    const rise = Math.round(26 * s);
+    draws.push(
+      `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white:` +
+      `fontsize=${bigSize}:borderw=${Math.max(2, Math.round(4 * s))}:bordercolor=black@0.6:` +
+      `shadowcolor=black@0.5:shadowx=${Math.round(2 * s)}:shadowy=${Math.round(2 * s)}:` +
+      `x=(w-text_w)/2:y='${bigCenter}-text_h/2+${rise}*max(0,1-t/0.4)':line_spacing=${Math.round(12 * s)}:` +
+      `alpha='if(lt(t\\,0.4)\\,t/0.4\\,1)'`);
+  }
+  // 副標（片頭前提／CTA 補充）：大標下方，柔和 0.5s 淡入
+  if (o.smallText) {
+    const f = join(tmpdir(), `card_small_${randomUUID()}.txt`);
+    writeFileSync(f, wrapCjk(o.smallText, 20), 'utf8'); files.push(f);
+    draws.push(
+      `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white@0.85:` +
+      `fontsize=${Math.round(34 * s)}:borderw=${Math.max(1, Math.round(2 * s))}:bordercolor=black@0.5:` +
+      `x=(w-text_w)/2:y=${bigCenter}+${Math.round(90 * s)}:line_spacing=${Math.round(8 * s)}:` +
+      `alpha='if(lt(t\\,0.5)\\,t/0.5\\,1)'`);
+  }
+  return { draws, files };
+}
+
 export interface StillOpts {
   image: string;
   voice?: string;
@@ -773,30 +831,15 @@ export class Compositor {
   async cardClip(o: {
     out: string; width?: number; height?: number; fps?: number; dur?: number;
     bgImage?: string; bigText?: string; smallText?: string; fontfile?: string; audio?: string;
+    accent?: string; kind?: CardKind;
   }): Promise<string> {
     const W = o.width ?? 720, H = o.height ?? 1280, fps = o.fps ?? 30, dur = o.dur ?? 2.6;
     const s = capScale(H);
     const fadeOut = Math.max(0, dur - 0.5);
     const font = o.fontfile ?? findBoldCjkFont();
-    const tmpFiles: string[] = [];
-    const draws: string[] = [];
-    if (font && o.bigText) {
-      const f = join(tmpdir(), `card_big_${randomUUID()}.txt`);
-      writeFileSync(f, wrapCjk(o.bigText, 12), "utf8"); tmpFiles.push(f);
-      draws.push(
-        `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white:` +
-        `fontsize=${Math.round(74 * s)}:borderw=${Math.max(2, Math.round(4 * s))}:bordercolor=black@0.6:` +
-        `shadowcolor=black@0.5:shadowx=${Math.round(2 * s)}:shadowy=${Math.round(2 * s)}:` +
-        `x=(w-text_w)/2:y=h*0.42-text_h/2:line_spacing=${Math.round(12 * s)}`);
-    }
-    if (font && o.smallText) {
-      const f = join(tmpdir(), `card_small_${randomUUID()}.txt`);
-      writeFileSync(f, wrapCjk(o.smallText, 20), "utf8"); tmpFiles.push(f);
-      draws.push(
-        `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white@0.85:` +
-        `fontsize=${Math.round(34 * s)}:borderw=${Math.max(1, Math.round(2 * s))}:bordercolor=black@0.5:` +
-        `x=(w-text_w)/2:y=h*0.56-text_h/2:line_spacing=${Math.round(8 * s)}`);
-    }
+    const built = font ? cardDraws(font, { bigText: o.bigText, smallText: o.smallText, accent: o.accent, kind: o.kind }, H, W) : { draws: [] as string[], files: [] as string[] };
+    const draws = built.draws;
+    const tmpFiles = built.files;
     const fade = `fade=t=in:st=0:d=0.5,fade=t=out:st=${fadeOut.toFixed(2)}:d=0.5`;
     const args = ["-y"];
     let bg: string;

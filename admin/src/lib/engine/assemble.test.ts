@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -172,6 +172,38 @@ describe('subDrawtext 卡拉OK逐字高亮（highlight）合約', () => {
   it('highlight 時忽略 plate 底板（避免逐字底板疊成塊）', () => {
     const f = filterOf('忙背景也要逐字高亮的句子。', { segment: true, highlight: true, plate: true }, { narrationDur: 3, totalDur: 3.4 });
     expect(f).not.toContain('box=1');
+  });
+});
+
+describe('cardDraws（片頭／片尾卡片建構器）', () => {
+  const clean = (r: { files: string[] }) => { for (const f of r.files) { try { unlinkSync(f); } catch { /* noop */ } } };
+  it('title：大標由下滑入+淡入、上方品牌 kicker 色條(預設金)、無「end」', () => {
+    const r = cardDraws('C:/f.ttf', { bigText: '三十年的祕密', smallText: '一個沒人敢說的真相', kind: 'title' }, 1280, 720);
+    const all = r.draws.join(';');
+    expect(all).toContain('drawbox='); // kicker 色條
+    expect(all).toContain('color=0xFFD400'); // 預設金強調色（drawbox 用 0x）
+    expect(all).toContain('max(0,1-t/0.4)'); // 大標滑入
+    expect(all).toContain("h*0.42"); // title 垂直錨點
+    expect(r.draws.filter((d) => d.startsWith('drawtext=')).length).toBe(2); // 大標 + 副標
+    clean(r);
+  });
+  it('cta：自訂強調色、CTA 錨點較低(h*0.47)、色條較寬', () => {
+    const r = cardDraws('C:/f.ttf', { bigText: '喜歡就追蹤', accent: '#C81E2E', kind: 'cta' }, 1280, 720);
+    const all = r.draws.join(';');
+    expect(all).toContain('color=0xC81E2E');
+    expect(all).toContain('h*0.47');
+    clean(r);
+  });
+  it('end：經典「完」無色條(僅大標)', () => {
+    const r = cardDraws('C:/f.ttf', { bigText: '完', kind: 'end' }, 1280, 720);
+    expect(r.draws.some((d) => d.startsWith('drawbox='))).toBe(false);
+    expect(r.draws.filter((d) => d.startsWith('drawtext=')).length).toBe(1);
+    clean(r);
+  });
+  it('accent 過濾非法字元（防注入）', () => {
+    const r = cardDraws('C:/f.ttf', { bigText: 'X', accent: '#FF0000;drawbox=evil', kind: 'title' }, 1280, 720);
+    expect(r.draws.join(';')).not.toContain('evil');
+    clean(r);
   });
 });
 

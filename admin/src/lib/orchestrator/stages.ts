@@ -550,23 +550,41 @@ async function assembleClips(projectId: string, shots: Shot[], outDir: string): 
   // Opt-in cinematic wrapper: opening title (over a darkened/blurred first keyframe) + 「完」end card,
   // joined to the film with dip-to-black. Gated by STUDIO_TITLECARD (default off → zero regression). The
   // served file is always output/final.mp4, so when on we mix to an intermediate then wrap into final.
-  const titleOn = (process.env.STUDIO_TITLECARD ?? 'off').toLowerCase() !== 'off' && Boolean(project?.title);
+  // 片頭標題卡 ＋ 片尾行動呼籲(CTA)卡：付費解說片標配。啟用來源＝風格預設的 cards（meme/horror 各自帶 CTA/強調色），
+  // 否則沿用全域 env STUDIO_TITLECARD（此時 CTA 文字取 STUDIO_OUTRO_CTA，未設則回退經典「完」）。皆未啟用＝零回歸。
+  const preset = getStylePreset(project?.stylePreset ?? null);
+  const envCards = (process.env.STUDIO_TITLECARD ?? 'off').toLowerCase() !== 'off';
+  const introOn = Boolean(project?.title) && (preset?.cards?.intro ?? envCards);
+  const outroOn = preset?.cards?.outro ?? envCards;
+  const ctaText = (preset?.cards?.cta ?? process.env.STUDIO_OUTRO_CTA ?? '').trim();
+  const accent = preset?.cards?.accent;
+  const wrap = introOn || outroOn;
   const final = join(outDir, 'final.mp4');
-  const mixOut = titleOn ? join(outDir, 'film_core.mp4') : final;
+  const mixOut = wrap ? join(outDir, 'film_core.mp4') : final;
   await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：混音配樂與響度…' });
   await comp.mixBgm({ video: videoOut, bgm, out: mixOut, bgmGain: project?.bgmGain ?? 0.15 });
-  if (titleOn && project) {
+  if (wrap && project) {
     await publishProgress({ projectId, stage: 'assemble', status: 'running', message: '合成：加片頭與片尾…' });
     const { cw, ch } = await projectDims(projectId);
-    // generate a longer pad (its swell/env are tuned for long beds) and let cardClip trim to the card —
-    // the opening seconds are the natural build-up, which suits a title swell.
-    const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95, mood }));
-    const titleClip = join(outDir, 'title.mp4');
-    await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8, audio: titlePad });
-    const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8, mood }));
-    const endClip = join(outDir, 'end.mp4');
-    await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: '完', dur: 2.4, audio: endPad });
-    await comp.stitch({ clips: [titleClip, mixOut, endClip], out: final, fades: [0.6, 0.6], transitions: ['fadeblack', 'fadeblack'] });
+    const clips: string[] = [];
+    if (introOn) {
+      // generate a longer pad (its swell/env are tuned for long beds) and let cardClip trim to the card —
+      // the opening seconds are the natural build-up, which suits a title swell.
+      const titlePad = join(outDir, 'title_bgm.wav'); writeFileSync(titlePad, makePad(10, { gain: 0.95, mood }));
+      const titleClip = join(outDir, 'title.mp4');
+      await comp.cardClip({ out: titleClip, width: cw, height: ch, bgImage: present[0]?.keyframePath ?? undefined, bigText: project.title ?? '', smallText: project.logline ?? undefined, dur: 2.8, audio: titlePad, accent, kind: 'title' });
+      clips.push(titleClip);
+    }
+    clips.push(mixOut);
+    if (outroOn) {
+      const endPad = join(outDir, 'end_bgm.wav'); writeFileSync(endPad, makePad(10, { gain: 0.8, mood }));
+      const endClip = join(outDir, 'end.mp4');
+      // 有 CTA 文字 → 行動呼籲卡（品牌強調色 kicker）；否則回退經典「完」。
+      await comp.cardClip({ out: endClip, width: cw, height: ch, bigText: ctaText || '完', dur: ctaText ? 2.8 : 2.4, audio: endPad, accent, kind: ctaText ? 'cta' : 'end' });
+      clips.push(endClip);
+    }
+    const seams = Math.max(1, clips.length - 1);
+    await comp.stitch({ clips, out: final, fades: Array(seams).fill(0.6), transitions: Array(seams).fill('fadeblack') });
   }
   return final;
 }

@@ -21,6 +21,9 @@ export interface StylePreset {
   sfxSuggested: SfxName[];
   /** false → 只設 sfx、不觸發迷因大字（meme caption）路徑。 */
   memeCaptions: boolean;
+  /** 片頭／片尾卡片（付費解說片標配）。intro=片頭標題卡（題名+前提，疊在首幀）、outro=片尾行動呼籲卡（CTA）。
+   *  cta=片尾大字（取代舊「完」），accent=品牌強調色（片頭/CTA 下方色條）。未設＝不強制加卡（沿用 env 開關）。 */
+  cards?: { intro?: boolean; outro?: boolean; cta?: string; accent?: string };
 }
 
 export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
@@ -33,6 +36,7 @@ export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
     seams: { withinScene: 0.25, sceneChange: 0.5, sceneChangeTransition: 'fadeblack' },
     sfxSuggested: ['vineboom', 'scratch', 'rimshot', 'ding', 'whoosh', 'boing'],
     memeCaptions: true,
+    cards: { intro: true, outro: true, cta: '喜歡就追蹤，下支更瘋', accent: '#FFD400' },
   },
   // 黑暗恐怖：horror 調色 + 恐怖 BGM；字幕淡灰 serif、逐句 pop-on、加底板；接縫拉長營造壓迫感。
   'dark-horror': {
@@ -43,6 +47,7 @@ export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
     seams: { withinScene: 0.4, sceneChange: 0.7, sceneChangeTransition: 'fadeblack' },
     sfxSuggested: ['heartbeat', 'drone', 'sting', 'giggle', 'riser', 'whisper', 'vineboom'],
     memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '還想被嚇？追蹤我', accent: '#C81E2E' },
   },
 };
 
