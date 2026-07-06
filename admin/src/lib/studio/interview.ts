@@ -65,6 +65,12 @@ export function parseShotArray(text: string): PlannedShot[] {
   }
 }
 
+/** 把外部（前端已審核）的分鏡物件陣列正規化成 PlannedShot[]，並濾掉完全空白（無 visual 也無 tts）的鏡。 */
+export function coercePlannedShots(arr: unknown[]): PlannedShot[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(normalizeShot).filter((s) => s.visual.trim() || s.tts.trim());
+}
+
 // 短影音「好看」的黃金法則（資料驅動，2026 YouTube Shorts/抖音 retention 研究）。
 // 注入到各生成 system prompt，讓產出的分鏡/腳本天生具備鉤子→爆點的吸睛結構。
 export const SHORT_FORM_CRAFT = `短影音「好看」黃金法則（務必遵守，這是觀眾留不留下來的關鍵）：

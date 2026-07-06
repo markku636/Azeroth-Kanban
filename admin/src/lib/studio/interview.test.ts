@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // interview.ts import './llm'（會拉進 LLM client）；parseShotArray 純函式，不需要 llm，故 stub 掉。
 vi.mock('./llm', () => ({ complete: vi.fn() }));
 
-import { parseShotArray, chatStoryboard, stripTrailingCommas } from './interview';
+import { parseShotArray, chatStoryboard, stripTrailingCommas, coercePlannedShots } from './interview';
 import { complete } from './llm';
 
 describe('parseShotArray', () => {
@@ -73,6 +73,26 @@ describe('parseShotArray', () => {
   it('解析多個分鏡，保序', () => {
     const shots = parseShotArray('[{"visual":"a"},{"visual":"b"},{"visual":"c"}]');
     expect(shots.map((s) => s.visual)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('coercePlannedShots（前端審核後的分鏡陣列 → 正規化落庫）', () => {
+  it('正規化欄位、補預設（同 normalizeShot）', () => {
+    const out = coercePlannedShots([{ visual: 'a cat', tts: '喵', branch: 'i2v' }]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ visual: 'a cat', tts: '喵', branch: 'i2v', sfx: 'none', punch: false });
+  });
+  it('濾掉完全空白（無 visual 也無 tts）的鏡', () => {
+    const out = coercePlannedShots([{ visual: 'x' }, { visual: '  ', tts: '' }, { tts: '有旁白' }, {}]);
+    expect(out.map((s) => s.visual || s.tts)).toEqual(['x', '有旁白']);
+  });
+  it('未知/惡意 sfx、branch 一律退回安全預設', () => {
+    const out = coercePlannedShots([{ visual: 'x', sfx: 'airhorn', branch: 'hologram' }]);
+    expect(out[0]).toMatchObject({ sfx: 'none', branch: 'still' });
+  });
+  it('非陣列 → 空陣列', () => {
+    expect(coercePlannedShots(null as unknown as unknown[])).toEqual([]);
+    expect(coercePlannedShots('x' as unknown as unknown[])).toEqual([]);
   });
 });
 
