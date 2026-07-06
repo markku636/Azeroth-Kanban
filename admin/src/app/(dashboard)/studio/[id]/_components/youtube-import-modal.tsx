@@ -42,6 +42,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [source, setSource] = useState('');
   const [count, setCount] = useState(8);
   const [styleHint, setStyleHint] = useState(''); // 風格傾向（空＝沿用來源）
+  const [sceneName, setSceneName] = useState(''); // 選填：把這批分鏡放進新場景（空＝未分場）
   const [busy, setBusy] = useState(false);
   const [phase, setPhase] = useState<'input' | 'review'>('input');
   const [shots, setShots] = useState<ReviewShot[]>([]);
@@ -100,7 +101,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
     try {
       const res = await fetch(`/api/v1/studio/projects/${projectId}/from-youtube`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shots: keep }),
+        body: JSON.stringify({ shots: keep, sceneTitle: sceneName.trim() || undefined }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.code !== 0) throw new Error(j.message ?? '建立失敗');
@@ -319,6 +320,16 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
             >
               ＋ 新增一鏡（補轉場／收尾）
             </button>
+            <div className="mt-3 flex items-center gap-2">
+              <label className="flex-none text-xs text-gray-500">放進場景（選填）</label>
+              <input
+                value={sceneName}
+                onChange={(e) => setSceneName(e.target.value)}
+                aria-label="新場景名稱"
+                placeholder="留空＝未分場；填名稱＝建一個新場景放這批分鏡"
+                className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 dark:bg-gray-50"
+              />
+            </div>
           </div>
         )}
 

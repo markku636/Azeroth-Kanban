@@ -5,7 +5,7 @@ import { ApiResponse, ApiReturnCode } from '@/lib/api-response';
 import { withPermission } from '@/lib/with-permission';
 import { hasPermission } from '@/lib/permission-service';
 import { PERMISSIONS } from '@/config/permissions';
-import { createShot, getProject, getStoryboard, type StudioActor } from '@/lib/studio-service';
+import { createScene, createShot, getProject, getStoryboard, type StudioActor } from '@/lib/studio-service';
 import { getIpFromRequest } from '@/lib/audit-log-service';
 import { adaptStoryboardFromSource, coercePlannedShots, type PlannedShot } from '@/lib/studio/interview';
 import { fetchYoutubeSource, cleanSourceTranscript } from '@/lib/studio/youtube-import';
@@ -34,7 +34,7 @@ export const POST = withPermission(
     if (!memberId) return ApiResponse.fail(ApiReturnCode.UNAUTHORIZED, '尚未登入');
     const { id } = await params;
 
-    let body: { url?: unknown; source?: unknown; sceneId?: unknown; count?: unknown; persist?: unknown; shots?: unknown; styleHint?: unknown };
+    let body: { url?: unknown; source?: unknown; sceneId?: unknown; sceneTitle?: unknown; count?: unknown; persist?: unknown; shots?: unknown; styleHint?: unknown };
     try { body = await request.json(); } catch { return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '請求格式錯誤'); }
 
     const bypass = await hasPermission(session.user.roles ?? [], PERMISSIONS.STUDIO_EDIT_ALL);
@@ -42,13 +42,22 @@ export const POST = withPermission(
     if (proj.code !== ApiReturnCode.SUCCESS) return ApiResponse.json(proj);
 
     const sceneId = typeof body.sceneId === 'string' && body.sceneId && body.sceneId !== '__unassigned__' ? body.sceneId : null;
+    const sceneTitle = typeof body.sceneTitle === 'string' ? body.sceneTitle.trim().slice(0, 120) : '';
     const actor = buildActor(session, request);
+
+    // 決定分鏡要放進哪個場景：既有 sceneId 優先；否則若指定了新場景名稱就即時建立一個（僅在真的要落庫時呼叫）。
+    const resolveSceneId = async (): Promise<string | null> => {
+      if (sceneId) return sceneId;
+      if (!sceneTitle) return null;
+      const sc = await createScene(memberId, id, { title: sceneTitle }, actor, { bypassOwnership: bypass });
+      return sc.code === ApiReturnCode.SUCCESS && sc.data ? sc.data.id : null;
+    };
 
     // ── ② 直接落庫已審核的分鏡陣列（不經 LLM、不需憑證）──
     if (Array.isArray(body.shots) && body.shots.length) {
       const reviewed = coercePlannedShots(body.shots).slice(0, MAX_SHOTS);
       if (!reviewed.length) return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '沒有可建立的分鏡（每鏡至少要有畫面或旁白）');
-      await persistShots(memberId, id, sceneId, reviewed, actor, bypass);
+      await persistShots(memberId, id, await resolveSceneId(), reviewed, actor, bypass);
       return ApiResponse.json(await getStoryboard(memberId, id, { bypassOwnership: bypass }));
     }
 
@@ -91,7 +100,7 @@ export const POST = withPermission(
 
     if (!persist) return ApiResponse.ok({ shots }, 'AI 已依來源改編出分鏡（請檢視後採用）');
 
-    await persistShots(memberId, id, sceneId, shots, actor, bypass);
+    await persistShots(memberId, id, await resolveSceneId(), shots, actor, bypass);
     return ApiResponse.json(await getStoryboard(memberId, id, { bypassOwnership: bypass }));
   },
 );
