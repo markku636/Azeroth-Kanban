@@ -29,6 +29,17 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
     return () => { alive = false; };
   }, []);
 
+  const readSubtitleFile = async (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 3_000_000) { toast.error('字幕檔太大（上限 3MB）'); return; }
+    try {
+      const text = await file.text();
+      if (!text.trim()) { toast.error('檔案是空的'); return; }
+      setSource(text);
+      toast.success(`已載入「${file.name}」`);
+    } catch { toast.error('讀取檔案失敗'); }
+  };
+
   const run = async () => {
     if (busy) return;
     if (!title.trim()) { toast.error('先幫這支片取個名'); return; }
@@ -93,8 +104,17 @@ export function YoutubeQuickStartModal({ aspect, onClose }: { aspect: string; on
           <label className="mb-1 block text-sm font-medium text-gray-700">片名</label>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} aria-label="片名" placeholder="例：中年阿智：$399 開箱實測" className="mb-4" inputClassName="bg-white text-gray-900 dark:bg-gray-50" />
 
-          <label className="mb-1 block text-sm font-medium text-gray-700">① 貼上字幕逐字稿（推薦）</label>
-          <Textarea value={source} onChange={(e) => setSource(e.target.value)} aria-label="字幕逐字稿" placeholder={'在 YouTube 影片下方「⋯ → 顯示轉錄稿」複製後貼上'} rows={6} className="mb-4" textareaClassName="bg-white text-gray-900 dark:bg-gray-50" />
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="block text-sm font-medium text-gray-700">① 貼上字幕逐字稿（推薦）</label>
+            <label className="cursor-pointer text-xs text-red-600 hover:underline">
+              或選字幕檔（.srt/.vtt/.txt）
+              <input type="file" accept=".srt,.vtt,.txt,text/plain" className="hidden"
+                onChange={(e) => { void readSubtitleFile(e.target.files?.[0]); e.target.value = ''; }} />
+            </label>
+          </div>
+          <Textarea value={source} onChange={(e) => setSource(e.target.value)}
+            onDrop={(e) => { const f = e.dataTransfer?.files?.[0]; if (f) { e.preventDefault(); void readSubtitleFile(f); } }}
+            aria-label="字幕逐字稿" placeholder={'在 YouTube 影片下方「⋯ → 顯示轉錄稿」複製後貼上，或把 .srt/.vtt 拖進來'} rows={6} className="mb-4" textareaClassName="bg-white text-gray-900 dark:bg-gray-50" />
 
           <label className="mb-1 block text-sm font-medium text-gray-700">② 或填 YouTube 網址</label>
           <Input value={url} onChange={(e) => setUrl(e.target.value)} aria-label="YouTube 網址" placeholder="https://www.youtube.com/watch?v=... 或 youtu.be/..." className="mb-4" inputClassName="bg-white text-gray-900 dark:bg-gray-50" />
