@@ -71,14 +71,14 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
     } catch { /* localStorage 不可用 → 略過 */ }
   }, [draftKey]);
 
-  // 審核階段即時把草稿寫進 localStorage（改旁白/重排/刪鏡都保存）；清空則移除。
+  // 審核階段即時把草稿寫進 localStorage（改旁白/重排/刪鏡/場景名都保存）；清空則移除。
   useEffect(() => {
     if (phase !== 'review') return;
     try {
-      if (shots.length) localStorage.setItem(draftKey, JSON.stringify({ shots, targetSeconds }));
+      if (shots.length) localStorage.setItem(draftKey, JSON.stringify({ shots, targetSeconds, sceneName }));
       else localStorage.removeItem(draftKey);
     } catch { /* 隱私模式 */ }
-  }, [phase, shots, targetSeconds, draftKey]);
+  }, [phase, shots, targetSeconds, sceneName, draftKey]);
 
   const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch { /* */ } setHasDraft(false); };
   const restoreDraft = () => {
@@ -87,6 +87,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
       if (Array.isArray(d?.shots) && d.shots.length) {
         setShots(d.shots as ReviewShot[]);
         setTargetSeconds(typeof d.targetSeconds === 'number' ? d.targetSeconds : 0);
+        if (typeof d.sceneName === 'string') setSceneName(d.sceneName);
         setHasDraft(false);
         setPhase('review');
       }
