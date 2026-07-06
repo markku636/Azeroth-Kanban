@@ -188,7 +188,18 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                 <li key={i} className="rounded-lg border border-gray-200 bg-white p-2.5 dark:border-gray-300 dark:bg-gray-50">
                   <div className="mb-1 flex items-center gap-2">
                     <span className="flex h-5 min-w-5 items-center justify-center rounded bg-gray-800 px-1 text-xs font-semibold text-white">{i + 1}</span>
-                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-500 dark:bg-gray-200">{s.branch === 'i2v' ? '動態 i2v' : '靜態'}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateShot(i, { branch: s.branch === 'i2v' ? 'still' : 'i2v' })}
+                      title="切換 靜態 / 動態 i2v（動態較耐看但生成較慢）"
+                      className={`rounded px-1.5 py-0.5 text-[11px] font-medium transition-colors ${
+                        s.branch === 'i2v'
+                          ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-200'
+                      }`}
+                    >
+                      {s.branch === 'i2v' ? '動態 i2v' : '靜態'}
+                    </button>
                     {s.caption && <span className="truncate rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800" title={s.caption}>大字：{s.caption}</span>}
                     {s.punch && <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-700">反轉鏡</span>}
                     <button type="button" onClick={() => removeShot(i)} aria-label={`刪除第 ${i + 1} 鏡`} className="ml-auto flex-none text-gray-400 transition-colors hover:text-red-600">
