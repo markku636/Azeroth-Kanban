@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -262,6 +262,21 @@ describe('gradeChain（調色鏈）', () => {
     const g = gradeChain('horror');
     expect(g).toContain('vignette=');
     expect(g).toContain('noise=');
+  });
+
+  it('新增 looks 都有對應 filter：mono 去色、film/dreamy 提亮、cyber 高飽和', () => {
+    expect(gradeChain('mono')).toContain('saturation=0'); // 黑白
+    expect(gradeChain('clean')).toContain('brightness=0.02');
+    expect(gradeChain('cyber')).toContain('saturation=1.14');
+    expect(gradeChain('film')).toContain('colorbalance');
+    // 未知 look 仍回退 teal（不會炸）
+    expect(gradeChain('nope')).toBe(LEGACY_GRADE);
+  });
+
+  it('GRADE_STYLE_KEYS 匯出所有 look key（含新舊）', () => {
+    for (const k of ['teal', 'warm', 'cool', 'noir', 'vivid', 'horror', 'clean', 'film', 'mono', 'dreamy', 'cyber']) {
+      expect(GRADE_STYLE_KEYS).toContain(k);
+    }
   });
 });
 

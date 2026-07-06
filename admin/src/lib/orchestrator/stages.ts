@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { ComfyUIClient } from '@/lib/comfyui/client';
 import { buildSdxl, buildSdxlHires, buildSdxlImg2Img, buildSdxlImg2ImgHires, buildSdxlInpaint, QUALITY_SUFFIX } from '@/lib/engine/keyframe';
 import { SealTTSClient, normalizeTtsText } from '@/lib/engine/voiceover';
-import { Compositor, probeDuration, trimSilence, type SubStyle } from '@/lib/engine/assemble';
+import { Compositor, probeDuration, trimSilence, GRADE_STYLE_KEYS, type SubStyle } from '@/lib/engine/assemble';
 import { getStylePreset, type StylePreset } from '@/lib/engine/style-preset';
 import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
@@ -124,11 +124,14 @@ async function projectDims(projectId: string): Promise<{ kfW: number; kfH: numbe
  * 一次查詢拿到專案的「字幕自訂樣式 + 風格預設」。subStyle 取用優先序：使用者自訂 json → preset 的預設 →
  * undefined（走引擎預設）；preset 另供 generateVideo 貫通每鏡調色（gradeStyle）與迷因路徑判定（memeCaptions）。
  */
-async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; preset?: StylePreset }> {
-  const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true, stylePreset: true } });
+async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; preset?: StylePreset; look?: string }> {
+  const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true, stylePreset: true, spec: true } });
   const preset = getStylePreset(p?.stylePreset ?? null);
+  // per-project 調色 look（spec.look，優先於 preset.gradeStyle）；非合法 key 忽略（gradeChain 也會 fallback）
+  const rawLook = (p?.spec as { look?: unknown } | null)?.look;
+  const look = typeof rawLook === 'string' && GRADE_STYLE_KEYS.includes(rawLook) ? rawLook : undefined;
   const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown; highlight?: unknown; highlightColor?: unknown } | null;
-  if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
+  if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset, look }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
   const pos = s.position;
   return {
     subStyle: {
@@ -143,6 +146,7 @@ async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; p
       highlightColor: typeof s.highlightColor === 'string' ? s.highlightColor : undefined,
     },
     preset,
+    look,
   };
 }
 
@@ -388,7 +392,8 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
   const keyframe = shot.keyframePath ?? undefined;
   const voice = shot.voiceWav ?? undefined;
   const { cw, ch } = await projectDims(projectId);
-  const { subStyle, preset } = await projectStyle(projectId);
+  const { subStyle, preset, look } = await projectStyle(projectId);
+  const gradeStyle = look ?? preset?.gradeStyle; // per-project 調色 look 優先，否則跟隨風格預設
   // 迷因大字路徑判定：preset 明確關閉 memeCaptions（如 dark-horror）時，「只設 sfx」不再單獨觸發迷因路徑
   // （sfx 仍會在 assemble 卡點混入）；無 preset 或 preset 開啟 memeCaptions ＝ 舊行為（零回歸）。
   const sfxAsMeme = (!preset || preset.memeCaptions) && Boolean(shot.sfx && shot.sfx !== 'none');
@@ -436,9 +441,9 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     if (isComedy) {
       const dur = await probeDuration(voice);
       const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
-      await comp.memeMotionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, topCaption: cap, bottomCaption: punch, punchAt, grade: preset?.gradeStyle });
+      await comp.memeMotionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, topCaption: cap, bottomCaption: punch, punchAt, grade: gradeStyle });
     } else {
-      await comp.motionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, grade: preset?.gradeStyle });
+      await comp.motionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, grade: gradeStyle });
     }
     await prisma.shot.update({ where: { id: shot.id }, data: { lipsyncMp4: clip, status: 'VIDEO' } });
     produced = true;
@@ -454,7 +459,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
     await comp.memeMotionShot({
       clip: motion[0].path, voice, out: clip, fallbackDur: fbDur, width: cw, height: ch,
-      topCaption: cap, bottomCaption: punch, punchAt, grade: preset?.gradeStyle,
+      topCaption: cap, bottomCaption: punch, punchAt, grade: gradeStyle,
     });
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
@@ -466,7 +471,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     await comp.memeStill({
       image: keyframe, voice, out: clip, fallbackDur: fbDur, width: cw, height: ch,
       topCaption: cap, bottomCaption: punch,
-      punchAt, punchZoom: shot.punch ? (shot.punchZoom ?? 1.9) : undefined, grade: preset?.gradeStyle,
+      punchAt, punchZoom: shot.punch ? (shot.punchZoom ?? 1.9) : undefined, grade: gradeStyle,
     });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
     produced = true;
@@ -477,11 +482,11 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
       image: keyframe, motion: i2vMotionPrompt(shot), prefix: `studio/${projectId}/i2v_${shot.id}`,
       onProgress: (p) => void publishProgress({ projectId, shotId: shot.id, stage: 'video', pct: p }),
     });
-    await comp.motionShot({ clip: motion[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, fallbackDur: 4.0, grade: preset?.gradeStyle });
+    await comp.motionShot({ clip: motion[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, fallbackDur: 4.0, grade: gradeStyle });
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
   } else if (keyframe && voice) {
-    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo, grade: preset?.gradeStyle });
+    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo, grade: gradeStyle });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
     produced = true;
   }

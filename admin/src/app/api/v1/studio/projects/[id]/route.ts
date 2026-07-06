@@ -61,6 +61,7 @@ export const PATCH = withPermission(
           bgmGain: typeof body.bgmGain === 'number' ? body.bgmGain : undefined,
           subtitleStyle: body.subtitleStyle && typeof body.subtitleStyle === 'object' ? (body.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string }) : undefined,
           watermark: body.watermark === null ? null : (body.watermark && typeof body.watermark === 'object' ? (body.watermark as { text?: string; position?: string; opacity?: number }) : undefined),
+          look: body.look === null ? null : (typeof body.look === 'string' ? body.look : undefined),
         },
         buildActor(session, request),
         { bypassOwnership: bypass },

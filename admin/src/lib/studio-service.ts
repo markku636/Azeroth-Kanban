@@ -39,6 +39,8 @@ export type ProjectDto = Pick<
 > & {
   /** 品牌浮水印（頻道 handle 燒在成片角落）；null＝未設定 */
   watermark: WatermarkConfig | null;
+  /** 調色 look（GRADE_STYLES 的 key，優先於風格預設的調色）；null＝跟隨預設/預設值 */
+  look: string | null;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 成片最後產生時間（ISO），無成片時為 null */
@@ -85,6 +87,7 @@ function projectToDto(
     id: p.id, title: p.title, description: p.description, logline: p.logline, status: p.status,
     aspect: p.aspect, fps: p.fps, renderQuality: p.renderQuality, bgmPath: p.bgmPath, bgmGain: p.bgmGain, subtitleStyle: p.subtitleStyle, stylePreset: p.stylePreset,
     watermark: parseWatermark(p.spec),
+    look: typeof (p.spec as { look?: unknown } | null)?.look === 'string' ? (p.spec as { look: string }).look : null,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
@@ -206,6 +209,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string };
   /** 品牌浮水印：合併進 spec.watermark（免 schema）。null 或空 text＝清除。 */
   watermark?: { text?: string; position?: string; opacity?: number } | null;
+  /** 調色 look（GRADE_STYLES key）：合併進 spec.look（免 schema）。null 或空＝清除（跟隨預設）。 */
+  look?: string | null;
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -238,15 +243,21 @@ export async function updateProject(
       else (data as Record<string, unknown>)[f] = patch[f];
     }
     if (patch.subtitleStyle !== undefined) data.subtitleStyle = patch.subtitleStyle as Prisma.InputJsonValue;
-    // 浮水印合併進 spec（讀-改-寫，不動 spec 其他鍵）：null/空 text＝移除該鍵。
-    if (patch.watermark !== undefined) {
+    // spec-backed 設定（浮水印 / 調色 look）：讀-改-寫合併，一次讀 existing.spec，套用所有 patch，不動其他鍵。
+    if (patch.watermark !== undefined || patch.look !== undefined) {
       const spec = (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {}) as Record<string, unknown>;
-      const text = patch.watermark?.text?.trim();
-      if (!patch.watermark || !text) delete spec.watermark;
-      else {
-        const position = (['tl', 'tr', 'bl', 'br'] as const).find((p2) => p2 === patch.watermark?.position) ?? 'tr';
-        const opacity = typeof patch.watermark.opacity === 'number' ? Math.max(0.15, Math.min(1, patch.watermark.opacity)) : 0.55;
-        spec.watermark = { text: text.slice(0, 40), position, opacity };
+      if (patch.watermark !== undefined) {
+        const text = patch.watermark?.text?.trim();
+        if (!patch.watermark || !text) delete spec.watermark;
+        else {
+          const position = (['tl', 'tr', 'bl', 'br'] as const).find((p2) => p2 === patch.watermark?.position) ?? 'tr';
+          const opacity = typeof patch.watermark.opacity === 'number' ? Math.max(0.15, Math.min(1, patch.watermark.opacity)) : 0.55;
+          spec.watermark = { text: text.slice(0, 40), position, opacity };
+        }
+      }
+      if (patch.look !== undefined) {
+        if (!patch.look || typeof patch.look !== 'string') delete spec.look; // 非法 key 在 render 端(projectStyle)也會被忽略
+        else spec.look = patch.look.slice(0, 20);
       }
       data.spec = spec as Prisma.InputJsonValue;
     }

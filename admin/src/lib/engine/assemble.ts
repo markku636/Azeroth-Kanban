@@ -218,7 +218,19 @@ const GRADE_STYLES: Record<string, string> = {
   vivid: "eq=contrast=1.10:saturation=1.22:gamma=0.99",
   // 驚悚 look：壓暗提對比、抽飽和、陰影偏青＋高光微暖、vignette 暗角、細顆粒 noise（恐怖片質感）
   horror: "eq=contrast=1.22:saturation=0.42:gamma=0.90:brightness=-0.05,colorbalance=rs=-0.06:gs=-0.02:bs=0.07:rh=-0.02:bh=0.04,vignette=PI/4.5,noise=alls=7:allf=t+u",
+  // clean：明亮乾淨、微提亮與對比 —— 教學/解說最百搭（不偏色）
+  clean: "eq=contrast=1.10:saturation=1.06:gamma=1.04:brightness=0.02",
+  // film：溫暖復古霧面（略降對比、抬陰影、偏暖、微抽飽和）
+  film:  "eq=contrast=0.95:saturation=0.90:gamma=1.02:brightness=0.015,colorbalance=rs=0.06:gs=0.02:bs=-0.06:rh=0.04:bh=-0.05",
+  // mono：黑白高反差（去色＋提對比），莊重/報導感
+  mono:  "eq=contrast=1.16:saturation=0:gamma=0.98",
+  // dreamy：柔和粉嫩（低對比、提亮、微暖、略抽飽和），抒情/vlog
+  dreamy: "eq=contrast=0.92:saturation=0.96:gamma=1.06:brightness=0.03,colorbalance=rh=0.05:bh=0.03",
+  // cyber：青陰影×洋紅高光的高飽和霓虹感（科技/夜景）
+  cyber: "eq=contrast=1.16:saturation=1.14:gamma=0.97,colorbalance=rs=-0.08:gs=-0.03:bs=0.10:rh=0.08:gh=-0.04:bh=0.06",
 };
+/** 可選的調色 look（GRADE_STYLES 的 key）；供 UI 列選項與 per-project look 驗證。順序＝UI 呈現順序。 */
+export const GRADE_STYLE_KEYS = Object.keys(GRADE_STYLES);
 // 取得調色 filter 鏈（含前導逗號，直接接在 setsar=1 之後、drawtext 之前）。style 未傳時與重構前的
 // GRADE 常數逐字元相同：STUDIO_GRADE=off → 空字串；否則 STUDIO_GRADE_STYLE 選 look、查無 → teal。
 // 各鏡可用 opts.grade 逐鏡覆寫。exported for unit testing; pure（僅讀 env）。

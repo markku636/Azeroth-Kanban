@@ -80,6 +80,23 @@ describe('updateProject 浮水印合併進 spec', () => {
     expect((data.spec as any).keep).toBe(1);
     expect((data.spec as any).watermark).toBeUndefined();
   });
+  it('look 與 watermark 同時 patch → 一次合併、互不覆蓋、保留其他鍵', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { look: 'cyber', watermark: { text: '@me' } });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).look).toBe('cyber');
+    expect((data.spec as any).watermark.text).toBe('@me');
+  });
+  it('look=null → 移除 spec.look', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, look: 'mono' } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { look: null });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).look).toBeUndefined();
+  });
 });
 
 describe('createProject 標題驗證（DB 之前）', () => {

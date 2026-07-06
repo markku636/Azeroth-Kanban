@@ -38,6 +38,7 @@ export default function StoryPage() {
   const [pickRole, setPickRole] = useState('');
   const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false, highlight: false, highlightColor: '#FFD400' });
   const [wm, setWm] = useState<{ text: string; position: string }>({ text: '', position: 'tr' });
+  const [look, setLookState] = useState<string>('');
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -76,6 +77,7 @@ export default function StoryPage() {
         if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true, highlight: ss.highlight === true, highlightColor: typeof ss.highlightColor === 'string' ? ss.highlightColor : '#FFD400' });
         const wmData = pJson.data.watermark as { text?: string; position?: string } | null;
         if (wmData && typeof wmData === 'object') setWm({ text: typeof wmData.text === 'string' ? wmData.text : '', position: wmData.position === 'tl' || wmData.position === 'bl' || wmData.position === 'br' ? wmData.position : 'tr' });
+        setLookState(typeof pJson.data.look === 'string' ? pJson.data.look : '');
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -118,6 +120,26 @@ export default function StoryPage() {
     setWm(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ watermark: next.text.trim() ? next : null }) });
   };
+  // 調色 look：'' ＝跟隨風格預設（送 null 清除）；否則送 GRADE_STYLES key。改後需重新「生成影片」套用。
+  const saveLook = (next: string) => {
+    setLookState(next);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ look: next || null }) });
+  };
+  // key 對應引擎 GRADE_STYLES；css 只是 UI 近似預覽（非精確，實際以 ffmpeg 為準）。'' ＝跟隨風格預設。
+  const LOOKS: { key: string; label: string; css: string }[] = [
+    { key: '', label: '跟隨風格', css: 'none' },
+    { key: 'clean', label: 'Clean 乾淨', css: 'brightness(1.06) contrast(1.08) saturate(1.06)' },
+    { key: 'teal', label: 'Teal 電影', css: 'contrast(1.06) saturate(1.12) hue-rotate(-6deg)' },
+    { key: 'warm', label: 'Warm 暖調', css: 'sepia(0.18) saturate(1.1) brightness(1.03)' },
+    { key: 'cool', label: 'Cool 冷調', css: 'saturate(1.05) hue-rotate(12deg) brightness(1.01)' },
+    { key: 'film', label: 'Film 底片', css: 'sepia(0.28) saturate(0.9) contrast(0.95) brightness(1.02)' },
+    { key: 'vivid', label: 'Vivid 鮮豔', css: 'saturate(1.4) contrast(1.1)' },
+    { key: 'cyber', label: 'Cyber 霓虹', css: 'saturate(1.35) contrast(1.15) hue-rotate(-12deg)' },
+    { key: 'dreamy', label: 'Dreamy 夢幻', css: 'brightness(1.07) saturate(0.95) contrast(0.9)' },
+    { key: 'mono', label: 'Mono 黑白', css: 'grayscale(1) contrast(1.14)' },
+    { key: 'noir', label: 'Noir 黑色', css: 'grayscale(0.55) contrast(1.2)' },
+    { key: 'horror', label: 'Horror 驚悚', css: 'grayscale(0.5) contrast(1.25) brightness(0.82)' },
+  ];
 
   const set = (k: FieldKey) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const saveField = (k: FieldKey) => () => { if (form[k] !== savedRef.current[k]) { savedRef.current[k] = form[k]; void patchBible({ [k]: form[k] }); } };
@@ -360,6 +382,24 @@ export default function StoryPage() {
               })() : POP_SAMPLE[previewIdx]}
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* 調色 look（濾鏡）*/}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">調色 look（整片濾鏡風格）</h2>
+        <p className="mb-3 text-xs text-gray-400">整片統一的電影感調色；「跟隨風格」＝用所選影片風格的預設調色。下方為近似預覽（實際以引擎為準）。改後需重新「② 生成影片」套用。</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+          {LOOKS.map((L) => {
+            const active = look === L.key;
+            return (
+              <button key={L.key || 'none'} type="button" onClick={() => saveLook(L.key)}
+                className={`group flex flex-col items-center gap-1 rounded-md border p-1.5 transition ${active ? 'border-blue-400 ring-1 ring-blue-300' : 'border-gray-200 hover:border-gray-300 dark:border-gray-200'}`}>
+                <span aria-hidden className="h-10 w-full rounded" style={{ filter: L.css, background: 'linear-gradient(120deg,#e8b98a 0%,#4a90d9 35%,#3fb56b 60%,#e64c6d 100%)' }} />
+                <span className={`text-[11px] leading-tight ${active ? 'font-semibold text-blue-700' : 'text-gray-600'}`}>{L.label}</span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
