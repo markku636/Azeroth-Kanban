@@ -105,6 +105,17 @@ describe('checkStoryboard — 內容品質', () => {
     const checks = checkStoryboard([shot({ tts: '對啊' }), shot({ tts: '對啊' })]);
     expect(checks.some((x) => x.code === 'dup-narration')).toBe(false);
   });
+  it('不相鄰的旁白重複（第 4 鏡撞第 1 鏡）→ warn repeat-narration，對照第一次出現', () => {
+    const checks = checkStoryboard([shot({ tts: '這句是招牌台詞' }), shot({ tts: 'B句' }), shot({ tts: 'C句' }), shot({ tts: '這句是招牌台詞' })]);
+    const c = checks.find((x) => x.code === 'repeat-narration');
+    expect(c?.level).toBe('warn');
+    expect(c?.shotIndex).toBe(3);
+    expect(c?.message).toContain('第 1 鏡');
+  });
+  it('同一句出現三次 → 後兩次都對照第一次（都報）', () => {
+    const checks = checkStoryboard([shot({ tts: '重複的招牌句' }), shot({ tts: 'x句' }), shot({ tts: '重複的招牌句' }), shot({ tts: 'y句' }), shot({ tts: '重複的招牌句' })]);
+    expect(checks.filter((x) => x.code === 'repeat-narration')).toHaveLength(2);
+  });
   it('中間鏡無旁白也無大字幕 → info silent（純畫面）', () => {
     const checks = checkStoryboard([shot(), shot({ tts: '', caption: '' }), shot()]);
     expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(1);

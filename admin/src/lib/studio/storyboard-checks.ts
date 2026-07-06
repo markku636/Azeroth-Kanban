@@ -99,11 +99,17 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
     }
   });
 
-  // ⑤ 相鄰重複旁白（分批改編偶爾承接沒接好 → 相鄰鏡講一樣的話，拖節奏）。保守：正規化後完全相同、長度≥4。
-  for (let i = 1; i < n; i++) {
-    const a = normTts(shots[i - 1].tts);
-    if (a.length >= 4 && a === normTts(shots[i].tts)) {
+  // ⑤ 旁白重複：相鄰＝拖節奏；不相鄰＝同一句用了兩次（長片堆笑點時容易撞梗）。保守：正規化後完全相同、長度≥4。
+  const seenTts = new Map<string, number>();
+  for (let i = 0; i < n; i++) {
+    const key = normTts(shots[i].tts);
+    if (key.length < 4) continue;
+    const prev = seenTts.get(key);
+    if (prev === undefined) { seenTts.set(key, i); continue; } // 只記第一次出現，之後的都對照它
+    if (prev === i - 1) {
       out.push({ level: 'warn', code: 'dup-narration', message: `第 ${i} 與第 ${i + 1} 鏡旁白幾乎一樣，改寫其一避免重複、讓劇情往前推。`, shotIndex: i });
+    } else {
+      out.push({ level: 'warn', code: 'repeat-narration', message: `第 ${i + 1} 鏡旁白和第 ${prev + 1} 鏡重複（同一句用了兩次）；改寫其一讓每個笑點都是新的。`, shotIndex: i });
     }
   }
 
