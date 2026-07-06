@@ -146,20 +146,26 @@ async function adaptOnce(
   src: string,
   count: number,
   story: StoryContext | undefined,
-  ctx: { batch: AdaptBatch; prevTail: string } | null,
+  ctx: { batch: AdaptBatch; prevTail: string; anchorVisual?: string } | null,
   styleHint?: string,
 ): Promise<PlannedShot[]> {
   const style = styleHint?.trim() ? `\n【本次風格指定（優先於來源原本的調性）】${styleHint.trim()}` : '';
   let instruction: string;
   if (ctx) {
-    const { batch, prevTail } = ctx;
+    const { batch, prevTail, anchorVisual } = ctx;
     const position =
       batch.index === 0 ? '整支影片的「開頭段」——第一鏡要放全片最強的鉤子'
       : batch.index === batch.total - 1 ? '整支影片的「結尾段」——最後一鏡要收在記得住的爆點／回扣開頭'
       : `整支影片的「第 ${batch.index + 1}/${batch.total} 段」（中段）——持續加碼、把觀眾推向結尾`;
+    // 跨批一致性最容易走鐘的是「主角外觀」與「畫風」——把開頭段第一鏡的 visual 當範本傳下去，
+    // 要求後續每批沿用同一組外觀錨點＋同一組畫風結尾詞（否則主角會從年輕人變中年大叔、畫風也跳掉）。
+    const anchor = anchorVisual
+      ? `\n【主角外觀與畫風一致性｜務必遵守】前面段落的主角與畫風是這樣描述的（visual 範例）：\n"${anchorVisual}"\n這一段每一鏡的 visual 都要沿用「同一組主角外觀錨點」（同樣的髮型/體型/服裝/招牌配件/特徵）與「同一組畫風結尾詞」（同樣的畫風＋色調＋質感），讓整支片看起來是同一個人、同一種畫風。`
+      : '';
     instruction =
       `這是${position}。全片共分 ${batch.total} 段改編，此段只負責 ${count} 個分鏡。` +
-      (prevTail ? `\n上一段最後的旁白是：「${prevTail}」，請自然承接、延續同一主角外觀錨點與畫風，且不要重複上一段講過的內容。` : '') +
+      (prevTail ? `\n上一段最後的旁白是：「${prevTail}」，請自然承接、且不要重複上一段講過的內容。` : '') +
+      anchor +
       style +
       `\n以下是參考影片對應此段的字幕／腳本節錄（萃取其節奏與轉折、改編成原創內容，勿逐字照抄）：\n"""\n${src}\n"""\n請只為「此段」產生 ${count} 個分鏡。`;
   } else {
@@ -179,7 +185,7 @@ async function adaptBatch(
   src: string,
   count: number,
   story: StoryContext | undefined,
-  ctx: { batch: AdaptBatch; prevTail: string } | null,
+  ctx: { batch: AdaptBatch; prevTail: string; anchorVisual?: string } | null,
   styleHint?: string,
 ): Promise<PlannedShot[]> {
   const first = await adaptOnce(src, count, story, ctx, styleHint);
@@ -200,13 +206,14 @@ export async function adaptStoryboardFromSource(source: string, count = 8, story
   const batches = planAdaptationBatches(n);
   const out: PlannedShot[] = [];
   let prevTail = '';
+  let anchorVisual = ''; // 第一批建立的主角外觀＋畫風範本，往後每批沿用（跨批一致性）
   let lastErr: unknown = null;
   for (const b of batches) {
     const slice = sliceByFraction(src, b.startFrac, b.endFrac);
     if (!slice) continue; // 切片為空（極短來源＋高鏡數）→ 跳過，別把整段重餵造成重複（寧可少幾鏡）
     let shots: PlannedShot[];
     try {
-      shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail }, styleHint);
+      shots = await adaptBatch(slice, b.shots, story, { batch: b, prevTail, anchorVisual: anchorVisual || undefined }, styleHint);
     } catch (e) {
       // 單批整批失敗（如 provider 429/500）→ 保留其他批，別讓整支 2 分鐘生成前功盡棄。
       lastErr = e;
@@ -215,6 +222,8 @@ export async function adaptStoryboardFromSource(source: string, count = 8, story
     out.push(...shots);
     // 承接脈絡：把這批最後 1–2 句旁白帶給下一批，避免斷裂/重複。
     prevTail = shots.slice(-2).map((s) => s.tts).filter(Boolean).join(' / ').slice(0, 120);
+    // 一致性錨點：用第一個有內容的 visual 當往後各批的主角外觀＋畫風範本（截斷保護 token）。
+    if (!anchorVisual) anchorVisual = (shots.find((s) => s.visual.trim())?.visual ?? '').slice(0, 400);
   }
   if (!out.length && lastErr) throw lastErr; // 全數失敗才把真錯誤浮上來（否則會被誤報成「沒產生分鏡」）
   return out;

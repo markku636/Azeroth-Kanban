@@ -177,6 +177,20 @@ describe('adaptStoryboardFromSource（YouTube 分批改編）', () => {
     expect(shots[shots.length - 1].visual).toBe('b3v5');
   });
 
+  it('分批時把第一批的主角外觀當範本傳給後續批（跨批一致性，避免主角變臉）', async () => {
+    let call = 0;
+    vi.mocked(complete as any).mockImplementation(async () => {
+      call++;
+      if (call === 1) return JSON.stringify([{ visual: 'ANCHORLOOK balding man in red cap, warm color grade', tts: '第一句' },
+        ...Array.from({ length: 6 }, (_, i) => ({ visual: `v${i}`, tts: `t${i}` }))]);
+      return arr(6, 'b2');
+    });
+    await adaptStoryboardFromSource('句子。'.repeat(400), 20);
+    const secondCallContent = vi.mocked(complete as any).mock.calls[1][0].messages[0].content;
+    expect(secondCallContent).toContain('ANCHORLOOK'); // 第一批的主角外觀範本有被帶進第二批
+    expect(secondCallContent).toContain('一致性');
+  });
+
   it('把上一批最後的旁白帶進下一批的提示（承接脈絡）', async () => {
     let call = 0;
     vi.mocked(complete as any).mockImplementation(async () => arr([7, 7, 6][call++], 'c'));
