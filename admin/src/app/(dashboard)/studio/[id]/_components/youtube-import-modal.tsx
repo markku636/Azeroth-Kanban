@@ -6,7 +6,7 @@ import { Button, Input, Textarea } from 'rizzui';
 import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
-import { checkStoryboard } from '@/lib/studio/storyboard-checks';
+import { checkStoryboard, CAPTION_MAX } from '@/lib/studio/storyboard-checks';
 
 /** 前端審核用的分鏡（對齊 server PlannedShot 欄位；只放 UI 需要的）。 */
 interface ReviewShot {
@@ -200,7 +200,6 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                     >
                       {s.branch === 'i2v' ? '動態 i2v' : '靜態'}
                     </button>
-                    {s.caption && <span className="truncate rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] text-yellow-800" title={s.caption}>大字：{s.caption}</span>}
                     {s.punch && <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-700">反轉鏡</span>}
                     <button type="button" onClick={() => removeShot(i)} aria-label={`刪除第 ${i + 1} 鏡`} className="ml-auto flex-none text-gray-400 transition-colors hover:text-red-600">
                       <PiTrashBold className="h-4 w-4" />
@@ -214,7 +213,12 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                     rows={2}
                     textareaClassName="bg-white text-gray-900 dark:bg-gray-50 text-sm"
                   />
-                  {s.punchline && <p className="mt-1 text-xs text-gray-500">反轉下字幕：{s.punchline}</p>}
+                  {s.caption !== undefined && (
+                    <CaptionField label="大字幕" value={s.caption} onChange={(v) => updateShot(i, { caption: v })} />
+                  )}
+                  {s.punchline !== undefined && (
+                    <CaptionField label="反轉字幕" value={s.punchline} onChange={(v) => updateShot(i, { punchline: v })} />
+                  )}
                   {s.visual && <p className="mt-1 line-clamp-2 text-[11px] text-gray-400" title={s.visual}>畫面：{s.visual}</p>}
                 </li>
               ))}
@@ -243,5 +247,23 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** 審核階段的大字幕／反轉字幕就地編輯（含 14 字建議上限的即時字數提示）。 */
+function CaptionField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const over = value.trim().length > CAPTION_MAX;
+  return (
+    <div className="mt-1 flex items-center gap-1.5">
+      <span className="w-12 flex-none text-[11px] text-gray-400">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        placeholder={`（${label}，越短越有力）`}
+        className={`min-w-0 flex-1 rounded border bg-white px-1.5 py-0.5 text-xs text-gray-900 dark:bg-gray-50 ${over ? 'border-amber-400' : 'border-gray-200'}`}
+      />
+      <span className={`flex-none text-[10px] ${over ? 'text-amber-600' : 'text-gray-300'}`}>{value.trim().length}/{CAPTION_MAX}</span>
+    </div>
   );
 }
