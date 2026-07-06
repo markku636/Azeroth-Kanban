@@ -9,6 +9,7 @@ export interface CheckShot {
   tts?: string;
   caption?: string;
   punchline?: string;
+  punch?: boolean;
   branch?: 'still' | 'i2v' | string;
 }
 
@@ -36,10 +37,15 @@ const normTts = (s?: string) => (s ?? '').replace(/[\s，。、！？!?.…~～�
  * 對一組分鏡做即時結構健檢。opts.targetSeconds 有值時，比對預估片長與目標並提示要增/減幾鏡。
  * 純函式、可測、無副作用。回傳依「先整體、後逐鏡」排序的提示清單。
  */
-export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: number }): StoryboardCheck[] {
+export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: number; expectComedy?: boolean }): StoryboardCheck[] {
   const out: StoryboardCheck[] = [];
   const n = shots.length;
   if (n === 0) return out;
+
+  // 選了「好笑」風格卻整片沒有任何喜劇元素（大字幕/反轉字幕/爆點鏡）→ 可能改編得太平，提醒調整。
+  if (opts?.expectComedy && n >= 2 && !shots.some((s) => len(s.caption) || len(s.punchline) || s.punch)) {
+    out.push({ level: 'warn', code: 'no-comedy', message: '選了「好笑」風格，但整片沒有大字幕/反轉/爆點——可能改編得太平。用逐鏡「換一個」加梗，或回上一步重新改編。' });
+  }
 
   // ① 片長 vs 目標（依旁白字數估算，比固定 3.8s/鏡準）
   const est = estimateStoryboardSeconds(shots);

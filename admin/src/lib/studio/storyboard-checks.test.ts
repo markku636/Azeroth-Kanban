@@ -129,6 +129,17 @@ describe('checkStoryboard — 內容品質', () => {
     const arr = Array.from({ length: 16 }, (_, i) => fullShot({ branch: i % 3 === 0 ? 'i2v' : 'still', tts: `第${i}鏡的旁白內容大約十五個字這樣` }));
     expect(checkStoryboard(arr, { targetSeconds: 60 })).toHaveLength(0);
   });
+  it('選好笑風格但整片無喜劇元素 → warn no-comedy', () => {
+    const arr = [shot(), shot(), shot()]; // 無 caption/punchline/punch
+    expect(checkStoryboard(arr, { expectComedy: true }).find((x) => x.code === 'no-comedy')?.level).toBe('warn');
+  });
+  it('有任一喜劇元素（大字幕/反轉/爆點）→ 不報 no-comedy', () => {
+    expect(checkStoryboard([shot({ caption: '大字' }), shot()], { expectComedy: true }).some((x) => x.code === 'no-comedy')).toBe(false);
+    expect(checkStoryboard([shot(), shot({ punch: true })], { expectComedy: true }).some((x) => x.code === 'no-comedy')).toBe(false);
+  });
+  it('沒指定 expectComedy → 不報 no-comedy（風格中立）', () => {
+    expect(checkStoryboard([shot(), shot()]).some((x) => x.code === 'no-comedy')).toBe(false);
+  });
   it('空陣列 → 無提示', () => { expect(checkStoryboard([])).toEqual([]); });
   it('警告優先：warn 排在 info 之前（modal 只顯示前幾條）', () => {
     // 全靜態(info) + 大字幕過長(warn) 混在一起 → 第一條應為 warn

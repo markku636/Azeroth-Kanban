@@ -7,7 +7,7 @@ import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiA
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
 import { checkStoryboard, CAPTION_MAX } from '@/lib/studio/storyboard-checks';
-import { STYLE_PRESETS, DEFAULT_STYLE_HINT } from '@/lib/studio/style-presets';
+import { STYLE_PRESETS, DEFAULT_STYLE_HINT, isComedyHint } from '@/lib/studio/style-presets';
 
 /** 前端審核用的分鏡（對齊 server PlannedShot 欄位；只放 UI 需要的）。 */
 interface ReviewShot {
@@ -318,7 +318,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               <span>這是 AI 依來源改編的<b>原創分鏡</b>。可就地微調<b>旁白</b>、刪掉不要的鏡，滿意後按「建立分鏡」。建立後在看板上還能繼續生成關鍵幀與逐鏡編輯。</span>
             </div>
             {(() => {
-              const all = checkStoryboard(shots, { targetSeconds });
+              const all = checkStoryboard(shots, { targetSeconds, expectComedy: isComedyHint(styleHint) });
               if (!all.length) return null;
               const checks = all.slice(0, 5);
               const more = all.length - checks.length;
