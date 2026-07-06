@@ -49,6 +49,9 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [targetSeconds, setTargetSeconds] = useState(0);
   const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
   const [aiReady, setAiReady] = useState<boolean | null>(null); // null=檢查中；false=AI 未設定
+  const [hasDraft, setHasDraft] = useState(false); // 有未建立的審核草稿可恢復
+
+  const draftKey = `studio:yt-draft:${projectId}`;
 
   // 上線前預檢：AI 沒設定就在輸入階段先講清楚（免得使用者填半天、甚至等抓完字幕才報錯）。
   useEffect(() => {
@@ -59,6 +62,36 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
       .catch(() => { if (alive) setAiReady(true); }); // 查不到就不擋（維持原本點了才報錯的行為）
     return () => { alive = false; };
   }, []);
+
+  // 進 modal 時檢查有沒有上次沒建立完的審核草稿（避免辛苦改好的 32 鏡一關就沒了）。
+  useEffect(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem(draftKey) ?? '{}');
+      if (Array.isArray(d?.shots) && d.shots.length) setHasDraft(true);
+    } catch { /* localStorage 不可用 → 略過 */ }
+  }, [draftKey]);
+
+  // 審核階段即時把草稿寫進 localStorage（改旁白/重排/刪鏡都保存）；清空則移除。
+  useEffect(() => {
+    if (phase !== 'review') return;
+    try {
+      if (shots.length) localStorage.setItem(draftKey, JSON.stringify({ shots, targetSeconds }));
+      else localStorage.removeItem(draftKey);
+    } catch { /* 隱私模式 */ }
+  }, [phase, shots, targetSeconds, draftKey]);
+
+  const clearDraft = () => { try { localStorage.removeItem(draftKey); } catch { /* */ } setHasDraft(false); };
+  const restoreDraft = () => {
+    try {
+      const d = JSON.parse(localStorage.getItem(draftKey) ?? '{}');
+      if (Array.isArray(d?.shots) && d.shots.length) {
+        setShots(d.shots as ReviewShot[]);
+        setTargetSeconds(typeof d.targetSeconds === 'number' ? d.targetSeconds : 0);
+        setHasDraft(false);
+        setPhase('review');
+      }
+    } catch { /* */ }
+  };
 
   // 點健檢提示 → 捲到對應的分鏡並短暫高亮，讓提示可執行。
   const jumpToShot = (idx: number) => {
@@ -119,6 +152,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok || j.code !== 0) throw new Error(j.message ?? '建立失敗');
+      clearDraft(); // 已落庫 → 清掉草稿
       toast.success(`已建立 ${keep.length} 個分鏡 🎬`);
       onDone();
     } catch (e) {
@@ -180,6 +214,15 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
 
         {phase === 'input' ? (
           <div className="flex-1 overflow-y-auto px-5 py-4">
+            {hasDraft && (
+              <div className="mb-3 flex items-center justify-between gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+                <span>有一份<b>還沒建立的審核草稿</b>，要繼續嗎？</span>
+                <div className="flex flex-none gap-2">
+                  <button type="button" onClick={restoreDraft} className="rounded bg-emerald-600 px-2 py-1 font-medium text-white hover:bg-emerald-700">繼續</button>
+                  <button type="button" onClick={clearDraft} className="rounded px-2 py-1 text-emerald-700 hover:underline">丟棄</button>
+                </div>
+              </div>
+            )}
             <div className="mb-3 flex items-start gap-2 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:bg-sky-950/30 dark:text-sky-200">
               <PiInfoBold className="mt-0.5 h-4 w-4 flex-none" />
               <span>AI 會萃取來源影片的<b>敘事結構與節奏</b>，改編成<b>內容原創</b>的分鏡（不逐字照抄、融入本專案角色/風格）。改編後會先讓你<b>預覽審核</b>再建立。<b>貼上字幕逐字稿最可靠</b>；只填網址時系統會盡量抓字幕。</span>
