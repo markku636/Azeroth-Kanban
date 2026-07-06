@@ -1,7 +1,7 @@
 import { complete } from './llm';
 import type { StoryContext } from './story-context';
 // 容忍 LLM 尾逗號的 JSON 解析（共用）。stripTrailingCommas re-export 供既有測試沿用。
-import { stripTrailingCommas, tolerantJsonParse } from './json-tolerant';
+import { stripTrailingCommas, tolerantJsonParse, salvageArrayObjects } from './json-tolerant';
 import { ADAPT_SINGLE_MAX, planAdaptationBatches, sliceByFraction, type AdaptBatch } from './pacing';
 export { stripTrailingCommas };
 
@@ -57,12 +57,15 @@ function normalizeShot(s: unknown): PlannedShot {
 
 export function parseShotArray(text: string): PlannedShot[] {
   const match = text.match(/\[[\s\S]*\]/);
-  try {
-    const raw: unknown = tolerantJsonParse(match ? match[0] : '[]');
-    return Array.isArray(raw) ? raw.map(normalizeShot) : [];
-  } catch {
-    return [];
+  // 依序嘗試：① 抓到的完整陣列（合法/尾逗號）② 從原文救回完整物件（截斷時保住已產生的分鏡）。
+  const candidates = [match ? match[0] : '[]', salvageArrayObjects(text)];
+  for (const candidate of candidates) {
+    try {
+      const raw: unknown = tolerantJsonParse(candidate);
+      if (Array.isArray(raw) && raw.length) return raw.map(normalizeShot);
+    } catch { /* 換下一個候選 */ }
   }
+  return [];
 }
 
 /** 把外部（前端已審核）的分鏡物件陣列正規化成 PlannedShot[]，並濾掉完全空白（無 visual 也無 tts）的鏡。 */

@@ -74,6 +74,14 @@ describe('parseShotArray', () => {
     const shots = parseShotArray('[{"visual":"a"},{"visual":"b"},{"visual":"c"}]');
     expect(shots.map((s) => s.visual)).toEqual(['a', 'b', 'c']);
   });
+
+  it('輸出被截斷（命中 maxTokens）→ 救回前面完整的分鏡，而非整批全丟', () => {
+    // 第 3 個物件在中途被切斷、沒有結尾 ] → 舊版 regex 抓不到、整批回空
+    const truncated = '[{"visual":"a","tts":"一"},{"visual":"b","tts":"二"},{"visual":"c","tts":"三';
+    const shots = parseShotArray(truncated);
+    expect(shots).toHaveLength(2);
+    expect(shots.map((s) => s.visual)).toEqual(['a', 'b']);
+  });
 });
 
 describe('coercePlannedShots（前端審核後的分鏡陣列 → 正規化落庫）', () => {
