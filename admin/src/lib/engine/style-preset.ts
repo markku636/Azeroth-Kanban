@@ -4,7 +4,7 @@
 import type { SubStyle } from "./assemble";
 import type { SfxName } from "./sfx";
 
-export type StylePresetId = 'meme-comedy' | 'dark-horror' | 'clean-explainer' | 'tech-review' | 'vlog';
+export type StylePresetId = 'meme-comedy' | 'dark-horror' | 'clean-explainer' | 'tech-review' | 'vlog' | 'news-brief' | 'story-time' | 'tutorial';
 
 /** 一組影片風格的完整預設。全部欄位皆為「預設值」語意：專案有自訂時以專案為準。 */
 export interface StylePreset {
@@ -96,6 +96,45 @@ export const STYLE_PRESETS: Record<StylePresetId, StylePreset> = {
     cards: { intro: true, outro: true, cta: '一起把日子過好，追蹤我', accent: '#FF8A5B' },
     filmFinish: { intensity: 'subtle' },
     label: '生活 Vlog', blurb: '溫暖底片感＋慵懶 BGM＋柔和字幕＋膠片質感',
+  },
+  // 新聞快報：冷冽 cool 調色＋緊張 BGM＋紅色高亮＋底板字幕（清楚權威）＋章節＋轉場音效。
+  'news-brief': {
+    id: 'news-brief',
+    gradeStyle: 'cool',
+    bgmMood: 'tense',
+    subStyle: { segment: true, highlight: true, highlightColor: '#FF4D4D', plate: true, fontKind: 'bold' },
+    seams: { withinScene: 0.2, sceneChange: 0.4, sceneChangeTransition: 'fadeblack' },
+    sfxSuggested: ['ding', 'whoosh', 'sting'],
+    memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '追蹤掌握第一手', accent: '#FF4D4D' },
+    sceneTitles: true, autoSfx: true,
+    label: '新聞快報', blurb: '冷冽權威＋紅色高亮＋底板字幕＋章節，快而清楚',
+  },
+  // 說故事／懸疑：noir 黑色電影感＋低落 BGM＋襯線字幕（文藝）＋膠片感＋章節。
+  'story-time': {
+    id: 'story-time',
+    gradeStyle: 'noir',
+    bgmMood: 'somber',
+    subStyle: { segment: true, highlight: false, fontKind: 'serif' },
+    seams: { withinScene: 0.4, sceneChange: 0.7, sceneChangeTransition: 'fadeblack' },
+    sfxSuggested: ['drone', 'sting', 'riser'],
+    memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '故事還沒完，追蹤我', accent: '#C9A227' },
+    sceneTitles: true, filmFinish: { intensity: 'subtle' },
+    label: '說故事／懸疑', blurb: '黑色電影感＋襯線字幕＋低沉配樂＋膠片質感',
+  },
+  // 教學步驟：clean 明亮＋慵懶 BGM＋藍色高亮＋底板字幕（步驟清楚）＋章節（每步一段）＋轉場音效。
+  tutorial: {
+    id: 'tutorial',
+    gradeStyle: 'clean',
+    bgmMood: 'chill',
+    subStyle: { segment: true, highlight: true, highlightColor: '#4DA6FF', plate: true, fontKind: 'bold' },
+    seams: { withinScene: 0.3, sceneChange: 0.5, sceneChangeTransition: 'fadeblack' },
+    sfxSuggested: ['ding', 'whoosh', 'rimshot'],
+    memeCaptions: false,
+    cards: { intro: true, outro: true, cta: '學會了嗎？訂閱看更多教學', accent: '#4DA6FF' },
+    sceneTitles: true, autoSfx: true,
+    label: '教學步驟', blurb: '乾淨明亮＋藍色高亮＋底板字幕＋章節，步驟一目了然',
   },
 };
 
