@@ -36,6 +36,14 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const [phase, setPhase] = useState<'input' | 'review'>('input');
   const [shots, setShots] = useState<ReviewShot[]>([]);
   const [targetSeconds, setTargetSeconds] = useState(0);
+  const [highlightIndex, setHighlightIndex] = useState<number | null>(null);
+
+  // 點健檢提示 → 捲到對應的分鏡並短暫高亮，讓提示可執行。
+  const jumpToShot = (idx: number) => {
+    setHighlightIndex(idx);
+    document.getElementById(`review-shot-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => setHighlightIndex((cur) => (cur === idx ? null : cur)), 1600);
+  };
 
   // ① 改編預覽（persist:false）→ 進入審核階段
   const preview = async () => {
@@ -174,18 +182,33 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               if (!checks.length) return null;
               return (
                 <ul className="mb-3 flex flex-col gap-1 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-300/30 dark:bg-amber-950/20">
-                  {checks.map((c, i) => (
-                    <li key={i} className={`flex items-start gap-1.5 text-xs ${c.level === 'warn' ? 'text-amber-800 dark:text-amber-200' : 'text-gray-500'}`}>
-                      <PiWarningBold className={`mt-0.5 h-3.5 w-3.5 flex-none ${c.level === 'warn' ? 'text-amber-500' : 'text-gray-400'}`} />
-                      <span>{c.message}</span>
-                    </li>
-                  ))}
+                  {checks.map((c, i) => {
+                    const jumpable = typeof c.shotIndex === 'number';
+                    return (
+                      <li key={i} className={`flex items-start gap-1.5 text-xs ${c.level === 'warn' ? 'text-amber-800 dark:text-amber-200' : 'text-gray-500'}`}>
+                        <PiWarningBold className={`mt-0.5 h-3.5 w-3.5 flex-none ${c.level === 'warn' ? 'text-amber-500' : 'text-gray-400'}`} />
+                        {jumpable ? (
+                          <button type="button" onClick={() => jumpToShot(c.shotIndex as number)} className="text-left underline decoration-dotted underline-offset-2 hover:opacity-80">
+                            {c.message}
+                          </button>
+                        ) : (
+                          <span>{c.message}</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               );
             })()}
             <ol className="flex flex-col gap-2">
               {shots.map((s, i) => (
-                <li key={i} className="rounded-lg border border-gray-200 bg-white p-2.5 dark:border-gray-300 dark:bg-gray-50">
+                <li
+                  key={i}
+                  id={`review-shot-${i}`}
+                  className={`rounded-lg border bg-white p-2.5 transition-all dark:bg-gray-50 ${
+                    highlightIndex === i ? 'border-amber-400 ring-2 ring-amber-300' : 'border-gray-200 dark:border-gray-300'
+                  }`}
+                >
                   <div className="mb-1 flex items-center gap-2">
                     <span className="flex h-5 min-w-5 items-center justify-center rounded bg-gray-800 px-1 text-xs font-semibold text-white">{i + 1}</span>
                     <button
