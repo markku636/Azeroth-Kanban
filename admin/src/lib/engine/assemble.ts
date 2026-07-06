@@ -38,6 +38,14 @@ const CJK_BOLD_FONTS = [
   "/usr/share/fonts/noto/NotoSansCJK-Regular.ttc",
 ];
 function findBoldCjkFont(): string | undefined { return CJK_BOLD_FONTS.find((f) => existsSync(f)) ?? findCjkFont(); }
+// serif CJK for atmospheric captions（fontKind='serif'：明/宋體的文藝、驚悚感）; fall back to regular CJK
+const CJK_SERIF_FONTS = [
+  "C:/Windows/Fonts/mingliu.ttc", "C:/Windows/Fonts/simsun.ttc",
+  "C:/Windows/Fonts/kaiu.ttf",
+  "/usr/share/fonts/noto/NotoSerifCJK-Regular.ttc",       // Linux / Docker worker (font-noto-cjk)
+  "/usr/share/fonts/noto-cjk/NotoSerifCJK-Regular.ttc",
+];
+function findSerifCjkFont(): string | undefined { return CJK_SERIF_FONTS.find((f) => existsSync(f)) ?? findCjkFont(); }
 // drawtext on Windows: forward slashes + double-backslash drive colon (two parser levels each eat one)
 // 把路徑塞進 ffmpeg drawtext 前的轉義（Windows 字型/字幕檔路徑的 \ 與 : 是 filter 特殊字元）。exported for testing; pure。
 export function escDrawtext(p: string): string { return p.replace(/\\/g, "/").replace(/:/g, "\\\\:"); }
@@ -158,6 +166,8 @@ export interface SubStyle {
   segment?: boolean;
   /** plate=true → 字幕後加半透明底板（box），雜亂/高亮背景上更好讀。預設關＝零回歸。 */
   plate?: boolean;
+  /** 字體種類：'serif'=襯線明/宋體（文藝/驚悚氛圍）；預設 'bold'=粗黑體（零回歸）。o.fontfile 仍優先。 */
+  fontKind?: 'bold' | 'serif';
 }
 
 // All caption pixel sizes/offsets below were tuned for a 720×1280 (H=1280) canvas. Scaling them by
@@ -187,10 +197,16 @@ const GRADE_STYLES: Record<string, string> = {
   cool:  "eq=contrast=1.06:saturation=1.04:gamma=0.98,colorbalance=rs=-0.04:bs=0.05:rh=-0.02:bh=0.04",
   noir:  "eq=contrast=1.18:saturation=0.55:gamma=0.95",
   vivid: "eq=contrast=1.10:saturation=1.22:gamma=0.99",
+  // 驚悚 look：壓暗提對比、抽飽和、陰影偏青＋高光微暖、vignette 暗角、細顆粒 noise（恐怖片質感）
+  horror: "eq=contrast=1.22:saturation=0.42:gamma=0.90:brightness=-0.05,colorbalance=rs=-0.06:gs=-0.02:bs=0.07:rh=-0.02:bh=0.04,vignette=PI/4.5,noise=alls=7:allf=t+u",
 };
-const GRADE = (process.env.STUDIO_GRADE ?? "on").toLowerCase() === "off"
-  ? ""
-  : `,${GRADE_STYLES[(process.env.STUDIO_GRADE_STYLE ?? "teal").toLowerCase()] ?? GRADE_STYLES.teal}`;
+// 取得調色 filter 鏈（含前導逗號，直接接在 setsar=1 之後、drawtext 之前）。style 未傳時與重構前的
+// GRADE 常數逐字元相同：STUDIO_GRADE=off → 空字串；否則 STUDIO_GRADE_STYLE 選 look、查無 → teal。
+// 各鏡可用 opts.grade 逐鏡覆寫。exported for unit testing; pure（僅讀 env）。
+export function gradeChain(style?: string): string {
+  if ((process.env.STUDIO_GRADE ?? "on").toLowerCase() === "off") return "";
+  return `,${GRADE_STYLES[(style ?? process.env.STUDIO_GRADE_STYLE ?? "teal").toLowerCase()] ?? GRADE_STYLES.teal}`;
+}
 
 /**
  * 產生字幕 drawtext filter + 寫好的暫存字幕檔（呼叫端負責 unlink 全部）。canvasH 用來等比縮放字級/位置。
@@ -284,13 +300,17 @@ export function subDrawtext(
  * 每行各自一個 drawtext 並垂直堆疊 —— 同 subDrawtext，避開 ffmpeg 8.x textfile 換行渲染成 □ 方塊的 bug。
  * 回傳 filter ＋ 寫好的逐行暫存檔（呼叫端負責 unlink）。
  */
-function memeCaptionFilter(font: string, text: string, kind: "top" | "bottom", canvasH: number, punchAt?: number): { filter: string; files: string[] } {
+/** 迷因大字幕樣式覆寫（顏色/字級，top/bottom 各自可設）。不傳＝舊預設：top 白 62 / bottom 黃 66（零回歸）。 */
+export interface MemeCapStyle { topColor?: string; bottomColor?: string; topSize?: number; bottomSize?: number }
+
+// cap＝該側的顏色/字級覆寫（來自 opts.capStyle）；未傳沿用舊預設。exported for unit testing（斷言 drawtext 合約）。
+export function memeCaptionFilter(font: string, text: string, kind: "top" | "bottom", canvasH: number, punchAt?: number, cap?: { color?: string; size?: number }): { filter: string; files: string[] } {
   const s = capScale(canvasH);
   const border = Math.max(3, Math.round(6 * s)), ls = Math.round(12 * s);
   const lines = wrapCjk(text, 10).split('\n').filter((l) => l.length > 0);
   const isTop = kind === "top";
-  const fontsize = Math.round((isTop ? 62 : 66) * s);
-  const color = isTop ? "white" : "yellow";
+  const fontsize = Math.round((cap?.size ?? (isTop ? 62 : 66)) * s);
+  const color = cap?.color ?? (isTop ? "white" : "yellow");
   const lineH = fontsize + ls;
   const enable = !isTop && punchAt != null ? `:enable='gte(t\\,${punchAt.toFixed(2)})'` : "";
   // top 從 y=110 往下堆；bottom 從 y=h-300 往下堆（與原本 line_spacing 版位置等價）。
@@ -324,6 +344,7 @@ export interface StillOpts {
   subStyle?: SubStyle;
   fontfile?: string;
   motionSeed?: number;   // 每鏡不同的鏡頭運動方向（避免每個靜態鏡都同方向漂移）
+  grade?: string;        // 每鏡調色風格（GRADE_STYLES key）；不傳＝STUDIO_GRADE_STYLE/teal（零回歸）
 }
 
 export class Compositor {
@@ -353,10 +374,10 @@ export class Compositor {
     let vf =
       `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +
-      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
+      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${dx}':y='ih/2-(ih/zoom/2)${dy}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${gradeChain(o.grade)}`;
     let subFiles: string[] = [];
     if (o.subtitle) {
-      const font = o.fontfile ?? findBoldCjkFont(); // 旁白字幕用粗體：短影音字幕慣例，小字級也清楚有力（回退 regular）
+      const font = o.fontfile ?? (o.subStyle?.fontKind === 'serif' ? findSerifCjkFont() : findBoldCjkFont()); // 旁白字幕預設粗體（短影音慣例）；fontKind='serif' 改襯線（皆回退 regular）
       if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }, W); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
 
@@ -406,20 +427,25 @@ export class Compositor {
 
     const trans = (seam: number): string => o.transitions?.[seam] ?? "fade";
     const fc: string[] = [];
-    let vlabel = "0:v", running = durs[0];
+    // xfade/acrossfade 要求所有輸入幀率、時基、取樣率一致 — 混源 clip（lip 25fps / i2v 16fps / still 30fps）先正規化
+    for (let i = 0; i < clips.length; i++) {
+      fc.push(`[${i}:v]fps=30,settb=AVTB[nv${i}]`);
+      fc.push(`[${i}:a]aformat=sample_rates=44100:channel_layouts=stereo[na${i}]`);
+    }
+    let vlabel = "nv0", running = durs[0];
     for (let i = 1; i < clips.length; i++) {
       const fade = seamFade(i - 1);
       const offset = running - fade;
       const out = i === clips.length - 1 ? "vout" : `v${i}`;
-      fc.push(`[${vlabel}][${i}:v]xfade=transition=${trans(i - 1)}:duration=${fade.toFixed(3)}:offset=${offset.toFixed(3)}[${out}]`);
+      fc.push(`[${vlabel}][nv${i}]xfade=transition=${trans(i - 1)}:duration=${fade.toFixed(3)}:offset=${offset.toFixed(3)}[${out}]`);
       vlabel = out;
       running = running + durs[i] - fade;
     }
-    let alabel = "0:a";
+    let alabel = "na0";
     for (let i = 1; i < clips.length; i++) {
       const fade = seamFade(i - 1);
       const out = i === clips.length - 1 ? "aout" : `a${i}`;
-      fc.push(`[${alabel}][${i}:a]acrossfade=d=${fade.toFixed(3)}[${out}]`);
+      fc.push(`[${alabel}][na${i}]acrossfade=d=${fade.toFixed(3)}[${out}]`);
       alabel = out;
     }
     args.push("-filter_complex", fc.join(";"), "-map", "[vout]", "-map", "[aout]",
@@ -463,14 +489,15 @@ export class Compositor {
   async motionShot(o: {
     clip: string; voice?: string; out: string; subtitle?: string; subStyle?: SubStyle;
     width?: number; height?: number; pad?: number; fontfile?: string; fallbackDur?: number;
+    grade?: string;
   }): Promise<string> {
     const W = o.width ?? 720, H = o.height ?? 1280, pad = o.pad ?? 0.4;
     const adur = o.voice ? await probeDuration(o.voice) : (o.fallbackDur ?? 4.0);
     const dur = adur + pad;
-    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${GRADE}`;
+    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${gradeChain(o.grade)}`;
     let subFiles: string[] = [];
     if (o.subtitle) {
-      const font = o.fontfile ?? findBoldCjkFont(); // 旁白字幕用粗體：短影音字幕慣例，小字級也清楚有力（回退 regular）
+      const font = o.fontfile ?? (o.subStyle?.fontKind === 'serif' ? findSerifCjkFont() : findBoldCjkFont()); // 旁白字幕預設粗體（短影音慣例）；fontKind='serif' 改襯線（皆回退 regular）
       if (font) { const sd = subDrawtext(o.subtitle, o.subStyle, font, H, { narrationDur: adur, totalDur: dur }, W); subFiles = sd.subFiles; if (sd.filter) vf += `,${sd.filter}`; }
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];
@@ -572,6 +599,7 @@ export class Compositor {
     width?: number; height?: number; fps?: number; pad?: number; fallbackDur?: number;
     topCaption?: string; bottomCaption?: string; punchAt?: number;
     punchZoom?: number; zoomRate?: number; zoomMax?: number; memeFont?: string; motionSeed?: number;
+    grade?: string; capStyle?: MemeCapStyle;
   }): Promise<string> {
     const W = o.width ?? 720, H = o.height ?? 1280, fps = o.fps ?? 30, pad = o.pad ?? 0.45;
     const adur = o.voice ? await probeDuration(o.voice) : (o.fallbackDur ?? 3.5);
@@ -596,16 +624,16 @@ export class Compositor {
     let vf =
       `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,` +
       `crop=${W * 2}:${H * 2},` +
-      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${swayX}':y='ih/2-(ih/zoom/2)${swayY}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${GRADE}`;
+      `zoompan=z='${zexpr}':x='iw/2-(iw/zoom/2)${swayX}':y='ih/2-(ih/zoom/2)${swayY}':d=${frames}:s=${W}x${H}:fps=${fps},setsar=1${UNSHARP}${gradeChain(o.grade)}`;
 
     const font = o.memeFont ?? findBoldCjkFont();
     const tmpFiles: string[] = [];
     if (font && o.topCaption) {
-      const cap = memeCaptionFilter(font, o.topCaption, "top", H);
+      const cap = memeCaptionFilter(font, o.topCaption, "top", H, undefined, { color: o.capStyle?.topColor, size: o.capStyle?.topSize });
       tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
     if (font && o.bottomCaption) {
-      const cap = memeCaptionFilter(font, o.bottomCaption, "bottom", H, o.punchAt);
+      const cap = memeCaptionFilter(font, o.bottomCaption, "bottom", H, o.punchAt, { color: o.capStyle?.bottomColor, size: o.capStyle?.bottomSize });
       tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
 
@@ -631,19 +659,20 @@ export class Compositor {
     clip: string; voice?: string; out: string;
     width?: number; height?: number; pad?: number; fallbackDur?: number;
     topCaption?: string; bottomCaption?: string; punchAt?: number; memeFont?: string;
+    grade?: string; capStyle?: MemeCapStyle;
   }): Promise<string> {
     const W = o.width ?? 720, H = o.height ?? 1280, pad = o.pad ?? 0.4;
     const adur = o.voice ? await probeDuration(o.voice) : (o.fallbackDur ?? 3.5);
     const dur = adur + pad;
-    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${GRADE}`;
+    let vf = `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1${gradeChain(o.grade)}`;
     const font = o.memeFont ?? findBoldCjkFont();
     const tmpFiles: string[] = [];
     if (font && o.topCaption) {
-      const cap = memeCaptionFilter(font, o.topCaption, "top", H);
+      const cap = memeCaptionFilter(font, o.topCaption, "top", H, undefined, { color: o.capStyle?.topColor, size: o.capStyle?.topSize });
       tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
     if (font && o.bottomCaption) {
-      const cap = memeCaptionFilter(font, o.bottomCaption, "bottom", H, o.punchAt);
+      const cap = memeCaptionFilter(font, o.bottomCaption, "bottom", H, o.punchAt, { color: o.capStyle?.bottomColor, size: o.capStyle?.bottomSize });
       tmpFiles.push(...cap.files); vf += `,${cap.filter}`;
     }
     const args = ["-y", "-stream_loop", "-1", "-i", o.clip];

@@ -27,6 +27,8 @@ export interface OptimizeInput {
   appearance?: string;
   /** 單次模型覆寫；省略時用 env 預設。應已由路由層白名單過濾。 */
   model?: string;
+  /** 角色類型：'creature' 時 appearance 改用生物版方針（物種／輪廓／皮膚材質／眼睛特徵／配件錨點）；省略＝人類（舊行為）。 */
+  kind?: 'creature';
 }
 
 const MAX_INPUT = 2000; // 餵給模型的單欄內容上限（路由層另有 4000 硬擋）
@@ -51,6 +53,19 @@ const SYS: Record<CharField, string> = {
     '繁體中文、12 字內，例如「厭世吐槽、語速偏快」。' +
     '只輸出該短句，不要 markdown、不要引號、不要任何說明。',
 };
+
+// appearance 的生物（creature）變體：身分錨點從人類的年齡／髮型／臉部特徵，
+// 換成物種／輪廓／皮膚材質／眼睛特徵／配件；沿用「非臉部身分錨點」方向（避免與參考圖臉部衝突）。
+const SYS_APPEARANCE_CREATURE: string =
+  'You are an expert SDXL prompt engineer. Rewrite the CREATURE APPEARANCE into a single clean ' +
+  'English comma-separated visual prompt for consistent creature rendering ' +
+  '(species / creature type, overall silhouette and build, skin/fur/scale/feather material and color, ' +
+  'eye shape and color, signature accessories, art style). ' +
+  'Add 1-2 DISTINCTIVE identity anchors so the creature stays recognizable across shots — PREFER a signature ' +
+  'accessory / body marking / silhouette trait (e.g. a bell collar, glowing amber eyes, a forked tail); ' +
+  'keep anchors on the body, eyes or accessories rather than invented facial marks, since an invented facial ' +
+  "mark can clash with the user's uploaded reference image. Keep it concise — one line, under 60 words. " +
+  'Output ONLY the prompt text — no markdown, no quotes, no labels, no explanations.';
 
 function buildUser(input: OptimizeInput): string {
   const ctx: string[] = [];
@@ -80,9 +95,14 @@ function clean(out: string): string {
 
 /** 用 Vertex 優化單一角色欄位，回傳乾淨純文字（不落庫）。 */
 export async function optimizeCharacterField(input: OptimizeInput): Promise<string> {
+  // kind='creature' 只影響 appearance 的方針；其餘欄位人類／生物共用。
+  const system =
+    input.field === 'appearance' && input.kind === 'creature'
+      ? SYS_APPEARANCE_CREATURE
+      : SYS[input.field];
   const out = await complete(
     {
-      system: SYS[input.field],
+      system,
       messages: [{ role: 'user', content: buildUser(input) }],
       temperature: input.field === 'appearance' ? 0.6 : 0.8,
       // 2048 而非 512：gemini-2.5-flash/pro 預設開啟 thinking，思考 token 與輸出共用此預算；

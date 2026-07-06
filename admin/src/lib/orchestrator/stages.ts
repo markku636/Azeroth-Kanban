@@ -4,7 +4,7 @@
 // Reads intent from the DB (so user edits + uploaded reference images are honoured) and writes artifacts
 // to studio_storage; mirrors graph.ts's per-shot branch logic and assemble.
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, copyFileSync, unlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, copyFileSync, unlinkSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Shot } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -12,6 +12,7 @@ import { ComfyUIClient } from '@/lib/comfyui/client';
 import { buildSdxl, buildSdxlHires, buildSdxlImg2Img, buildSdxlImg2ImgHires, buildSdxlInpaint, QUALITY_SUFFIX } from '@/lib/engine/keyframe';
 import { SealTTSClient, normalizeTtsText } from '@/lib/engine/voiceover';
 import { Compositor, probeDuration, trimSilence, type SubStyle } from '@/lib/engine/assemble';
+import { getStylePreset, type StylePreset } from '@/lib/engine/style-preset';
 import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
 import { lipsync } from '@/lib/engine/lipsync';
@@ -118,18 +119,26 @@ async function projectDims(projectId: string): Promise<{ kfW: number; kfH: numbe
   return dimsForAspect(p?.aspect ?? '9:16', p?.renderQuality);
 }
 
-/** 讀專案字幕圖層樣式（fontSize/color/position）；無設定回 undefined（走引擎預設）。 */
-async function projectSubStyle(projectId: string): Promise<SubStyle | undefined> {
-  const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true } });
-  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown } | null;
-  if (!s || typeof s !== 'object') return undefined;
+/**
+ * 一次查詢拿到專案的「字幕自訂樣式 + 風格預設」。subStyle 取用優先序：使用者自訂 json → preset 的預設 →
+ * undefined（走引擎預設）；preset 另供 generateVideo 貫通每鏡調色（gradeStyle）與迷因路徑判定（memeCaptions）。
+ */
+async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; preset?: StylePreset }> {
+  const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { subtitleStyle: true, stylePreset: true } });
+  const preset = getStylePreset(p?.stylePreset ?? null);
+  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown } | null;
+  if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
   const pos = s.position;
   return {
-    fontSize: typeof s.fontSize === 'number' ? s.fontSize : undefined,
-    color: typeof s.color === 'string' ? s.color : undefined,
-    position: pos === 'top' || pos === 'center' || pos === 'bottom' ? pos : undefined,
-    segment: s.segment === true,
-    plate: s.plate === true,
+    subStyle: {
+      fontSize: typeof s.fontSize === 'number' ? s.fontSize : undefined,
+      color: typeof s.color === 'string' ? s.color : undefined,
+      position: pos === 'top' || pos === 'center' || pos === 'bottom' ? pos : undefined,
+      segment: s.segment === true,
+      plate: s.plate === true,
+      fontKind: s.fontKind === 'serif' || s.fontKind === 'bold' ? s.fontKind : undefined,
+    },
+    preset,
   };
 }
 
@@ -208,10 +217,14 @@ const charDir = (cid: string) => join(STORAGE, 'characters', cid);
 export async function runCharacterPortraitStage(characterId: string, prompt?: string): Promise<string | undefined> {
   const ch = await prisma.character.findUnique({ where: { id: characterId } });
   if (!ch) return undefined;
+  const kind = ch.kind ?? null; // 欄位空＝未指定 → 視同人形（零回歸）
   const pos = [
     ch.appearance?.trim(),
     prompt?.trim(),
-    'solo character portrait, upper body, facing camera, clean plain background, sharp focus, highly detailed',
+    // 生物/怪物角色（kind='creature'）用全身中性站姿參考圖（半身肖像對非人形常裁掉關鍵特徵）；其餘維持原半身肖像。
+    kind === 'creature'
+      ? 'full body creature reference, neutral pose, plain background, sharp focus'
+      : 'solo character portrait, upper body, facing camera, clean plain background, sharp focus, highly detailed',
   ].filter(Boolean).join(', ');
   if (!pos.trim()) return undefined;
   const seed = Math.floor(Math.random() * 2_147_483_647);
@@ -370,9 +383,37 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
   const clip = shotClip(projectId, shot.id);
   const keyframe = shot.keyframePath ?? undefined;
   const voice = shot.voiceWav ?? undefined;
-  const isComedy = Boolean(shot.caption || shot.punchline || (shot.sfx && shot.sfx !== 'none') || shot.punch);
   const { cw, ch } = await projectDims(projectId);
-  const subStyle = await projectSubStyle(projectId);
+  const { subStyle, preset } = await projectStyle(projectId);
+  // 迷因大字路徑判定：preset 明確關閉 memeCaptions（如 dark-horror）時，「只設 sfx」不再單獨觸發迷因路徑
+  // （sfx 仍會在 assemble 卡點混入）；無 preset 或 preset 開啟 memeCaptions ＝ 舊行為（零回歸）。
+  const sfxAsMeme = (!preset || preset.memeCaptions) && Boolean(shot.sfx && shot.sfx !== 'none');
+  const isComedy = Boolean(shot.caption || shot.punchline || shot.punch) || sfxAsMeme;
+
+  // 影片簽章快取（比照 voice.sig）：渲染輸入全都沒變且 clip.mp4 還在 → 直接重用，免重跑動輒數分鐘的合成/i2v/對嘴。
+  // 關鍵幀以「選定版本 id 或檔案 mtime」代表（重生圖/換版本 → 簽章變）；配音以 voice.sig 檔內容代表（台詞/聲線一改就變）。
+  // sfx 影響上面的迷因路徑判定，因此也入簽。渲染失敗不寫簽章（runRenderStage 清理時也會連 clip 一起刪簽章）。
+  const videoSigFile = join(dir, 'video.sig');
+  let kfMark: string | number | null = shot.selectedKeyframeId ?? null;
+  if (kfMark === null && keyframe && existsSync(keyframe)) {
+    try { kfMark = statSync(keyframe).mtimeMs; } catch { /* 拿不到 mtime → 當 null，偏保守（可能多渲一次，不會錯用舊片） */ }
+  }
+  let voiceSig: string | null = null;
+  try { voiceSig = readFileSync(join(dir, 'voice.sig'), 'utf8'); } catch { /* 無配音簽章（未配音）→ null */ }
+  const sig = JSON.stringify({
+    branch: shot.branch, keyframe: kfMark, voiceSig,
+    subtitle: shot.subtitle ?? null, caption: shot.caption ?? null, punchline: shot.punchline ?? null,
+    punch: shot.punch, punchAtFrac: shot.punchAtFrac ?? null, punchZoom: shot.punchZoom ?? null,
+    sfx: shot.sfx ?? null, canvas: `${cw}x${ch}`, subStyle: subStyle ?? null, presetId: preset?.id ?? null,
+  });
+  if (existsSync(clip) && existsSync(videoSigFile)) {
+    try {
+      if (readFileSync(videoSigFile, 'utf8') === sig) {
+        await publishProgress({ projectId, shotId: shot.id, stage: 'video', status: 'done', message: '影片重用（內容未變）' });
+        return clip;
+      }
+    } catch { /* 快取讀取失敗 → 照常重渲 */ }
+  }
   // 燒進畫面的文字也正規化（去 markdown/收斂空白），與 R24 送 TTS 的清理一致 → 「聽到的」與「看到的」都乾淨。
   const cap = shot.caption ? normalizeTtsText(shot.caption) || undefined : undefined;
   const punch = shot.punchline ? normalizeTtsText(shot.punchline) || undefined : undefined;
@@ -381,7 +422,8 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
   let produced = false;
 
   if (shot.branch === 'lip' && keyframe && voice) {
-    await publishProgress({ projectId, shotId: shot.id, stage: 'video', status: 'running' });
+    // lip 鏡特別標注耗時預期：InfiniteTalk 對嘴合成單鏡可達數十分鐘，避免使用者誤以為卡住。
+    await publishProgress({ projectId, shotId: shot.id, stage: 'video', status: 'running', message: '對嘴合成，單鏡可達數十分鐘' });
     const talk = await lipsync(comfy(), {
       image: keyframe, audio: voice, prompt: shot.subtitle || shot.tts || '',
       prefix: `studio/${projectId}/lip_${shot.id}`,
@@ -390,9 +432,9 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     if (isComedy) {
       const dur = await probeDuration(voice);
       const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
-      await comp.memeMotionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, topCaption: cap, bottomCaption: punch, punchAt });
+      await comp.memeMotionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, topCaption: cap, bottomCaption: punch, punchAt, grade: preset?.gradeStyle });
     } else {
-      await comp.motionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle });
+      await comp.motionShot({ clip: talk[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, grade: preset?.gradeStyle });
     }
     await prisma.shot.update({ where: { id: shot.id }, data: { lipsyncMp4: clip, status: 'VIDEO' } });
     produced = true;
@@ -408,7 +450,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     const punchAt = shot.punch || shot.punchline ? +(dur * (shot.punchAtFrac ?? 0.55)).toFixed(2) : undefined;
     await comp.memeMotionShot({
       clip: motion[0].path, voice, out: clip, fallbackDur: fbDur, width: cw, height: ch,
-      topCaption: cap, bottomCaption: punch, punchAt,
+      topCaption: cap, bottomCaption: punch, punchAt, grade: preset?.gradeStyle,
     });
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
@@ -420,7 +462,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     await comp.memeStill({
       image: keyframe, voice, out: clip, fallbackDur: fbDur, width: cw, height: ch,
       topCaption: cap, bottomCaption: punch,
-      punchAt, punchZoom: shot.punch ? (shot.punchZoom ?? 1.9) : undefined,
+      punchAt, punchZoom: shot.punch ? (shot.punchZoom ?? 1.9) : undefined, grade: preset?.gradeStyle,
     });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
     produced = true;
@@ -431,15 +473,18 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
       image: keyframe, motion: i2vMotionPrompt(shot), prefix: `studio/${projectId}/i2v_${shot.id}`,
       onProgress: (p) => void publishProgress({ projectId, shotId: shot.id, stage: 'video', pct: p }),
     });
-    await comp.motionShot({ clip: motion[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, fallbackDur: 4.0 });
+    await comp.motionShot({ clip: motion[0].path, voice, out: clip, width: cw, height: ch, subtitle: sub, subStyle, fallbackDur: 4.0, grade: preset?.gradeStyle });
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
   } else if (keyframe && voice) {
-    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo });
+    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo, grade: preset?.gradeStyle });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
     produced = true;
   }
-  if (produced) await recordVersion(shot, projectId, 'video', clip, { branch: shot.branch });
+  if (produced) {
+    await recordVersion(shot, projectId, 'video', clip, { branch: shot.branch });
+    try { writeFileSync(videoSigFile, sig); } catch { /* 簽章寫失敗不致命，下次當快取未命中重渲 */ } // 成功渲染後才記影片簽章
+  }
   await publishProgress({ projectId, shotId: shot.id, stage: 'video', status: 'done' });
   return produced ? clip : undefined;
 }
@@ -586,6 +631,9 @@ export async function runRenderStage(projectId: string, shotIds?: string[], scen
     : sceneId
       ? await prisma.shot.findMany({ where: { projectId, sceneId }, orderBy: { sortOrder: 'asc' } })
       : await loadTargets(projectId);
+  // lip（對嘴）鏡殿後：InfiniteTalk 單鏡可達數十分鐘，先渲完其他鏡讓部分成果早點可看、失敗也早點浮現；
+  // 其餘仍按 sortOrder（stable sort 保組內順序）。assemble 依 DB sortOrder 重查組裝，成片順序不受影響。
+  shots.sort((a, b) => Number(a.branch === 'lip') - Number(b.branch === 'lip'));
   await publishProgress({ projectId, sceneId, stage: 'plan', message: `生成影片 ${shots.length} 鏡` });
   // 逐鏡容錯：單一鏡失敗不該讓整批停擺、連 assemble 都不跑（那樣連部分成片都拿不到）。完成能完成的，
   // 之後仍組裝（assemble 以 existsSync 過濾已產出的片段）→ 至少拿到部分成片；補生失敗的鏡再重生即完整。
@@ -599,8 +647,12 @@ export async function runRenderStage(projectId: string, shotIds?: string[], scen
     } catch (e) {
       failed.push(s.shotNo);
       // 這一鏡生片失敗：若磁碟上還留著「上一版」clip.mp4（改台詞前的舊片），刪掉它——否則 assemble 以 existsSync
-      // 過濾時會把過期片段拼進成片（看起來成功、內容卻是舊的）。刪掉＝該鏡在成片缺席（誠實），補生後再重生即完整。
-      try { const c = shotClip(projectId, s.id); if (existsSync(c)) unlinkSync(c); } catch { /* ignore */ }
+      // 過濾時會把過期片段拼進成片（看起來成功、內容卻是舊的）。連 video.sig 一起刪（殘簽章留著會誤判重用）。
+      // 刪掉＝該鏡在成片缺席（誠實），補生後再重生即完整。
+      try {
+        const c = shotClip(projectId, s.id); if (existsSync(c)) unlinkSync(c);
+        const vs = join(shotDir(projectId, s.id), 'video.sig'); if (existsSync(vs)) unlinkSync(vs);
+      } catch { /* ignore */ }
       await publishProgress({ projectId, sceneId, shotId: s.id, stage: 'video', status: 'error', message: `鏡 ${s.shotNo} 生片失敗：${e instanceof Error ? e.message : String(e)}` });
     } finally {
       await freeComfy();

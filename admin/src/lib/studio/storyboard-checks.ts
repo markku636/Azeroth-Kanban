@@ -23,6 +23,8 @@ export interface StoryboardCheck {
 export const CAPTION_MAX = 14;
 // 單鏡旁白建議上限（字）：短影音快節奏，過長會拖。
 export const TTS_MAX = 42;
+// 研究：短影音完播率在 ~45–60s 後明顯下滑；目標超過此值時提醒中段要持續加碼。
+export const LONG_TARGET_SECONDS = 75;
 
 const len = (s?: string) => (s ?? '').trim().length;
 
@@ -44,6 +46,10 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
       out.push({ level: 'warn', code: 'too-short', message: `預估約 ${est} 秒，離目標 ${target} 秒還差 ~${diffShots} 鏡（可回上一步調高分鏡數，或再匯入一段接續）。` });
     } else if (diffShots <= -3) {
       out.push({ level: 'info', code: 'too-long', message: `預估約 ${est} 秒，比目標 ${target} 秒長，可刪掉 ~${-diffShots} 個較弱的鏡收緊節奏。` });
+    }
+    // 研究背書：短影音完播率在 ~45–60 秒後明顯下滑，長片要靠中段持續加碼維持注意力。
+    if (target >= LONG_TARGET_SECONDS) {
+      out.push({ level: 'info', code: 'long-target', message: `目標 ${target} 秒偏長——短影音多在 45–60 秒內完播率最佳。要撐住這個長度，中段每 5–8 秒就要給一個新看點或爆點，避免中途流失。` });
     }
   }
 
@@ -68,7 +74,8 @@ export function checkStoryboard(shots: CheckShot[], opts?: { targetSeconds?: num
     }
   });
 
-  return out;
+  // 警告優先（modal 只顯示前幾條，重要的先出）。Array.sort 穩定 → 同級維持原順序。
+  return out.sort((a, b) => (a.level === b.level ? 0 : a.level === 'warn' ? -1 : 1));
 }
 
 /** 把健檢清單濃縮成一行摘要（給精簡顯示）。無問題時回空字串。 */

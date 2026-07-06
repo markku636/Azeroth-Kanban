@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -127,6 +127,70 @@ describe('subDrawtext filter 合約', () => {
     const f = filterOf('好', { segment: true }, { narrationDur: 2, totalDur: 2.4 });
     expect(f).not.toContain('between(t'); // 單段 → 走整段淡入路徑
     expect(f).toContain("alpha='if(lt(t\\,0.35)");
+  });
+});
+
+// 調色 filter 鏈：無參數＝重構前 GRADE 常數逐字元相同（零回歸）；具名 style 逐鏡覆寫。
+describe('gradeChain（調色鏈）', () => {
+  // 隔離 env：測試前清掉 STUDIO_GRADE / STUDIO_GRADE_STYLE，測試後還原
+  const ENV_KEYS = ['STUDIO_GRADE', 'STUDIO_GRADE_STYLE'] as const;
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => { for (const k of ENV_KEYS) { saved[k] = process.env[k]; delete process.env[k]; } });
+  afterEach(() => { for (const k of ENV_KEYS) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } });
+
+  // 重構前的模組層級 GRADE 常數值（預設 env 下）——寫死在測試裡逐字元對比＝零回歸保證
+  const LEGACY_GRADE = ',eq=contrast=1.06:saturation=1.08:gamma=0.98,colorbalance=rs=-0.015:bs=0.025:rh=0.03:bh=-0.025';
+
+  it('無參數＝重構前 GRADE 常數逐字元相等（預設 teal，含前導逗號）', () => {
+    expect(gradeChain()).toBe(LEGACY_GRADE);
+  });
+
+  it('STUDIO_GRADE=off → 空字串（同舊常數；具名 style 也全域關閉）', () => {
+    process.env.STUDIO_GRADE = 'off';
+    expect(gradeChain()).toBe('');
+    expect(gradeChain('horror')).toBe('');
+  });
+
+  it('STUDIO_GRADE_STYLE env 回退（同舊常數）；未知 style → teal', () => {
+    process.env.STUDIO_GRADE_STYLE = 'noir';
+    expect(gradeChain()).toBe(',eq=contrast=1.18:saturation=0.55:gamma=0.95');
+    expect(gradeChain('不存在的風格')).toBe(LEGACY_GRADE);
+  });
+
+  it("gradeChain('horror') 含 vignette 與 noise（驚悚 look）", () => {
+    const g = gradeChain('horror');
+    expect(g).toContain('vignette=');
+    expect(g).toContain('noise=');
+  });
+});
+
+// helper: run memeCaptionFilter, clean up its temp files, return the filter string
+function memeFilterOf(text: string, kind: 'top' | 'bottom', punchAt?: number, cap?: { color?: string; size?: number }): string {
+  const { filter, files } = memeCaptionFilter('C:/f.ttf', text, kind, 1280, punchAt, cap);
+  for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
+  return filter;
+}
+
+// 迷因大字幕合約：不傳 capStyle＝舊預設 top 白 62 / bottom 黃 66（零回歸）；capStyle 可覆寫顏色/字級。
+describe('memeCaptionFilter（迷因大字幕合約）', () => {
+  it('不傳 capStyle：top 白色 62、全程顯示（memeStill 舊行為）', () => {
+    const f = memeFilterOf('人到中年', 'top');
+    expect(f).toContain('fontcolor=white');
+    expect(f).toContain('fontsize=62');
+    expect(f).not.toContain('enable='); // top setup 全程顯示
+  });
+
+  it('不傳 capStyle：bottom 黃色 66、punchAt 彈出時間窗', () => {
+    const f = memeFilterOf('結果是這樣', 'bottom', 1.5);
+    expect(f).toContain('fontcolor=yellow');
+    expect(f).toContain('fontsize=66');
+    expect(f).toContain("enable='gte(t\\,1.50)'");
+  });
+
+  it('capStyle 覆寫顏色與字級（驚悚紅字等）', () => {
+    const f = memeFilterOf('入夜之後', 'top', undefined, { color: 'red', size: 70 });
+    expect(f).toContain('fontcolor=red');
+    expect(f).toContain('fontsize=70');
   });
 });
 

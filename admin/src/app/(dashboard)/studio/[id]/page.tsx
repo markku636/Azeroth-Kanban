@@ -65,7 +65,7 @@ interface ShotDto {
   hasClip?: boolean;
 }
 interface SceneDto { id: string; title: string; sortOrder: number; shots: ShotDto[]; hasOutput?: boolean; outputUpdatedAt?: string | null }
-interface ProjectDto { id: string; title: string; status: string; aspect: string; fps: number; renderQuality: string | null; bgmPath: string | null; bgmGain: number | null; hasOutput: boolean; outputUpdatedAt: string | null }
+interface ProjectDto { id: string; title: string; status: string; aspect: string; fps: number; renderQuality: string | null; stylePreset: string | null; bgmPath: string | null; bgmGain: number | null; hasOutput: boolean; outputUpdatedAt: string | null }
 interface Storyboard { project: ProjectDto; scenes: SceneDto[] }
 interface Prog { stage: string; pct?: number; status?: string }
 type Gen = 'idle' | 'running' | 'gated' | 'generating' | 'done' | 'error';
@@ -719,6 +719,17 @@ export default function StoryboardPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '更新失敗'); }
   };
 
+  // 切換影片風格預設（meme-comedy=迷因搞笑 / dark-horror=暗黑恐怖 / 空=預設不指定）。影響之後 AI 生成與重生內容的風格走向。
+  const updateStylePreset = async (stylePreset: string) => {
+    if (!data || stylePreset === (data.project.stylePreset ?? '')) return;
+    try {
+      const res = await fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stylePreset: stylePreset || null }) });
+      if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message ?? '更新失敗'); }
+      toast.success(stylePreset === 'meme-comedy' ? '已切換為迷因搞笑風格' : stylePreset === 'dark-horror' ? '已切換為暗黑恐怖風格' : '已改回預設風格');
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : '更新失敗'); }
+  };
+
   const bgmInputRef = useRef<HTMLInputElement | null>(null);
   const generating = gen === 'running' || gen === 'generating';
 
@@ -928,6 +939,18 @@ export default function StoryboardPage() {
             >
               <option value="high">高品質 1080p</option>
               <option value="standard">標準 720p</option>
+            </select>
+            <select
+              aria-label="影片風格"
+              value={data.project.stylePreset ?? ''}
+              onChange={(e) => void updateStylePreset(e.target.value)}
+              disabled={generating || busy}
+              title="影片風格預設：迷因搞笑或暗黑恐怖；空=不指定。影響之後 AI 生成與重生內容的風格走向"
+              className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-xs text-gray-700 disabled:opacity-50 dark:bg-gray-50"
+            >
+              <option value="">預設風格</option>
+              <option value="meme-comedy">迷因搞笑</option>
+              <option value="dark-horror">暗黑恐怖</option>
             </select>
             <span>· 共 {totalShots} 個分鏡</span>
             {totalShots > 0 && (

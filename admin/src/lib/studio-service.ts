@@ -23,7 +23,7 @@ export interface StudioOpOptions {
 
 export type ProjectDto = Pick<
   StudioProject,
-  'id' | 'title' | 'description' | 'logline' | 'status' | 'aspect' | 'fps' | 'renderQuality' | 'bgmPath' | 'bgmGain' | 'subtitleStyle' | 'createdAt' | 'updatedAt'
+  'id' | 'title' | 'description' | 'logline' | 'status' | 'aspect' | 'fps' | 'renderQuality' | 'bgmPath' | 'bgmGain' | 'subtitleStyle' | 'stylePreset' | 'createdAt' | 'updatedAt'
 > & {
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
@@ -69,7 +69,7 @@ function projectToDto(
   const out = projectOutputInfo(p.id);
   return {
     id: p.id, title: p.title, description: p.description, logline: p.logline, status: p.status,
-    aspect: p.aspect, fps: p.fps, renderQuality: p.renderQuality, bgmPath: p.bgmPath, bgmGain: p.bgmGain, subtitleStyle: p.subtitleStyle,
+    aspect: p.aspect, fps: p.fps, renderQuality: p.renderQuality, bgmPath: p.bgmPath, bgmGain: p.bgmGain, subtitleStyle: p.subtitleStyle, stylePreset: p.stylePreset,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
@@ -184,7 +184,7 @@ export async function createProject(
   }
 }
 
-const PROJECT_FIELDS = ['title', 'description', 'logline', 'status', 'aspect', 'fps', 'renderQuality', 'bgmGain'] as const;
+const PROJECT_FIELDS = ['title', 'description', 'logline', 'status', 'aspect', 'fps', 'renderQuality', 'bgmGain', 'stylePreset'] as const;
 type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>> & {
   /** 字幕圖層樣式 {fontSize,color,position,segment,plate}；Json 欄位，特殊處理。segment=pop-on 動態逐句字幕、plate=半透明底板。 */
   subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean };
@@ -204,6 +204,9 @@ export async function updateProject(
   }
   if (patch.bgmGain != null && (typeof patch.bgmGain !== 'number' || patch.bgmGain < 0 || patch.bgmGain > 1)) {
     return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, 'BGM 音量需在 0~1 之間', 'studio.bgm_gain_invalid');
+  }
+  if (patch.stylePreset != null && !['meme-comedy', 'dark-horror'].includes(patch.stylePreset)) {
+    return ApiResponse.error(ApiReturnCode.VALIDATION_ERROR, '影片風格僅支援 meme-comedy 或 dark-horror', 'studio.style_preset_invalid');
   }
   try {
     const existing = await prisma.studioProject.findFirst({ where: ownerWhere(id, ownerId, options) as Prisma.StudioProjectWhereInput });
@@ -287,7 +290,7 @@ export async function duplicateProject(
           premise: src.premise, worldSetting: src.worldSetting, styleGuide: src.styleGuide,
           tone: src.tone, genre: src.genre, targetAudience: src.targetAudience,
           bibleNotes: src.bibleNotes, agentProvider: src.agentProvider,
-          aspect: src.aspect, fps: src.fps, renderQuality: src.renderQuality, bgmGain: src.bgmGain,
+          aspect: src.aspect, fps: src.fps, renderQuality: src.renderQuality, bgmGain: src.bgmGain, stylePreset: src.stylePreset,
           ...(src.subtitleStyle != null ? { subtitleStyle: src.subtitleStyle as Prisma.InputJsonValue } : {}),
           status: src.shots.length > 0 ? 'storyboard' : 'interview',
           ownerId,
@@ -702,7 +705,7 @@ export type StoryBibleDto = Pick<
 
 export type CharacterDto = Pick<
   Character,
-  'id' | 'name' | 'slug' | 'persona' | 'appearance' | 'sealSpeaker' | 'ttsEngine'
+  'id' | 'name' | 'slug' | 'kind' | 'persona' | 'appearance' | 'sealSpeaker' | 'ttsEngine'
   | 'loraScale' | 'voiceInstruct' | 'refImages' | 'faceIdRef' | 'avatarPath' | 'isArchived' | 'createdAt' | 'updatedAt'
 >;
 
@@ -720,7 +723,7 @@ function storyBibleToDto(p: StudioProject): StoryBibleDto {
 
 function characterToDto(c: Character): CharacterDto {
   return {
-    id: c.id, name: c.name, slug: c.slug, persona: c.persona, appearance: c.appearance,
+    id: c.id, name: c.name, slug: c.slug, kind: c.kind, persona: c.persona, appearance: c.appearance,
     sealSpeaker: c.sealSpeaker, ttsEngine: c.ttsEngine, loraScale: c.loraScale, voiceInstruct: c.voiceInstruct,
     refImages: c.refImages, faceIdRef: c.faceIdRef, avatarPath: c.avatarPath, isArchived: c.isArchived,
     createdAt: c.createdAt, updatedAt: c.updatedAt,
@@ -829,7 +832,7 @@ export async function getCharacter(
 export async function createCharacter(
   ownerId: string,
   input: {
-    name: string; slug?: string; persona?: string; appearance?: string;
+    name: string; slug?: string; kind?: string; persona?: string; appearance?: string;
     sealSpeaker?: string; ttsEngine?: string; loraScale?: number; voiceInstruct?: string;
     faceIdRef?: string; refImages?: string[];
   },
@@ -843,6 +846,7 @@ export async function createCharacter(
     const c = await prisma.character.create({
       data: {
         ownerId, name, slug,
+        kind: input.kind?.trim() || null,
         persona: input.persona?.trim() || null,
         appearance: input.appearance?.trim() || null,
         sealSpeaker: input.sealSpeaker?.trim() || null,
@@ -866,7 +870,7 @@ export async function createCharacter(
 }
 
 const CHARACTER_FIELDS = [
-  'name', 'persona', 'appearance', 'sealSpeaker', 'ttsEngine', 'loraScale', 'voiceInstruct', 'faceIdRef', 'avatarPath', 'isArchived',
+  'name', 'kind', 'persona', 'appearance', 'sealSpeaker', 'ttsEngine', 'loraScale', 'voiceInstruct', 'faceIdRef', 'avatarPath', 'isArchived',
 ] as const;
 type CharacterPatch = Partial<Pick<Character, (typeof CHARACTER_FIELDS)[number]>> & { refImages?: string[] };
 

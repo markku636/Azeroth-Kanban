@@ -3,8 +3,13 @@
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
-export type SfxName = "vineboom" | "scratch" | "rimshot" | "ding" | "whoosh" | "boing";
-export const SFX_NAMES: SfxName[] = ["vineboom", "scratch", "rimshot", "ding", "whoosh", "boing"];
+export type SfxName =
+  | "vineboom" | "scratch" | "rimshot" | "ding" | "whoosh" | "boing"
+  | "heartbeat" | "drone" | "sting" | "giggle" | "riser" | "whisper";
+export const SFX_NAMES: SfxName[] = [
+  "vineboom", "scratch", "rimshot", "ding", "whoosh", "boing",
+  "heartbeat", "drone", "sting", "giggle", "riser", "whisper",
+];
 
 const SR = 44100;
 
@@ -20,6 +25,12 @@ export function makeSfx(name: SfxName, opts: { sampleRate?: number; gain?: numbe
     case "ding":     data = ding(sr); break;
     case "whoosh":   data = whoosh(sr); break;
     case "boing":    data = boing(sr); break;
+    case "heartbeat": data = heartbeat(sr); break;
+    case "drone":    data = drone(sr); break;
+    case "sting":    data = sting(sr); break;
+    case "giggle":   data = giggle(sr); break;
+    case "riser":    data = riser(sr); break;
+    case "whisper":  data = whisper(sr); break;
     default:         data = ding(sr);
   }
   let peak = 0;
@@ -150,6 +161,138 @@ function recordScratch(sr: number): Float32Array {
     const high = x - low - q * band;
     band += fc * high;
     d[i] = (band * 0.8 + high * 0.2) * Math.min(1, t / 0.01) * (1 - 0.2 * p);
+  }
+  return d;
+}
+
+// ── horror effects ───────────────────────────────────────────────────────────
+
+// Heartbeat "lub-dub" — two low pitch-glide thumps (vineBoom math, gentler drive) per beat,
+// ~55 BPM x 4 beats; duration lands exactly on the beat grid so it loops cleanly.
+function heartbeat(sr: number): Float32Array {
+  const beat = 60 / 55, dur = beat * 4, n = Math.floor(dur * sr);
+  const d = new Float32Array(n);
+  for (let b = 0; b < 4; b++) {
+    for (const th of [{ start: b * beat, amp: 1.0 }, { start: b * beat + 0.08, amp: 0.72 }]) {
+      let phase = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / sr - th.start;
+        if (t < 0 || t > 0.35) continue;
+        const f = 35 + 15 * Math.exp(-t / 0.06);                 // glide 50→35 Hz
+        phase += (2 * Math.PI * f) / sr;
+        const env = Math.exp(-t / 0.09) * Math.min(1, t / 0.005);
+        d[i] += Math.tanh(Math.sin(phase) * 1.1) * env * th.amp * 0.6; // lower drive than vineBoom
+      }
+    }
+  }
+  return d;
+}
+
+// 8s low drone bed — detuned 42 / 43.1 Hz sine pair beating + quiet fifth (63 Hz),
+// very slow tremolo, soft clip, long fade in/out at both ends.
+function drone(sr: number): Float32Array {
+  const dur = 8.0, n = Math.floor(dur * sr);
+  const d = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const s = Math.sin(2 * Math.PI * 42 * t) + Math.sin(2 * Math.PI * 43.1 * t)
+      + 0.3 * Math.sin(2 * Math.PI * 63 * t);
+    const trem = 0.8 + 0.2 * Math.sin(2 * Math.PI * 0.13 * t);   // very slow tremolo
+    const fade = Math.min(1, t / 1.5, (dur - t) / 1.5);          // fade in / fade out
+    d[i] = Math.tanh(s * 0.9) * trem * fade;
+  }
+  return d;
+}
+
+// Jump-scare sting — 30ms white-noise burst + dissonant high cluster (minor-second stack,
+// fast decay) + 90→30 Hz sub drop over 0.8s, tanh drive.
+function sting(sr: number): Float32Array {
+  const dur = 1.2, n = Math.floor(dur * sr);
+  const d = new Float32Array(n);
+  const cluster: [number, number][] = [[2300, 0.5], [2440, 0.45], [3100, 0.35]];
+  let sub = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    let s = 0;
+    if (t < 0.03) s += (Math.random() * 2 - 1) * (1 - t / 0.03);            // noise burst
+    for (const [f, amp] of cluster) s += amp * Math.sin(2 * Math.PI * f * t) * Math.exp(-t / 0.07);
+    if (t < 0.8) {
+      const f = 30 + 60 * (1 - t / 0.8);                                    // sub drop 90→30 Hz
+      sub += (2 * Math.PI * f) / sr;
+      s += 0.9 * Math.sin(sub) * Math.exp(-t / 0.45);
+    }
+    d[i] = Math.tanh(s * 1.8) * Math.min(1, t / 0.002);
+  }
+  return d;
+}
+
+// Warped child-giggle — six falling FM chirps (600→250 Hz, 90ms each, 120ms apart),
+// 40 Hz ring-mod + tanh hard clip, then band-passed (Chamberlin SVF, as in whoosh).
+function giggle(sr: number): Float32Array {
+  const dur = 0.85, n = Math.floor(dur * sr);
+  const raw = new Float32Array(n);
+  for (let c = 0; c < 6; c++) {
+    const start = c * 0.12;
+    let phase = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / sr - start;
+      if (t < 0 || t > 0.09) continue;
+      const f = 250 + 350 * Math.exp(-t / 0.035);                // chirp 600→250 Hz
+      phase += (2 * Math.PI * f) / sr;
+      raw[i] += Math.sin(phase) * Math.exp(-t / 0.04) * Math.min(1, t / 0.003);
+    }
+  }
+  const d = new Float32Array(n);
+  let low = 0, band = 0;
+  const q = 0.7, fc = 2 * Math.sin((Math.PI * 700) / sr);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const x = Math.tanh(raw[i] * Math.sin(2 * Math.PI * 40 * t) * 4); // ring-mod + hard clip
+    low += fc * band;
+    const high = x - low - q * band;
+    band += fc * high;
+    d[i] = band;
+  }
+  return d;
+}
+
+// 3s riser — noise + exponential sine sweep 200→1800 Hz with amplitude crescendo,
+// then cut dead (the trailing silence sells the scare).
+function riser(sr: number): Float32Array {
+  const dur = 3.0, cut = 2.9, n = Math.floor(dur * sr);
+  const d = new Float32Array(n);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    if (t >= cut) break;                                         // hard cut → trailing silence
+    const p = t / cut;
+    const f = 200 * Math.pow(9, p);                              // exponential sweep 200→1800 Hz
+    phase += (2 * Math.PI * f) / sr;
+    const s = Math.sin(phase) * 0.7 + (Math.random() * 2 - 1) * 0.4;
+    d[i] = s * (0.08 + 0.92 * p * p);                            // crescendo
+  }
+  return d;
+}
+
+// 1.8s whisper — band-passed noise gated at a random ~7 Hz "syllable" rate.
+function whisper(sr: number): Float32Array {
+  const dur = 1.8, n = Math.floor(dur * sr);
+  const d = new Float32Array(n);
+  let low = 0, band = 0, gate = 0, target = 0, nextSwitch = 0;
+  const q = 0.8, fc = 2 * Math.sin((Math.PI * 2200) / sr);
+  const slew = 1 - Math.exp(-1 / (0.012 * sr));                  // ~12ms gate smoothing
+  for (let i = 0; i < n; i++) {
+    if (i >= nextSwitch) {                                       // new syllable, ~7 Hz rate
+      target = Math.random() < 0.25 ? 0 : 0.35 + Math.random() * 0.65;
+      nextSwitch = i + Math.floor(sr * (0.09 + Math.random() * 0.1));
+    }
+    gate += (target - gate) * slew;
+    const x = Math.random() * 2 - 1;
+    low += fc * band;
+    const high = x - low - q * band;
+    band += fc * high;
+    const t = i / sr;
+    d[i] = band * gate * Math.min(1, t / 0.05, (dur - t) / 0.1);
   }
   return d;
 }

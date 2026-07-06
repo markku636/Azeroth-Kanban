@@ -14,7 +14,8 @@ import {
 } from '@/lib/studio/character-assist';
 
 // 角色 prompt 魔法棒：用 Gemini Vertex 優化單一角色欄位（persona/appearance/voiceInstruct）。
-//   body: { field, text, name?, persona?, appearance?, model? }
+//   body: { field, text, name?, persona?, appearance?, model?, kind? }
+//   kind='creature' 時 appearance 改用生物版方針（物種／輪廓／皮膚材質／眼睛特徵／配件錨點）；不傳＝人類（舊行為）。
 // 集合層（無 [id]）：優化是純文字轉換、不讀不寫 Character，且要能在角色尚未儲存（id=null）時就用。
 // 回傳 { text }（優化後文字），不落庫；前端預填欄位讓使用者檢視後再儲存。
 
@@ -44,6 +45,11 @@ export const POST = withPermission(PERMISSIONS.STUDIO_EDIT, async (request: Next
     return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '不支援的模型');
   const model: AllowedVertexModel = (reqModel as AllowedVertexModel) ?? DEFAULT_VERTEX_MODEL;
 
+  // 角色類型（選填）：目前僅支援 'creature'；不傳＝人類（舊行為）。
+  const kind = str(body.kind);
+  if (kind !== undefined && kind !== 'creature')
+    return ApiResponse.fail(ApiReturnCode.VALIDATION_ERROR, '不支援的角色類型');
+
   // 魔法棒一律走 Vertex（使用者指定）；未備齊 Vertex 憑證 → 友善提示。
   if (!providerConfigured('vertex'))
     return ApiResponse.fail(
@@ -60,6 +66,7 @@ export const POST = withPermission(PERMISSIONS.STUDIO_EDIT, async (request: Next
       persona: str(body.persona),
       appearance: str(body.appearance),
       model,
+      kind,
     });
   } catch (e) {
     const raw = e instanceof Error ? e.message : '';

@@ -586,6 +586,12 @@ export function ShotEditModal({
                   <option value="ding">叮！</option>
                   <option value="whoosh">咻～</option>
                   <option value="boing">彈簧 boing</option>
+                  <option value="heartbeat">心跳（咚、咚）</option>
+                  <option value="drone">Drone（低音鋪底）</option>
+                  <option value="sting">Sting（驚嚇刺音）</option>
+                  <option value="giggle">詭異竊笑</option>
+                  <option value="riser">Riser（緊張漸強）</option>
+                  <option value="whisper">耳語</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">

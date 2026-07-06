@@ -57,6 +57,7 @@ export const PATCH = withPermission(
           ttsEngine: str(body.ttsEngine),
           loraScale: typeof body.loraScale === 'number' ? body.loraScale : undefined,
           voiceInstruct: str(body.voiceInstruct),
+          kind: body.kind === null ? null : str(body.kind), // null＝清空（回人類預設）
           isArchived: typeof body.isArchived === 'boolean' ? body.isArchived : undefined,
         },
         buildActor(session, request),

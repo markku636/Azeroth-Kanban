@@ -15,10 +15,29 @@ describe('makePad（程序化配樂）', () => {
   });
 
   it('各種 mood（含未知）都仍是有效 WAV（不丟錯）', () => {
-    for (const mood of ['calm', 'tense', 'happy', 'epic', 'unknown-mood']) {
+    for (const mood of ['calm', 'tense', 'happy', 'epic', 'horror', 'unknown-mood']) {
       const buf = makePad(1, { mood });
       expect(buf.toString('ascii', 0, 4), mood).toBe('RIFF');
       expect(buf.toString('ascii', 8, 12), mood).toBe('WAVE');
     }
+  });
+
+  it('horror mood：可生成、非靜音、時長正確、音量位階與現有 mood 一致', () => {
+    const sr = 44100, dur = 2;
+    const buf = makePad(dur, { mood: 'horror' });
+    // 有效 WAV 標頭
+    expect(buf.toString('ascii', 0, 4)).toBe('RIFF');
+    expect(buf.toString('ascii', 8, 12)).toBe('WAVE');
+    // 時長正確：44-byte 標頭 + 每 frame 4 bytes（16-bit 立體聲）
+    expect(buf.length).toBe(44 + Math.floor(dur * sr) * 4);
+    // 非靜音：掃樣本峰值需明顯大於 0
+    let peak = 0;
+    for (let o = 44; o + 1 < buf.length; o += 2) peak = Math.max(peak, Math.abs(buf.readInt16LE(o)));
+    expect(peak).toBeGreaterThan(500);
+    // 不蓋過人聲 duck 後的位階：峰值不得超過 neutral 的兩倍（sub-drone / 摩擦泛音只是點綴）
+    const nbuf = makePad(dur);
+    let neutralPeak = 0;
+    for (let o = 44; o + 1 < nbuf.length; o += 2) neutralPeak = Math.max(neutralPeak, Math.abs(nbuf.readInt16LE(o)));
+    expect(peak).toBeLessThanOrEqual(neutralPeak * 2);
   });
 });

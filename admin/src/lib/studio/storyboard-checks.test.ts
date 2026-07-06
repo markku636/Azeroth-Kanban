@@ -22,7 +22,15 @@ describe('checkStoryboard — 片長 vs 目標', () => {
   });
   it('沒給 targetSeconds → 不做片長檢查', () => {
     const checks = checkStoryboard(Array.from({ length: 4 }, () => shot()));
-    expect(checks.some((x) => x.code === 'too-short' || x.code === 'too-long')).toBe(false);
+    expect(checks.some((x) => x.code === 'too-short' || x.code === 'too-long' || x.code === 'long-target')).toBe(false);
+  });
+  it('目標偏長（2 分鐘）→ 研究背書的完播率提醒', () => {
+    const checks = checkStoryboard(Array.from({ length: 32 }, () => fullShot()), { targetSeconds: 120 });
+    expect(checks.find((x) => x.code === 'long-target')?.level).toBe('info');
+  });
+  it('目標在完播率甜蜜點（30 秒）→ 不提長片提醒', () => {
+    const checks = checkStoryboard(Array.from({ length: 8 }, () => shot()), { targetSeconds: 30 });
+    expect(checks.some((x) => x.code === 'long-target')).toBe(false);
   });
 });
 
@@ -55,11 +63,20 @@ describe('checkStoryboard — 內容品質', () => {
     const checks = checkStoryboard([shot({ tts: '', caption: '' })]);
     expect(checks.find((x) => x.code === 'silent')?.shotIndex).toBe(0);
   });
-  it('乾淨且達標的分鏡 → 無提示', () => {
-    const arr = Array.from({ length: 32 }, (_, i) => fullShot({ branch: i % 3 === 0 ? 'i2v' : 'still' }));
-    expect(checkStoryboard(arr, { targetSeconds: 120 })).toHaveLength(0);
+  it('乾淨且達標的分鏡（甜蜜點片長）→ 無提示', () => {
+    // 目標落在完播率甜蜜點（< LONG_TARGET_SECONDS），且估算片長貼合目標、有動態鏡、無爆版字幕
+    // → 這是一支「內容乾淨」的分鏡，不該有任何品質提示（long-target 只在長片目標才提醒）。
+    const arr = Array.from({ length: 16 }, (_, i) => fullShot({ branch: i % 3 === 0 ? 'i2v' : 'still' }));
+    expect(checkStoryboard(arr, { targetSeconds: 60 })).toHaveLength(0);
   });
   it('空陣列 → 無提示', () => { expect(checkStoryboard([])).toEqual([]); });
+  it('警告優先：warn 排在 info 之前（modal 只顯示前幾條）', () => {
+    // 全靜態(info) + 大字幕過長(warn) 混在一起 → 第一條應為 warn
+    const arr = [shot({ caption: '這是一句非常非常長的大字幕會被切掉的' }), shot(), shot(), shot()];
+    const checks = checkStoryboard(arr);
+    expect(checks.length).toBeGreaterThanOrEqual(2);
+    expect(checks[0].level).toBe('warn');
+  });
 });
 
 describe('summarizeChecks', () => {

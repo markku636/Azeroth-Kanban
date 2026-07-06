@@ -55,6 +55,7 @@ export const POST = withPermission(
           ttsEngine: str(body.ttsEngine),
           loraScale: typeof body.loraScale === 'number' ? body.loraScale : undefined,
           voiceInstruct: str(body.voiceInstruct),
+          kind: str(body.kind),
         },
         buildActor(session, request),
       ),

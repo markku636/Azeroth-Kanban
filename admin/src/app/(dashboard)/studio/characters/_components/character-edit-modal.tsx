@@ -9,7 +9,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { DropZone } from '../../_components/drop-zone';
 
 export interface CharacterDto {
-  id: string; name: string; persona: string | null; appearance: string | null;
+  id: string; name: string; kind: string | null; persona: string | null; appearance: string | null;
   sealSpeaker: string | null; ttsEngine: string | null; loraScale: number | null; voiceInstruct: string | null;
   refImages: unknown; faceIdRef: string | null; isArchived: boolean;
 }
@@ -40,6 +40,7 @@ export function CharacterEditModal({
   const isCreate = !id;
 
   const [name, setName] = useState(character?.name ?? '');
+  const [kind, setKind] = useState(character?.kind ?? '');
   const [persona, setPersona] = useState(character?.persona ?? '');
   const [appearance, setAppearance] = useState(character?.appearance ?? '');
   const [sealSpeaker, setSealSpeaker] = useState(character?.sealSpeaker ?? '');
@@ -112,6 +113,7 @@ export function CharacterEditModal({
 
   const body = () => ({
     name: name.trim(),
+    kind: kind.trim(),
     persona: persona.trim(),
     appearance: appearance.trim(),
     sealSpeaker: sealSpeaker.trim(),
@@ -257,6 +259,21 @@ export function CharacterEditModal({
           {/* 基本資料 */}
           <div className="space-y-3">
             <Input label="角色名稱" value={name} onChange={(e) => setName(e.target.value)} placeholder="如：長大的小智" />
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-gray-700">角色類型</label>
+              <select
+                aria-label="角色類型"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+                title="人類=真人角色（走 FaceID 一致臉）；生物=非人生物（怪物／動物／精靈等）。空=未指定（沿用舊行為）"
+                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50"
+              >
+                <option value="">未指定（預設）</option>
+                <option value="human">人類</option>
+                <option value="creature">生物</option>
+              </select>
+            </div>
 
             {/* 🪄 魔法棒：選 Google 模型；未設定 Vertex 時整列隱藏改顯示提示 */}
             {vertexReady ? (
