@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  SECONDS_PER_SHOT,
   shotsForDuration,
   estimatedSeconds,
+  secondsPerShot,
+  durationClass,
+  pacingHint,
   planAdaptationBatches,
   sliceByFraction,
   ADAPT_BATCH_MAX,
@@ -12,22 +14,33 @@ import {
   I2V_SECONDS,
 } from './pacing';
 
-describe('時長 ↔ 分鏡數換算', () => {
-  it('2 分鐘 → ~30 鏡（可產出 2 分鐘片）', () => {
+describe('時長 ↔ 分鏡數換算（長度感知）', () => {
+  it('2 分鐘 → ~29 鏡（沿用既有內容期待，不爆多）', () => {
     const n = shotsForDuration(120);
     expect(n).toBeGreaterThanOrEqual(28);
-    expect(n).toBeLessThanOrEqual(34);
+    expect(n).toBeLessThanOrEqual(32);
   });
-  it('常見片長對應合理鏡數', () => {
-    expect(shotsForDuration(15)).toBe(Math.round(15 / SECONDS_PER_SHOT));
-    expect(shotsForDuration(30)).toBe(Math.round(30 / SECONDS_PER_SHOT));
-    expect(shotsForDuration(60)).toBe(Math.round(60 / SECONDS_PER_SHOT));
+  it('長片每鏡更長：秒/鏡 隨目標增加（短快、長慢）', () => {
+    expect(secondsPerShot(30)).toBeLessThan(secondsPerShot(300));
+    expect(shotsForDuration(60)).toBe(Math.round(60 / secondsPerShot(60)));
+    expect(shotsForDuration(300)).toBe(Math.round(300 / secondsPerShot(300)));
   });
   it('至少 1 鏡（0 秒也不回 0）', () => { expect(shotsForDuration(0)).toBe(1); });
-  it('estimatedSeconds 為反運算的近似', () => {
-    const n = shotsForDuration(120);
-    expect(estimatedSeconds(n)).toBeGreaterThanOrEqual(100);
-    expect(estimatedSeconds(n)).toBeLessThanOrEqual(140);
+  it('estimatedSeconds 為 shotsForDuration 的一致反函式（各片長皆貼合）', () => {
+    for (const target of [15, 30, 60, 120, 180, 300]) {
+      const n = shotsForDuration(target);
+      expect(Math.abs(estimatedSeconds(n) - target)).toBeLessThanOrEqual(target * 0.1 + 3);
+    }
+  });
+  it('durationClass：≤60 short、≤120 medium、>120 long', () => {
+    expect(durationClass(30)).toBe('short');
+    expect(durationClass(120)).toBe('medium');
+    expect(durationClass(180)).toBe('long');
+  });
+  it('pacingHint：短/中/長各給不同提示', () => {
+    expect(pacingHint(20)).toContain('3 秒');
+    expect(pacingHint(180)).toContain('章節');
+    expect(new Set([pacingHint(20), pacingHint(90), pacingHint(240)]).size).toBe(3);
   });
 });
 
