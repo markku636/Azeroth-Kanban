@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button, Input, Textarea } from 'rizzui';
-import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold } from 'react-icons/pi';
+import { PiXBold, PiYoutubeLogoFill, PiSparkleFill, PiInfoBold, PiTrashBold, PiArrowLeftBold, PiWarningBold, PiArrowUpBold, PiArrowDownBold } from 'react-icons/pi';
 import { Modal } from '@/components/modal';
 import { DURATION_PRESETS, shotsForDuration, estimatedSeconds, estimateStoryboardSeconds } from '@/lib/studio/pacing';
 import { checkStoryboard, CAPTION_MAX } from '@/lib/studio/storyboard-checks';
@@ -95,6 +95,15 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const updateShot = (i: number, patch: Partial<ReviewShot>) =>
     setShots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   const removeShot = (i: number) => setShots((prev) => prev.filter((_, idx) => idx !== i));
+  // 上下調整分鏡順序（2 分鐘片的起承轉合很吃順序）。
+  const moveShot = (i: number, dir: -1 | 1) =>
+    setShots((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = prev.slice();
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
 
   return (
     <Modal isOpen onClose={onClose} size="lg">
@@ -224,9 +233,17 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                       {s.branch === 'i2v' ? '動態 i2v' : '靜態'}
                     </button>
                     {s.punch && <span className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] text-red-700">反轉鏡</span>}
-                    <button type="button" onClick={() => removeShot(i)} aria-label={`刪除第 ${i + 1} 鏡`} className="ml-auto flex-none text-gray-400 transition-colors hover:text-red-600">
-                      <PiTrashBold className="h-4 w-4" />
-                    </button>
+                    <div className="ml-auto flex flex-none items-center gap-0.5">
+                      <button type="button" onClick={() => moveShot(i, -1)} disabled={i === 0} aria-label={`第 ${i + 1} 鏡上移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
+                        <PiArrowUpBold className="h-3.5 w-3.5" />
+                      </button>
+                      <button type="button" onClick={() => moveShot(i, 1)} disabled={i === shots.length - 1} aria-label={`第 ${i + 1} 鏡下移`} className="text-gray-400 transition-colors hover:text-gray-700 disabled:opacity-30 disabled:hover:text-gray-400">
+                        <PiArrowDownBold className="h-3.5 w-3.5" />
+                      </button>
+                      <button type="button" onClick={() => removeShot(i)} aria-label={`刪除第 ${i + 1} 鏡`} className="ms-1 text-gray-400 transition-colors hover:text-red-600">
+                        <PiTrashBold className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   <Textarea
                     value={s.tts}
