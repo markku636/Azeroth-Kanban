@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import { Badge, Button, Input } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiFilmReelDuotone, PiPlusBold, PiCpuDuotone, PiPlayFill, PiCheckCircleFill, PiMagnifyingGlassBold, PiUsersThreeDuotone, PiTrashBold, PiCopySimpleBold } from 'react-icons/pi';
+import { PiFilmReelDuotone, PiPlusBold, PiCpuDuotone, PiPlayFill, PiCheckCircleFill, PiMagnifyingGlassBold, PiUsersThreeDuotone, PiTrashBold, PiCopySimpleBold, PiYoutubeLogoFill } from 'react-icons/pi';
 import { useConfirm } from '@/hooks/use-confirm';
 import { VideoModal } from './_components/video-modal';
+import { YoutubeQuickStartModal } from './_components/youtube-quickstart-modal';
 
 interface ProjectDto {
   id: string;
@@ -55,6 +56,7 @@ export default function StudioProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [creating, setCreating] = useState(false);
+  const [ytQuickOpen, setYtQuickOpen] = useState(false);
   const [newAspect, setNewAspect] = useState('9:16');
   useEffect(() => { const a = localStorage.getItem('studio:newAspect'); if (a === '9:16' || a === '16:9' || a === '1:1') setNewAspect(a); }, []);
   const changeAspect = (a: string) => { setNewAspect(a); try { localStorage.setItem('studio:newAspect', a); } catch { /* 隱私模式 */ } };
@@ -262,6 +264,9 @@ export default function StudioProjectsPage() {
         <Button onClick={() => void create()} isLoading={creating} disabled={creating || !title.trim()}>
           <PiPlusBold className="me-1.5 h-4 w-4" /> 新增專案
         </Button>
+        <Button onClick={() => setYtQuickOpen(true)} disabled={creating} className="bg-red-600 text-white hover:bg-red-700">
+          <PiYoutubeLogoFill className="me-1.5 h-4 w-4" /> 從 YouTube 建立
+        </Button>
       </div>
 
       {loading ? (
@@ -418,6 +423,8 @@ export default function StudioProjectsPage() {
           onClose={() => setPreview(null)}
         />
       )}
+
+      {ytQuickOpen && <YoutubeQuickStartModal aspect={newAspect} onClose={() => setYtQuickOpen(false)} />}
     </div>
   );
 }
