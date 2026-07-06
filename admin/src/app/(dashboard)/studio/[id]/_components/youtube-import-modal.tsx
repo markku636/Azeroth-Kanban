@@ -116,6 +116,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
   const updateShot = (i: number, patch: Partial<ReviewShot>) =>
     setShots((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   const removeShot = (i: number) => setShots((prev) => prev.filter((_, idx) => idx !== i));
+  const addShot = () => setShots((prev) => [...prev, { visual: '', tts: '', branch: 'still' }]);
   // 上下調整分鏡順序（2 分鐘片的起承轉合很吃順序）。
   const moveShot = (i: number, dir: -1 | 1) =>
     setShots((prev) => {
@@ -311,6 +312,13 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                 </li>
               ))}
             </ol>
+            <button
+              type="button"
+              onClick={addShot}
+              className="mt-2 w-full rounded-lg border border-dashed border-gray-300 py-2 text-sm text-gray-500 transition-colors hover:border-red-300 hover:text-red-700 dark:border-gray-300"
+            >
+              ＋ 新增一鏡（補轉場／收尾）
+            </button>
           </div>
         )}
 
