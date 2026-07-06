@@ -260,8 +260,10 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
               <span>這是 AI 依來源改編的<b>原創分鏡</b>。可就地微調<b>旁白</b>、刪掉不要的鏡，滿意後按「建立分鏡」。建立後在看板上還能繼續生成關鍵幀與逐鏡編輯。</span>
             </div>
             {(() => {
-              const checks = checkStoryboard(shots, { targetSeconds }).slice(0, 5);
-              if (!checks.length) return null;
+              const all = checkStoryboard(shots, { targetSeconds });
+              if (!all.length) return null;
+              const checks = all.slice(0, 5);
+              const more = all.length - checks.length;
               return (
                 <ul className="mb-3 flex flex-col gap-1 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2 dark:border-amber-300/30 dark:bg-amber-950/20">
                   {checks.map((c, i) => {
@@ -279,6 +281,7 @@ export function YoutubeImportModal({ projectId, onClose, onDone }: { projectId: 
                       </li>
                     );
                   })}
+                  {more > 0 && <li className="pl-5 text-xs text-gray-400">還有 {more} 項提醒（修好上面幾項後會更新）</li>}
                 </ul>
               );
             })()}
