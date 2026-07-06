@@ -21,10 +21,24 @@ export interface StudioOpOptions {
   bypassOwnership?: boolean;
 }
 
+/** 品牌浮水印設定（存於 StudioProject.spec.watermark，免 schema 異動）。text 為空＝關閉浮水印。 */
+export interface WatermarkConfig { text: string; position: 'tl' | 'tr' | 'bl' | 'br'; opacity: number }
+
+/** 從 project.spec 安全解析出浮水印設定；無/非法回 null。 */
+export function parseWatermark(spec: unknown): WatermarkConfig | null {
+  const wm = (spec as { watermark?: { text?: unknown; position?: unknown; opacity?: unknown } } | null)?.watermark;
+  if (!wm || typeof wm.text !== 'string' || !wm.text.trim()) return null;
+  const position = (['tl', 'tr', 'bl', 'br'] as const).find((p) => p === wm.position) ?? 'tr';
+  const opacity = typeof wm.opacity === 'number' ? Math.max(0.15, Math.min(1, wm.opacity)) : 0.55;
+  return { text: wm.text.trim().slice(0, 40), position, opacity };
+}
+
 export type ProjectDto = Pick<
   StudioProject,
   'id' | 'title' | 'description' | 'logline' | 'status' | 'aspect' | 'fps' | 'renderQuality' | 'bgmPath' | 'bgmGain' | 'subtitleStyle' | 'stylePreset' | 'createdAt' | 'updatedAt'
 > & {
+  /** 品牌浮水印（頻道 handle 燒在成片角落）；null＝未設定 */
+  watermark: WatermarkConfig | null;
   /** 是否已有成片 final.mp4（讓前端在 reload 後仍能預覽，並在列表標示「已完成」） */
   hasOutput: boolean;
   /** 成片最後產生時間（ISO），無成片時為 null */
@@ -70,6 +84,7 @@ function projectToDto(
   return {
     id: p.id, title: p.title, description: p.description, logline: p.logline, status: p.status,
     aspect: p.aspect, fps: p.fps, renderQuality: p.renderQuality, bgmPath: p.bgmPath, bgmGain: p.bgmGain, subtitleStyle: p.subtitleStyle, stylePreset: p.stylePreset,
+    watermark: parseWatermark(p.spec),
     createdAt: p.createdAt, updatedAt: p.updatedAt,
     hasOutput: out.hasOutput, outputUpdatedAt: out.outputUpdatedAt,
     ...(extra?.shotCount != null ? { shotCount: extra.shotCount } : {}),
@@ -189,6 +204,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   /** 字幕圖層樣式 {fontSize,color,position,segment,plate,fontKind,highlight,highlightColor}；Json 欄位，特殊處理。
    *  segment=pop-on 動態逐句字幕、plate=半透明底板、highlight=卡拉OK逐字高亮(需 segment)、highlightColor=高亮色。 */
   subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string };
+  /** 品牌浮水印：合併進 spec.watermark（免 schema）。null 或空 text＝清除。 */
+  watermark?: { text?: string; position?: string; opacity?: number } | null;
 };
 
 /** 編輯專案：標題/題材(description)/前提(logline)/精靈階段(status)/畫幅/幀率。 */
@@ -221,6 +238,18 @@ export async function updateProject(
       else (data as Record<string, unknown>)[f] = patch[f];
     }
     if (patch.subtitleStyle !== undefined) data.subtitleStyle = patch.subtitleStyle as Prisma.InputJsonValue;
+    // 浮水印合併進 spec（讀-改-寫，不動 spec 其他鍵）：null/空 text＝移除該鍵。
+    if (patch.watermark !== undefined) {
+      const spec = (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {}) as Record<string, unknown>;
+      const text = patch.watermark?.text?.trim();
+      if (!patch.watermark || !text) delete spec.watermark;
+      else {
+        const position = (['tl', 'tr', 'bl', 'br'] as const).find((p2) => p2 === patch.watermark?.position) ?? 'tr';
+        const opacity = typeof patch.watermark.opacity === 'number' ? Math.max(0.15, Math.min(1, patch.watermark.opacity)) : 0.55;
+        spec.watermark = { text: text.slice(0, 40), position, opacity };
+      }
+      data.spec = spec as Prisma.InputJsonValue;
+    }
     const p = await prisma.studioProject.update({ where: { id }, data });
     await createAuditLog({
       actorId: actor?.id, actorEmail: actor?.email ?? undefined, actorName: actor?.name ?? undefined,

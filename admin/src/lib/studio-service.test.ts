@@ -6,7 +6,7 @@ vi.mock('@/lib/prisma', () => ({
 }));
 vi.mock('@/lib/audit-log-service', () => ({ createAuditLog: vi.fn() }));
 
-import { updateProject, createProject } from './studio-service';
+import { updateProject, createProject, parseWatermark } from './studio-service';
 import { prisma } from '@/lib/prisma';
 import { ApiReturnCode } from '@/lib/api-response';
 
@@ -48,6 +48,37 @@ describe('updateProject 輸入驗證（DB 之前）', () => {
     expect(r0.code).not.toBe(ApiReturnCode.VALIDATION_ERROR);
     expect(r1.code).not.toBe(ApiReturnCode.VALIDATION_ERROR);
     expect(prisma.studioProject.findFirst).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('parseWatermark（spec → 浮水印設定）', () => {
+  it('合法 → 正規化：trim text、position 非法退 tr、opacity 夾 0.15~1', () => {
+    expect(parseWatermark({ watermark: { text: '  @me  ', position: 'zz', opacity: 9 } })).toEqual({ text: '@me', position: 'tr', opacity: 1 });
+    expect(parseWatermark({ watermark: { text: '@x', position: 'bl', opacity: 0 } })).toEqual({ text: '@x', position: 'bl', opacity: 0.15 });
+  });
+  it('空 text / 無 watermark / null → null', () => {
+    expect(parseWatermark({ watermark: { text: '   ' } })).toBeNull();
+    expect(parseWatermark({})).toBeNull();
+    expect(parseWatermark(null)).toBeNull();
+  });
+});
+
+describe('updateProject 浮水印合併進 spec', () => {
+  it('設定：保留 spec 其他鍵、trim text、clamp opacity、驗證 position', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1 } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { watermark: { text: '  @me  ', position: 'bl', opacity: 9 } });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).watermark).toEqual({ text: '@me', position: 'bl', opacity: 1 });
+  });
+  it('null → 移除 spec.watermark，保留其他鍵', async () => {
+    vi.mocked(prisma.studioProject.findFirst as any).mockResolvedValue({ id: 'p', title: 't', spec: { keep: 1, watermark: { text: '@x' } } });
+    vi.mocked(prisma.studioProject.update as any).mockResolvedValue({ id: 'p', title: 't', spec: {} });
+    await updateProject('owner', 'p', { watermark: null });
+    const data = (vi.mocked(prisma.studioProject.update as any).mock.calls[0][0] as any).data;
+    expect((data.spec as any).keep).toBe(1);
+    expect((data.spec as any).watermark).toBeUndefined();
   });
 });
 

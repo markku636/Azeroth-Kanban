@@ -37,6 +37,7 @@ export default function StoryPage() {
   const [pickId, setPickId] = useState('');
   const [pickRole, setPickRole] = useState('');
   const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false, highlight: false, highlightColor: '#FFD400' });
+  const [wm, setWm] = useState<{ text: string; position: string }>({ text: '', position: 'tr' });
   const [aiEnabled, setAiEnabled] = useState(true);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
@@ -73,6 +74,8 @@ export default function StoryPage() {
         setTitle(pJson.data.title ?? '');
         const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; highlight?: boolean; highlightColor?: string } | null;
         if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true, highlight: ss.highlight === true, highlightColor: typeof ss.highlightColor === 'string' ? ss.highlightColor : '#FFD400' });
+        const wmData = pJson.data.watermark as { text?: string; position?: string } | null;
+        if (wmData && typeof wmData === 'object') setWm({ text: typeof wmData.text === 'string' ? wmData.text : '', position: wmData.position === 'tl' || wmData.position === 'bl' || wmData.position === 'br' ? wmData.position : 'tr' });
       }
       const cJson = await cRes.json().catch(() => ({}));
       if (cRes.ok && Array.isArray(cJson.data)) setLibrary(cJson.data as CharacterLite[]);
@@ -109,6 +112,11 @@ export default function StoryPage() {
   const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }) => {
     setSub(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtitleStyle: next }) });
+  };
+  // 浮水印：text 為空＝送 null（關閉）；否則送設定物件。合併進 spec，改後需重新「生成影片」套用。
+  const saveWm = (next: { text: string; position: string }) => {
+    setWm(next);
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ watermark: next.text.trim() ? next : null }) });
   };
 
   const set = (k: FieldKey) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -351,6 +359,40 @@ export default function StoryPage() {
                 return (<>{<span style={{ color: sub.highlightColor }}>{chars.slice(0, k).join('')}</span>}{chars.slice(k).join('')}</>);
               })() : POP_SAMPLE[previewIdx]}
             </span>
+          </div>
+        </div>
+      </section>
+
+      {/* 品牌浮水印 */}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">品牌浮水印（頻道 handle）</h2>
+        <p className="mb-3 text-xs text-gray-400">在成片角落常駐一行半透明的頻道 handle（如 @yourname），強化品牌識別、被轉發也帶得走。留空＝不加。改後需重新「② 生成影片」套用。</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-xs text-gray-500" htmlFor="wm-text">Handle 文字</label>
+            <input id="wm-text" type="text" maxLength={40} placeholder="@yourchannel（留空＝關閉）" value={wm.text} onChange={(e) => saveWm({ ...wm, text: e.target.value })} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-gray-500" htmlFor="wm-pos">位置</label>
+            <select id="wm-pos" aria-label="浮水印位置" value={wm.position} onChange={(e) => saveWm({ ...wm, position: e.target.value })} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:bg-gray-50">
+              <option value="tr">右上</option>
+              <option value="tl">左上</option>
+              <option value="br">右下</option>
+              <option value="bl">左下</option>
+            </select>
+          </div>
+        </div>
+        <div className="mt-3">
+          <div className="mb-1 text-xs text-gray-400">預覽{wm.text.trim() ? '' : '（未設定）'}</div>
+          <div className="relative h-28 overflow-hidden rounded bg-gray-800">
+            {wm.text.trim() && (
+              <span
+                style={{ opacity: 0.6, textShadow: '0 1px 1px #000' }}
+                className={`absolute text-xs font-medium text-white ${wm.position === 'tl' ? 'left-2 top-2' : wm.position === 'tr' ? 'right-2 top-2' : wm.position === 'bl' ? 'bottom-2 left-2' : 'bottom-2 right-2'}`}
+              >
+                {wm.text.trim()}
+              </span>
+            )}
           </div>
         </div>
       </section>
