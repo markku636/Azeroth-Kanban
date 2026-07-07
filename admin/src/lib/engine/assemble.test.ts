@@ -334,6 +334,7 @@ describe('lowerThirdDraws（章節標題 lower-third）', () => {
     expect(all).toContain('y=h*0.72'); // 標題用畫面高度
     expect(all).toContain('box=1'); // 深色底板
     expect(all).toContain('max(0'); // 淡出
+    expect(all).toMatch(/x='\d+-\d+\*max\(0\\,1-t\/0\.3\)'/); // 由左滑入（drawtext x 逐幀）
     expect(r.files.length).toBe(1);
     clean(r);
   });

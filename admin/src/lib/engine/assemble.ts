@@ -494,14 +494,15 @@ export function lowerThirdDraws(
   const lineW = Math.round(canvasW * 0.16);
   const lineH = Math.max(3, Math.round(6 * s));
   draws.push(`drawbox=x=${M}:y=ih*0.72-${Math.round(20 * s)}:w=${lineW}:h=${lineH}:color=${accentBox}:t=fill${enable}`);
-  // 標題：左對齊、深色底板、0.3s 淡入 → hold → 0.4s 淡出
+  // 標題：左對齊、深色底板、由左滑入 ~48px（0.3s 回位；drawtext x 逐幀求值已證實）＋ 0.3s 淡入 → hold → 0.4s 淡出
   const f = join(tmpdir(), `lt_${randomUUID()}.txt`);
   writeFileSync(f, o.text, 'utf8'); files.push(f);
+  const slide = Math.round(48 * s);
   const alpha = `if(lt(t\\,0.3)\\,t/0.3\\,if(gt(t\\,${hold.toFixed(2)})\\,max(0\\,1-(t-${hold.toFixed(2)})/0.4)\\,1))`;
   draws.push(
     `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white:fontsize=${fontsize}:` +
     `box=1:boxcolor=black@0.5:boxborderw=${Math.round(12 * s)}:borderw=${Math.max(1, Math.round(1 * s))}:bordercolor=black@0.6:` +
-    `x=${M}:y=h*0.72${enable}:alpha='${alpha}'`);
+    `x='${M}-${slide}*max(0\\,1-t/0.3)':y=h*0.72${enable}:alpha='${alpha}'`);
   return { draws, files };
 }
 
