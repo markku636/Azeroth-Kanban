@@ -20,6 +20,7 @@ import {
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
 import { STYLE_PRESETS } from '@/lib/engine/style-preset'; // 純資料（型別-only 依賴），client 安全
+import { pacingHint } from '@/lib/studio/pacing'; // 純函式，client 安全
 import { InterviewChat } from './_components/interview-chat';
 import { ShotEditModal } from './_components/shot-edit-modal';
 import { HistoryModal } from './_components/history-modal';
@@ -958,7 +959,7 @@ export default function StoryboardPage() {
             <span>· 共 {totalShots} 個分鏡</span>
             {totalShots > 0 && (
               <span
-                title="粗估成片長度（依字數估語速，非精準值）。短影音完播率約 60 秒後明顯下滑，黃金區間約 15–45 秒（越短越易看完）。"
+                title={`粗估成片長度（依字數估語速，非精準值）。\n${pacingHint(estSeconds)}`}
                 className={estSeconds > 60 || estSeconds < 15 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-500'}
               >
                 · 約 {fmtDur(estSeconds * 1000)}{estSeconds > 60 ? '（偏長）' : estSeconds < 15 ? '（偏短）' : ''}
