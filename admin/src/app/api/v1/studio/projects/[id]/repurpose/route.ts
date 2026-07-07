@@ -9,6 +9,7 @@ import { PERMISSIONS } from '@/config/permissions';
 import { getProject } from '@/lib/studio-service';
 import { projectOutputFile } from '@/lib/studio/storage';
 import { Compositor } from '@/lib/engine/assemble';
+import { contentDisposition } from '@/lib/studio/download-name';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Re
     headers: {
       'Content-Type': 'video/mp4',
       'Content-Length': String(stat.size),
-      'Content-Disposition': `attachment; filename="video_${target.slug}.mp4"`,
+      'Content-Disposition': contentDisposition(proj.data.title ? `${proj.data.title} ${target.slug}` : null, `video_${target.slug}`, 'mp4'),
       'Cache-Control': 'no-cache',
     },
   });

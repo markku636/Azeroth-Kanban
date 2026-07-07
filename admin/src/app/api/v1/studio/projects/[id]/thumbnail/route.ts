@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma';
 import { projectThumbnailFile } from '@/lib/studio/storage';
 import { Compositor, GRADE_STYLE_KEYS } from '@/lib/engine/assemble';
 import { getStylePreset } from '@/lib/engine/style-preset';
+import { contentDisposition } from '@/lib/studio/download-name';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<R
   return new Response(readFileSync(out), {
     headers: {
       'Content-Type': 'image/jpeg',
-      'Content-Disposition': 'attachment; filename="thumbnail.jpg"',
+      'Content-Disposition': contentDisposition(proj.data.title, 'thumbnail', 'jpg'),
       'Cache-Control': 'no-cache',
     },
   });

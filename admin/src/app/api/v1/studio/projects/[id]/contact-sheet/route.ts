@@ -9,6 +9,7 @@ import { getProject } from '@/lib/studio-service';
 import { prisma } from '@/lib/prisma';
 import { projectDir } from '@/lib/studio/storage';
 import { Compositor } from '@/lib/engine/assemble';
+import { contentDisposition } from '@/lib/studio/download-name';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +50,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<R
   return new Response(readFileSync(out), {
     headers: {
       'Content-Type': 'image/png',
-      'Content-Disposition': 'attachment; filename="storyboard.png"',
+      'Content-Disposition': contentDisposition(proj.data.title ? proj.data.title + ' 分鏡' : null, 'storyboard', 'png'),
       'Cache-Control': 'no-cache',
     },
   });

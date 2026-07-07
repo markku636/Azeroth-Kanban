@@ -6,6 +6,7 @@ import { hasPermission } from '@/lib/permission-service';
 import { PERMISSIONS } from '@/config/permissions';
 import { getProject } from '@/lib/studio-service';
 import { projectSubtitleFile, projectChaptersFile } from '@/lib/studio/storage';
+import { contentDisposition } from '@/lib/studio/download-name';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,11 +30,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<Re
 
   const body = readFileSync(file, 'utf8');
   const contentType = isChapters ? 'text/plain; charset=utf-8' : isVtt ? 'text/vtt; charset=utf-8' : 'application/x-subrip; charset=utf-8';
-  const filename = isChapters ? 'chapters.txt' : `subtitles.${isVtt ? 'vtt' : 'srt'}`;
   return new Response(body, {
     headers: {
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': contentDisposition(proj.data?.title, isChapters ? 'chapters' : 'subtitles', isChapters ? 'txt' : (isVtt ? 'vtt' : 'srt')),
       'Cache-Control': 'no-cache',
     },
   });
