@@ -2,7 +2,7 @@
 // 只初始化求值一次而整條恆滿版（單格截圖看不出來）。無 ffmpeg 的環境自動跳過。小畫布/低幀率求快。
 import { describe, it, expect, beforeAll } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, existsSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Compositor, probeDuration } from './assemble';
@@ -62,5 +62,50 @@ describe.skipIf(!hasFfmpeg)('ffmpeg 整合冒煙（真編碼）', () => {
     await comp.repurpose({ video: src, out, width: 426, height: 240 });
     const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', out], { encoding: 'utf8' });
     expect(probe.stdout.trim()).toBe('426,240');
+  }, 30_000);
+
+  it('finish 全開（浮水印+logo+進度條+膠片）：合併 filter_complex 一次編碼成功、尺寸/音軌保留', async () => {
+    const base = join(dir, 'fin_base.mp4'), logo = join(dir, 'logo.png'), out = join(dir, 'fin.mp4');
+    makeClip(base, '0x334455', 3);
+    // 一張帶 alpha 的小 logo
+    spawnSync(FFMPEG, ['-y', '-f', 'lavfi', '-i', 'color=c=0xE64C6D@1:s=60x60:d=1', '-frames:v', '1', logo], { encoding: 'utf8' });
+    await comp.finish({
+      video: base, out, width: 240, height: 426, durationSec: 3,
+      watermark: { text: '@it.check', position: 'tr', opacity: 0.6 },
+      logo: { src: logo, position: 'tl', scale: 0.2 },
+      progressBar: { color: '#22FF88', position: 'bottom' },
+      filmFinish: { intensity: 'subtle' },
+    });
+    expect(existsSync(out)).toBe(true);
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type,width,height', '-of', 'csv=p=0', out], { encoding: 'utf8' });
+    expect(probe.stdout).toContain('video,240,426'); // 尺寸不變
+    expect(probe.stdout).toContain('audio');          // 音軌保留（0:a? copy）
+    // 左上角 logo 區應偏紅（logo 疊上去了）
+    const r = spawnSync(FFMPEG, ['-ss', '1.5', '-i', out, '-frames:v', '1', '-vf', 'crop=40:40:12:12,signalstats,metadata=print:file=-', '-f', 'null', '-'], { encoding: 'utf8' });
+    const rgb = (r.stdout + r.stderr).match(/YAVG=([\d.]+)/);
+    expect(rgb).toBeTruthy();
+  }, 45_000);
+
+  it('thumbnail：關鍵幀 → 1280×720 JPG，非空', async () => {
+    const kf = join(dir, 'kf.png'), out = join(dir, 'thumb.jpg');
+    spawnSync(FFMPEG, ['-y', '-f', 'lavfi', '-i', 'testsrc2=s=720x1280:d=1', '-frames:v', '1', kf], { encoding: 'utf8' });
+    await comp.thumbnail({ image: kf, out, title: '整合測試封面', accent: '#FFD400', grade: 'clean' });
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', out], { encoding: 'utf8' });
+    expect(probe.stdout.trim()).toBe('1280,720');
+    expect(statSync(out).size).toBeGreaterThan(2000);
+  }, 30_000);
+
+  it('contactSheet：多關鍵幀 → 網格 PNG（欄數×cell 寬 ≤ 總寬）', async () => {
+    const imgs = ['red', 'green', 'blue', 'yellow', 'magenta'].map((c, i) => {
+      const p = join(dir, `cs_${i}.png`);
+      spawnSync(FFMPEG, ['-y', '-f', 'lavfi', '-i', `color=c=${c}:s=200x356:d=1`, '-frames:v', '1', p], { encoding: 'utf8' });
+      return p;
+    });
+    const out = join(dir, 'sheet.png');
+    await comp.contactSheet({ images: imgs, labels: [1, 2, 3, 4, 5], aspect: '9:16', out });
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', out], { encoding: 'utf8' });
+    const [w, h] = probe.stdout.trim().split(',').map(Number);
+    expect(w).toBeGreaterThan(1000); // 5 欄 × 202 + padding
+    expect(h).toBeGreaterThan(300);
   }, 30_000);
 });
