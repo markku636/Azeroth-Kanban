@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, Compositor } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -236,6 +236,17 @@ describe('Compositor.finish（收尾覆蓋合併一次編碼）', () => {
     const comp = new Compositor();
     const r = await comp.finish({ video: 'input.mp4', out: 'output.mp4' });
     expect(r).toBe('input.mp4'); // 直接回原檔（parts 為空的 early return）
+  });
+});
+
+describe('repurposeFilter（平台重製 blur-pad）', () => {
+  it('背景放大裁滿+模糊壓暗、主畫面等比塞入、置中 overlay、輸出 [v]', () => {
+    const f = repurposeFilter(1280, 720);
+    expect(f).toContain('split=2[bg][fg]');
+    expect(f).toContain('scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,gblur');
+    expect(f).toContain('scale=1280:720:force_original_aspect_ratio=decrease');
+    expect(f).toContain('overlay=(W-w)/2:(H-h)/2');
+    expect(f.endsWith('[v]')).toBe(true);
   });
 });
 

@@ -558,6 +558,19 @@ export function filmFinishFilter(o: { intensity?: 'subtle' | 'strong' } = {}): s
 }
 
 /**
+ * 平台重製（換畫幅）filter：主畫面等比縮到「完整放得下」置中，背景用同源畫面放大裁滿＋高斯模糊＋壓暗
+ * （經典 blur-pad，直式片轉橫式/方形不裁內容）。W/H＝目標畫布。純函式；exported for unit testing。
+ */
+export function repurposeFilter(W: number, H: number): string {
+  return (
+    `[0:v]split=2[bg][fg];` +
+    `[bg]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},gblur=sigma=24,eq=brightness=-0.08[b];` +
+    `[fg]scale=${W}:${H}:force_original_aspect_ratio=decrease[f];` +
+    `[b][f]overlay=(W-w)/2:(H-h)/2,setsar=1[v]`
+  );
+}
+
+/**
  * YouTube 封面縮圖的文字圖層（1280×720 基準）：左下大標（自動縮字級塞畫面、逐行深色底板、粗描邊）＋標題上方
  * 品牌強調色 kicker 色條。背景暗化漸層由呼叫端（thumbnail）處理。純函式（寫暫存檔）；exported for unit testing。
  */
@@ -1075,6 +1088,17 @@ export class Compositor {
    * YouTube 封面縮圖：關鍵幀置中裁到 1280×720 ＋ 底部暗化 ＋ 左下大標（thumbnailDraws）＋ 品牌色條，輸出高品質
    * JPG（YouTube 規格 1280×720、<2MB）。grade 可沿用專案調色 look 讓縮圖與成片同色調。
    */
+  /**
+   * 平台重製：把成片轉成另一種畫幅（blur-pad 不裁內容、音訊 copy）。如 9:16 母片 → 16:9(YouTube)/1:1(FB/IG 貼文)。
+   */
+  async repurpose(o: { video: string; out: string; width: number; height: number }): Promise<string> {
+    const args = ["-y", "-i", o.video, "-filter_complex", repurposeFilter(o.width, o.height),
+      "-map", "[v]", "-map", "0:a?", "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    if (code !== 0) throw new Error(`ffmpeg repurpose failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
   async thumbnail(o: { image: string; out: string; title: string; accent?: string; grade?: string; fontfile?: string }): Promise<string> {
     const W = 1280, H = 720;
     const font = o.fontfile ?? findBoldCjkFont();

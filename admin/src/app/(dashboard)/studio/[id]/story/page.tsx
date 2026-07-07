@@ -46,6 +46,7 @@ export default function StoryPage() {
   const [bgmMood, setBgmMood] = useState<string>('');
   const [hasSubs, setHasSubs] = useState(false);
   const [hasChapters, setHasChapters] = useState(false);
+  const [outInfo, setOutInfo] = useState<{ hasOutput: boolean; aspect: string }>({ hasOutput: false, aspect: '9:16' });
   const [film, setFilm] = useState<{ enabled: boolean; intensity: string }>({ enabled: false, intensity: 'subtle' });
   const [logo, setLogo] = useState<{ hasLogo: boolean; position: string; scale: number }>({ hasLogo: false, position: 'tl', scale: 0.18 });
   const [logoPreview, setLogoPreview] = useState<string>('');
@@ -96,6 +97,7 @@ export default function StoryPage() {
         setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
         setHasSubs(pJson.data.hasSubtitles === true);
         setHasChapters(pJson.data.hasChapters === true);
+        setOutInfo({ hasOutput: pJson.data.hasOutput === true, aspect: typeof pJson.data.aspect === 'string' ? pJson.data.aspect : '9:16' });
         const ff = pJson.data.filmFinish as { enabled?: boolean; intensity?: string } | null;
         if (ff && typeof ff === 'object') setFilm({ enabled: ff.enabled === true, intensity: ff.intensity === 'strong' ? 'strong' : 'subtle' });
         const lg = pJson.data.watermarkLogo as { hasLogo?: boolean; position?: string; scale?: number } | null;
@@ -643,6 +645,21 @@ export default function StoryPage() {
         <p className="mb-3 text-xs text-gray-400">用第一個關鍵幀＋專案標題＋模板強調色即時產生高點閱風格的封面圖（沿用專案調色）。需先「① 生成圖片」。標題或關鍵幀改了再按一次即更新。</p>
         <a href={`/api/v1/studio/projects/${projectId}/thumbnail`} download className="inline-block rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 產生並下載封面</a>
       </section>
+
+      {/* 多平台重製 */}
+      {outInfo.hasOutput && (
+        <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+          <h2 className="mb-1 text-sm font-semibold text-gray-700">多平台重製（換畫幅）</h2>
+          <p className="mb-3 text-xs text-gray-400">把成片轉成其他平台的畫幅：主畫面完整置中、兩側用模糊放大的同源畫面補滿（不裁內容）。長片轉檔需時較久，按下後請稍候。</p>
+          <div className="flex flex-wrap gap-2">
+            {([['16:9', 'YouTube 橫式 16:9'], ['1:1', 'FB/IG 方形 1:1'], ['9:16', '短影音直式 9:16']] as const)
+              .filter(([a]) => a !== outInfo.aspect)
+              .map(([a, l]) => (
+                <a key={a} href={`/api/v1/studio/projects/${projectId}/repurpose?aspect=${encodeURIComponent(a)}`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ {l}</a>
+              ))}
+          </div>
+        </section>
+      )}
 
       {/* 字幕 / 章節下載 */}
       {(hasSubs || hasChapters) && (
