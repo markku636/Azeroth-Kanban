@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, Compositor } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -236,6 +236,34 @@ describe('Compositor.finish（收尾覆蓋合併一次編碼）', () => {
     const comp = new Compositor();
     const r = await comp.finish({ video: 'input.mp4', out: 'output.mp4' });
     expect(r).toBe('input.mp4'); // 直接回原檔（parts 為空的 early return）
+  });
+});
+
+describe('thumbnailDraws（YouTube 封面縮圖文字層）', () => {
+  const clean = (r: { files: string[] }) => { for (const f of r.files) { try { unlinkSync(f); } catch { /* noop */ } } };
+  it('kicker 色條＋逐行大標（底板+粗描邊）、標題最多兩行、每行一暫存檔', () => {
+    const r = thumbnailDraws('C:/f.ttf', { title: '三十年的祕密終於曝光了真相', accent: '#FFD400' });
+    const all = r.draws.join(';');
+    expect(all).toContain('drawbox='); // kicker
+    expect(all).toContain('color=0xFFD400');
+    expect(all).toContain('box=1:boxcolor=black@0.35'); // 標題底板
+    const texts = r.draws.filter((d) => d.startsWith('drawtext='));
+    expect(texts.length).toBeLessThanOrEqual(2); // 最多兩行
+    expect(r.files.length).toBe(texts.length);
+    clean(r);
+  });
+  it('短標題大字級、長標題自動縮（塞得進 1280 寬）', () => {
+    const short = thumbnailDraws('C:/f.ttf', { title: '真相' });
+    const long = thumbnailDraws('C:/f.ttf', { title: '一二三四五六七八' });
+    const size = (r: { draws: string[] }) => parseInt((r.draws.find((d) => d.includes('fontsize=')) ?? '').match(/fontsize=(\d+)/)?.[1] ?? '0', 10);
+    expect(size(short)).toBeGreaterThan(size(long));
+    expect(size(long) * 8).toBeLessThanOrEqual(1280); // 8 字行塞得進畫面
+    clean(short); clean(long);
+  });
+  it('非法 accent → 回退金', () => {
+    const r = thumbnailDraws('C:/f.ttf', { title: 'x', accent: 'evil;drawbox' });
+    expect(r.draws.join(';')).toContain('color=0xFFD400');
+    clean(r);
   });
 });
 

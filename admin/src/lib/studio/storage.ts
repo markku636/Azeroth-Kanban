@@ -13,6 +13,8 @@ export const projectOutputFile = (projectId: string): string => join(projectDir(
 export const projectSubtitleFile = (projectId: string, ext: 'srt' | 'vtt' = 'srt'): string => join(projectDir(projectId), 'output', `final.${ext}`);
 /** YouTube 章節檔路徑（final.chapters.txt）。 */
 export const projectChaptersFile = (projectId: string): string => join(projectDir(projectId), 'output', 'final.chapters.txt');
+/** YouTube 封面縮圖路徑（thumbnail.jpg，1280×720）。 */
+export const projectThumbnailFile = (projectId: string): string => join(projectDir(projectId), 'output', 'thumbnail.jpg');
 export const shotClipFile = (projectId: string, shotId: string): string => join(projectDir(projectId), 'shots', shotId, 'clip.mp4');
 export const sceneOutputFile = (projectId: string, sceneId: string): string => join(projectDir(projectId), 'scenes', sceneId, 'final.mp4');
 

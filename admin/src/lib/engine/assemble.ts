@@ -557,6 +557,40 @@ export function filmFinishFilter(o: { intensity?: 'subtle' | 'strong' } = {}): s
   return `noise=alls=${grain}:allf=t+u,vignette=${vig}`;
 }
 
+/**
+ * YouTube 封面縮圖的文字圖層（1280×720 基準）：左下大標（自動縮字級塞畫面、逐行深色底板、粗描邊）＋標題上方
+ * 品牌強調色 kicker 色條。背景暗化漸層由呼叫端（thumbnail）處理。純函式（寫暫存檔）；exported for unit testing。
+ */
+export function thumbnailDraws(
+  font: string,
+  o: { title: string; accent?: string },
+  W = 1280, H = 720,
+): { draws: string[]; files: string[] } {
+  const accent = /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+(@[0-9.]+)?$/.test(o.accent ?? '') ? (o.accent as string) : '#FFD400';
+  const accentBox = accent.startsWith('#') ? `0x${accent.slice(1)}` : accent;
+  const files: string[] = [];
+  const draws: string[] = [];
+  // 標題最多兩行、每行 ≤8 字（縮圖要在手機上一眼可讀）；超過自動縮字級。
+  const wrapped = wrapCjk(o.title, 8).split('\n').filter(Boolean).slice(0, 2);
+  const maxLine = Math.max(1, ...wrapped.map((l) => l.length));
+  const fontsize = Math.max(64, Math.min(150, Math.floor((W * 0.82) / maxLine)));
+  const lineH = Math.round(fontsize * 1.22);
+  const M = Math.round(W * 0.055);
+  const baseY = H - Math.round(H * 0.10) - wrapped.length * lineH; // 底邊距 10%
+  // kicker 色條（標題正上方）
+  draws.push(`drawbox=x=${M}:y=${baseY - Math.round(fontsize * 0.42)}:w=${Math.round(W * 0.16)}:h=${Math.max(6, Math.round(H * 0.016))}:color=${accentBox}:t=fill`);
+  wrapped.forEach((ln, i) => {
+    const f = join(tmpdir(), `thumb_${randomUUID()}.txt`);
+    writeFileSync(f, ln, 'utf8'); files.push(f);
+    draws.push(
+      `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(f)}:fontcolor=white:fontsize=${fontsize}:` +
+      `borderw=${Math.max(4, Math.round(fontsize * 0.07))}:bordercolor=black@0.9:` +
+      `box=1:boxcolor=black@0.35:boxborderw=${Math.round(fontsize * 0.18)}:` +
+      `x=${M}:y=${baseY + i * lineH}`);
+  });
+  return { draws, files };
+}
+
 export interface StillOpts {
   image: string;
   voice?: string;
@@ -1034,6 +1068,30 @@ export class Compositor {
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
     if (code !== 0) throw new Error(`ffmpeg finish failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
+  /**
+   * YouTube 封面縮圖：關鍵幀置中裁到 1280×720 ＋ 底部暗化 ＋ 左下大標（thumbnailDraws）＋ 品牌色條，輸出高品質
+   * JPG（YouTube 規格 1280×720、<2MB）。grade 可沿用專案調色 look 讓縮圖與成片同色調。
+   */
+  async thumbnail(o: { image: string; out: string; title: string; accent?: string; grade?: string; fontfile?: string }): Promise<string> {
+    const W = 1280, H = 720;
+    const font = o.fontfile ?? findBoldCjkFont();
+    if (!font) throw new Error('thumbnail: no CJK font found');
+    const { draws, files } = thumbnailDraws(font, { title: o.title, accent: o.accent }, W, H);
+    const vf = [
+      `scale=${W}:${H}:force_original_aspect_ratio=increase`,
+      `crop=${W}:${H}`,
+      `setsar=1${gradeChain(o.grade)}`,
+      // 底部 45% 輕微暗化：標題區對比更穩（逐行仍有半透明底板）
+      `drawbox=x=0:y=${Math.round(H * 0.55)}:w=${W}:h=${Math.round(H * 0.45)}:color=black@0.25:t=fill`,
+      ...draws,
+    ].join(',');
+    const args = ["-y", "-i", o.image, "-vf", vf, "-frames:v", "1", "-q:v", "3", o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    for (const f of files) { try { unlinkSync(f); } catch { /* ignore */ } }
+    if (code !== 0) throw new Error(`ffmpeg thumbnail failed (${code}): ${stderr.slice(-1000)}`);
     return o.out;
   }
 

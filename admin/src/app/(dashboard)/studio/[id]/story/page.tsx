@@ -637,6 +637,13 @@ export default function StoryPage() {
         </label>
       </section>
 
+      {/* 封面縮圖 */}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">封面縮圖（YouTube 1280×720）</h2>
+        <p className="mb-3 text-xs text-gray-400">用第一個關鍵幀＋專案標題＋模板強調色即時產生高點閱風格的封面圖（沿用專案調色）。需先「① 生成圖片」。標題或關鍵幀改了再按一次即更新。</p>
+        <a href={`/api/v1/studio/projects/${projectId}/thumbnail`} download className="inline-block rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 產生並下載封面</a>
+      </section>
+
       {/* 字幕 / 章節下載 */}
       {(hasSubs || hasChapters) && (
         <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
