@@ -21,6 +21,7 @@ import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
 import { STYLE_PRESETS } from '@/lib/engine/style-preset'; // 純資料（型別-only 依賴），client 安全
 import { pacingHint } from '@/lib/studio/pacing'; // 純函式，client 安全
+import { lintRetention } from '@/lib/studio/retention-lint'; // 純函式，client 安全
 import { InterviewChat } from './_components/interview-chat';
 import { ShotEditModal } from './_components/shot-edit-modal';
 import { HistoryModal } from './_components/history-modal';
@@ -212,6 +213,7 @@ export default function StoryboardPage() {
   const prompt = usePrompt();
   const confirm = useConfirm();
   const [data, setData] = useState<Storyboard | null>(null);
+  const [lintOpen, setLintOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -894,6 +896,12 @@ export default function StoryboardPage() {
   // 開場鉤子＝整支影片按順序的第一鏡（前 3 秒決定觀眾去留）；在看板上標記，提醒把功力下在這。
   const openingShotId = data.scenes.flatMap((s) => s.shots)[0]?.id;
 
+  // 留存健檢：用與時長估算一致的 estShotSeconds 餵入純函式，診斷開場鉤子／過長鏡／節奏。
+  const retention = lintRetention(
+    data.scenes.flatMap((s) => s.shots).map((sh, i) => ({ shotNo: i + 1, text: sh.tts ?? '', seconds: estShotSeconds(sh) })),
+  );
+  const warnCount = retention.issues.filter((i) => i.severity === 'warn').length;
+
   return (
     <div className="flex h-full flex-col px-2 py-2 sm:p-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -1028,6 +1036,45 @@ export default function StoryboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* 留存健檢：即時、確定性的節奏／開場診斷（與「影片健檢」的 AI 深度審查互補，不需 API、隨編輯更新） */}
+      {totalShots > 0 && (
+        <div className="mb-3 rounded-lg border border-gray-200 bg-white dark:border-gray-200 dark:bg-gray-50">
+          <button type="button" onClick={() => setLintOpen((v) => !v)} aria-expanded={lintOpen} className="flex w-full items-center gap-2 px-3 py-2 text-left">
+            <PiGaugeBold className={`h-4 w-4 flex-none ${warnCount > 0 ? 'text-amber-500' : 'text-emerald-500'}`} />
+            <span className="text-sm font-medium text-gray-700">留存健檢</span>
+            {retention.issues.length === 0 ? (
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">開場與節奏都健康 · 開場鉤子 {retention.hook.score} 分</span>
+            ) : (
+              <span className="text-xs text-gray-500">
+                {warnCount > 0 && <span className="font-medium text-amber-600 dark:text-amber-400">{warnCount} 項建議優化</span>}
+                {warnCount > 0 && retention.issues.length > warnCount && ' · '}
+                {retention.issues.length > warnCount && `${retention.issues.length - warnCount} 項提醒`}
+                {' · 開場鉤子 '}{retention.hook.score} 分
+              </span>
+            )}
+            <PiCaretLeftBold className={`ml-auto h-3 w-3 flex-none text-gray-400 transition-transform ${lintOpen ? '-rotate-90' : ''}`} />
+          </button>
+          {lintOpen && (
+            <div className="border-t border-gray-100 px-3 py-2 dark:border-gray-200">
+              {retention.issues.length === 0 ? (
+                <p className="text-xs text-gray-500">沒有偵測到明顯的留存風險：開場鉤子夠強、沒有過長鏡、整體節奏合適。持續保持每 3–5 秒一個資訊點。</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {retention.issues.map((it, i) => (
+                    <li key={i} className="flex gap-2 text-xs">
+                      <span className={`mt-0.5 flex-none rounded px-1.5 py-0.5 text-[10px] font-medium ${it.severity === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {it.shotNo != null ? `第 ${it.shotNo} 鏡` : '整體'}
+                      </span>
+                      <span className="text-gray-600"><span className="font-medium text-gray-700">{it.title}</span>：{it.tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {!aiEnabled && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
