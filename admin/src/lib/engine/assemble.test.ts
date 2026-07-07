@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, Compositor } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, contactSheetLayout, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -236,6 +236,18 @@ describe('Compositor.finish（收尾覆蓋合併一次編碼）', () => {
     const comp = new Compositor();
     const r = await comp.finish({ video: 'input.mp4', out: 'output.mp4' });
     expect(r).toBe('input.mp4'); // 直接回原檔（parts 為空的 early return）
+  });
+});
+
+describe('contactSheetLayout（分鏡總覽網格）', () => {
+  it('9:16 → 6 欄直式 cell；16:9 → 4 欄橫式；1:1 → 5 欄方形', () => {
+    expect(contactSheetLayout(30, '9:16')).toMatchObject({ cols: 6, rows: 5, cellW: 202, cellH: 360 });
+    expect(contactSheetLayout(8, '16:9')).toMatchObject({ cols: 4, rows: 2, cellW: 320, cellH: 180 });
+    expect(contactSheetLayout(10, '1:1')).toMatchObject({ cols: 5, rows: 2, cellW: 240, cellH: 240 });
+  });
+  it('張數少於欄數 → 欄數收斂為張數；至少 1x1', () => {
+    expect(contactSheetLayout(3, '9:16')).toMatchObject({ cols: 3, rows: 1 });
+    expect(contactSheetLayout(0, '9:16')).toMatchObject({ cols: 1, rows: 1 });
   });
 });
 

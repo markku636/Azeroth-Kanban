@@ -570,6 +570,17 @@ export function repurposeFilter(W: number, H: number): string {
   );
 }
 
+/** contact sheet 的網格幾何：欄數與 cell 尺寸（依畫幅），列數＝ceil(n/cols)。純函式；exported for unit testing。 */
+export function contactSheetLayout(n: number, aspect: string): { cols: number; rows: number; cellW: number; cellH: number } {
+  const count = Math.max(1, n);
+  // 直式 cell 窄→一列放多張；橫式反之。cell 尺寸抓「總覽可辨識」即可（非高清）。
+  const spec = aspect === '16:9' ? { cols: 4, cellW: 320, cellH: 180 }
+    : aspect === '1:1' ? { cols: 5, cellW: 240, cellH: 240 }
+    : { cols: 6, cellW: 202, cellH: 360 }; // 9:16
+  const cols = Math.min(spec.cols, count);
+  return { cols, rows: Math.ceil(count / cols), cellW: spec.cellW, cellH: spec.cellH };
+}
+
 /**
  * YouTube 封面縮圖的文字圖層（1280×720 基準）：左下大標（自動縮字級塞畫面、逐行深色底板、粗描邊）＋標題上方
  * 品牌強調色 kicker 色條。背景暗化漸層由呼叫端（thumbnail）處理。純函式（寫暫存檔）；exported for unit testing。
@@ -1088,6 +1099,27 @@ export class Compositor {
    * YouTube 封面縮圖：關鍵幀置中裁到 1280×720 ＋ 底部暗化 ＋ 左下大標（thumbnailDraws）＋ 品牌色條，輸出高品質
    * JPG（YouTube 規格 1280×720、<2MB）。grade 可沿用專案調色 look 讓縮圖與成片同色調。
    */
+  /**
+   * 分鏡總覽圖（contact sheet）：把各鏡關鍵幀等比縮進格子、左上角燒鏡號，拼成一張網格 PNG（審稿/客戶確認用）。
+   * labels 對應每張圖的顯示編號（預設 1..n）。
+   */
+  async contactSheet(o: { images: string[]; out: string; aspect?: string; labels?: (string | number)[]; fontfile?: string }): Promise<string> {
+    if (!o.images.length) throw new Error('contactSheet: no images');
+    const { cols, rows, cellW, cellH } = contactSheetLayout(o.images.length, o.aspect ?? '9:16');
+    const font = o.fontfile ?? findBoldCjkFont();
+    const fc: string[] = [];
+    o.images.forEach((_, i) => {
+      const label = String(o.labels?.[i] ?? i + 1).replace(/[^\w#\- ]/g, '').slice(0, 8); // 純編號/簡短代號，免暫存檔
+      const num = font ? `,drawtext=fontfile=${escDrawtext(font)}:text='${label}':fontcolor=white:fontsize=${Math.round(cellH * 0.12)}:borderw=2:bordercolor=black@0.9:x=8:y=6` : '';
+      fc.push(`[${i}:v]scale=${cellW}:${cellH}:force_original_aspect_ratio=decrease,pad=${cellW}:${cellH}:(ow-iw)/2:(oh-ih)/2:color=0x181818,setsar=1,format=yuv420p${num}[t${i}]`);
+    });
+    fc.push(`${o.images.map((_, i) => `[t${i}]`).join('')}concat=n=${o.images.length}:v=1:a=0,tile=${cols}x${rows}:padding=4:margin=8:color=0x101010[v]`);
+    const args = ["-y", ...o.images.flatMap((img) => ["-i", img]), "-filter_complex", fc.join(";"), "-map", "[v]", "-frames:v", "1", o.out];
+    const { code, stderr } = await run(FFMPEG, args);
+    if (code !== 0) throw new Error(`ffmpeg contactSheet failed (${code}): ${stderr.slice(-1000)}`);
+    return o.out;
+  }
+
   /**
    * 平台重製：把成片轉成另一種畫幅（blur-pad 不裁內容、音訊 copy）。如 9:16 母片 → 16:9(YouTube)/1:1(FB/IG 貼文)。
    */
