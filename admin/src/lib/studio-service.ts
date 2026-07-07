@@ -273,7 +273,7 @@ const PROJECT_FIELDS = ['title', 'description', 'logline', 'status', 'aspect', '
 type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>> & {
   /** 字幕圖層樣式 {fontSize,color,position,segment,plate,fontKind,highlight,highlightColor}；Json 欄位，特殊處理。
    *  segment=pop-on 動態逐句字幕、plate=半透明底板、highlight=卡拉OK逐字高亮(需 segment)、highlightColor=高亮色。 */
-  subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string };
+  subtitleStyle?: { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string; safeArea?: boolean };
   /** 品牌浮水印：合併進 spec.watermark（免 schema）。null 或空 text＝清除。 */
   watermark?: { text?: string; position?: string; opacity?: number } | null;
   /** 調色 look（GRADE_STYLES key）：合併進 spec.look（免 schema）。null 或空＝清除（跟隨預設）。 */

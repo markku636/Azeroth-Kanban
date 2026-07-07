@@ -36,7 +36,7 @@ export default function StoryPage() {
   const [loading, setLoading] = useState(true);
   const [pickId, setPickId] = useState('');
   const [pickRole, setPickRole] = useState('');
-  const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false, highlight: false, highlightColor: '#FFD400' });
+  const [sub, setSub] = useState<{ fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string; safeArea: boolean }>({ fontSize: 42, color: '#FFFFFF', position: 'bottom', segment: false, plate: false, highlight: false, highlightColor: '#FFD400', safeArea: false });
   const [wm, setWm] = useState<{ text: string; position: string }>({ text: '', position: 'tr' });
   const [look, setLookState] = useState<string>('');
   const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
@@ -84,8 +84,8 @@ export default function StoryPage() {
       const pJson = await pRes.json().catch(() => ({}));
       if (pRes.ok && pJson.data) {
         setTitle(pJson.data.title ?? '');
-        const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; highlight?: boolean; highlightColor?: string } | null;
-        if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true, highlight: ss.highlight === true, highlightColor: typeof ss.highlightColor === 'string' ? ss.highlightColor : '#FFD400' });
+        const ss = pJson.data.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; highlight?: boolean; highlightColor?: string; safeArea?: boolean } | null;
+        if (ss && typeof ss === 'object') setSub({ fontSize: typeof ss.fontSize === 'number' ? ss.fontSize : 42, color: typeof ss.color === 'string' ? ss.color : '#FFFFFF', position: ss.position === 'top' || ss.position === 'center' ? ss.position : 'bottom', segment: ss.segment === true, plate: ss.plate === true, highlight: ss.highlight === true, highlightColor: typeof ss.highlightColor === 'string' ? ss.highlightColor : '#FFD400', safeArea: ss.safeArea === true });
         const wmData = pJson.data.watermark as { text?: string; position?: string } | null;
         if (wmData && typeof wmData === 'object') setWm({ text: typeof wmData.text === 'string' ? wmData.text : '', position: wmData.position === 'tl' || wmData.position === 'bl' || wmData.position === 'br' ? wmData.position : 'tr' });
         setLookState(typeof pJson.data.look === 'string' ? pJson.data.look : '');
@@ -135,7 +135,7 @@ export default function StoryPage() {
     } catch (e) { toast.error(e instanceof Error ? e.message : '儲存失敗'); }
   };
 
-  const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string }) => {
+  const saveSub = (next: { fontSize: number; color: string; position: string; segment: boolean; plate: boolean; highlight: boolean; highlightColor: string; safeArea: boolean }) => {
     setSub(next);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtitleStyle: next }) });
   };
@@ -400,7 +400,7 @@ export default function StoryPage() {
                 key={label}
                 type="button"
                 aria-pressed={active}
-                onClick={() => saveSub({ ...preset, segment: sub.segment, plate: sub.plate, highlight: sub.highlight, highlightColor: sub.highlightColor })}
+                onClick={() => saveSub({ ...preset, segment: sub.segment, plate: sub.plate, highlight: sub.highlight, highlightColor: sub.highlightColor, safeArea: sub.safeArea })}
                 className={`rounded border px-2 py-0.5 ${active ? 'border-blue-400 bg-blue-50 font-medium text-blue-700 ring-1 ring-blue-300 dark:bg-blue-950/30 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-white dark:border-gray-300 dark:hover:bg-gray-200'}`}
               >
                 {label}
@@ -457,6 +457,13 @@ export default function StoryPage() {
           <span className="text-xs leading-relaxed text-gray-600">
             <span className="font-medium text-gray-700">字幕底板</span>
             ：字幕後加半透明黑底，雜亂或高亮背景（戶外、白牆、天空）上更好讀。乾淨背景可關閉。
+          </span>
+        </label>
+        <label className="mt-2 flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50">
+          <input type="checkbox" checked={sub.safeArea} onChange={(e) => saveSub({ ...sub, safeArea: e.target.checked })} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600">
+            <span className="font-medium text-gray-700">短影音安全區</span>
+            ：底部字幕上移，避開 TikTok／Shorts／Reels 蓋在畫面下緣的說明文字與互動列（建議直式片開啟）。
           </span>
         </label>
         <div className="mt-3">

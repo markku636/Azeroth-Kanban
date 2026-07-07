@@ -142,7 +142,7 @@ async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; p
   // 章節標題 lower-third（spec.sceneTitles 或全域 env STUDIO_SCENE_TITLES）；強調色沿用 spec 或風格預設 cards.accent
   const sceneTitles = spec?.sceneTitles === true || (process.env.STUDIO_SCENE_TITLES ?? 'off').toLowerCase() !== 'off';
   const sceneTitleAccent = typeof spec?.sceneTitleAccent === 'string' ? spec.sceneTitleAccent : preset?.cards?.accent;
-  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown; highlight?: unknown; highlightColor?: unknown } | null;
+  const s = p?.subtitleStyle as { fontSize?: unknown; color?: unknown; position?: unknown; segment?: unknown; plate?: unknown; fontKind?: unknown; highlight?: unknown; highlightColor?: unknown; safeArea?: unknown } | null;
   if (!s || typeof s !== 'object') return { subStyle: preset?.subStyle, preset, look, sceneTitles, sceneTitleAccent }; // 無自訂 → 用 preset 預設（無 preset＝undefined）
   const pos = s.position;
   return {
@@ -156,6 +156,7 @@ async function projectStyle(projectId: string): Promise<{ subStyle?: SubStyle; p
       // 卡拉OK逐字高亮（需 segment=true 才生效）；highlightColor 可自訂高亮色
       highlight: s.highlight === true,
       highlightColor: typeof s.highlightColor === 'string' ? s.highlightColor : undefined,
+      safeArea: s.safeArea === true,
     },
     preset,
     look,

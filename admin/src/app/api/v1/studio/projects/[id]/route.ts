@@ -59,7 +59,7 @@ export const PATCH = withPermission(
           renderQuality: str(body.renderQuality),
           stylePreset: body.stylePreset === null ? null : str(body.stylePreset), // null＝清空回預設風格
           bgmGain: typeof body.bgmGain === 'number' ? body.bgmGain : undefined,
-          subtitleStyle: body.subtitleStyle && typeof body.subtitleStyle === 'object' ? (body.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string }) : undefined,
+          subtitleStyle: body.subtitleStyle && typeof body.subtitleStyle === 'object' ? (body.subtitleStyle as { fontSize?: number; color?: string; position?: string; segment?: boolean; plate?: boolean; fontKind?: 'bold' | 'serif'; highlight?: boolean; highlightColor?: string; safeArea?: boolean }) : undefined,
           watermark: body.watermark === null ? null : (body.watermark && typeof body.watermark === 'object' ? (body.watermark as { text?: string; position?: string; opacity?: number }) : undefined),
           look: body.look === null ? null : (typeof body.look === 'string' ? body.look : undefined),
           progressBar: body.progressBar && typeof body.progressBar === 'object' ? (body.progressBar as { enabled?: boolean; color?: string; position?: string }) : undefined,

@@ -187,6 +187,9 @@ export interface SubStyle {
   highlight?: boolean;
   /** 卡拉OK高亮色（字名或 #RRGGBB）；預設亮金 #FFD400（在畫面上最跳）。 */
   highlightColor?: string;
+  /** safeArea=true → 底部字幕邊距 240→340px（720p 基準等比縮放），避開 TikTok/Shorts/Reels 的底部 UI
+   *  （說明文字/互動列會蓋住畫面下緣 ~13%）。只影響 position='bottom'；預設關＝零回歸。 */
+  safeArea?: boolean;
 }
 
 // All caption pixel sizes/offsets below were tuned for a 720×1280 (H=1280) canvas. Scaling them by
@@ -282,7 +285,7 @@ export function subDrawtext(
         ? `${Math.round(180 * s)}`
         : style?.position === 'center'
           ? `(h-${n * lineH})/2`
-          : `h-${Math.round(240 * s) + (n - 1) * lineH}`;
+          : `h-${Math.round((style?.safeArea ? 340 : 240) * s) + (n - 1) * lineH}`;
     return lines.map((ln, i) => {
       const f = join(tmpdir(), `sub_${randomUUID()}.txt`);
       writeFileSync(f, ln, 'utf8');
@@ -311,7 +314,7 @@ export function subDrawtext(
         ? `${Math.round(180 * s)}`
         : style?.position === 'center'
           ? `(h-${n * lineH})/2`
-          : `h-${Math.round(240 * s) + (n - 1) * lineH}`;
+          : `h-${Math.round((style?.safeArea ? 340 : 240) * s) + (n - 1) * lineH}`;
     const nHi = Math.max(1, lines.join('').replace(/ /g, '').length); // 可高亮字元總數（不含空白）
     const fillEnd = Math.max(start + 0.01, Math.min(end, timing!.narrationDur)); // 逐字填色只跨語音窗（末句不含尾靜音）
     const et = end.toFixed(2);
@@ -1128,7 +1131,7 @@ export class Compositor {
         cur = '[base1]';
       }
       if (barIdx >= 0 && bar) fc.push(`${cur}[${barIdx}:v]${bar.overlay}[out]`);
-      args.push("-filter_complex", fc.join(';'), "-map", "[out]", "-map", "0:a", "-c:a", "copy", ...VIDEO_ARGS, o.out);
+      args.push("-filter_complex", fc.join(';'), "-map", "[out]", "-map", "0:a?", "-c:a", "copy", ...VIDEO_ARGS, o.out);
     }
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }

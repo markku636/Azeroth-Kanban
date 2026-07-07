@@ -115,6 +115,13 @@ describe('subDrawtext filter 合約', () => {
     expect(f).toContain('box=1:boxcolor=black@0.5');
   });
 
+  it('safeArea=true：底部字幕邊距 240→340（避開平台 UI）；卡拉OK路徑同樣生效', () => {
+    expect(filterOf('安全區測試', {})).toContain('y=h-240');
+    expect(filterOf('安全區測試', { safeArea: true })).toContain('y=h-340');
+    const karaoke = filterOf('前面一句，後面一句。', { segment: true, highlight: true, safeArea: true }, { narrationDur: 3, totalDur: 3.4 });
+    expect(karaoke).toContain('h-340');
+  });
+
   it('segment + timing：逐句 enable 時間窗 + kinetic 滑入(max) + 引號包住 y', () => {
     const f = filterOf('三十年了，我才發現真相。', { segment: true }, { narrationDur: 4, totalDur: 4.4 });
     // 多句 → 多個 drawtext，各有 between() 時間窗
