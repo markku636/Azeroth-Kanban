@@ -429,11 +429,19 @@ describe('memeCaptionFilter（迷因大字幕合約）', () => {
     expect(f).not.toContain('enable='); // top setup 全程顯示
   });
 
-  it('不傳 capStyle：bottom 黃色 66、punchAt 彈出時間窗', () => {
+  it('不傳 capStyle：bottom 黃色 66、punchAt 彈出時間窗 + 由下彈入 pop', () => {
     const f = memeFilterOf('結果是這樣', 'bottom', 1.5);
     expect(f).toContain('fontcolor=yellow');
     expect(f).toContain('fontsize=66');
     expect(f).toContain("enable='gte(t\\,1.50)'");
+    expect(f).toContain('max(0\\,1-(t-1.50)/0.14)'); // 爆點由下彈入
+    expect(f).toContain("y='"); // 含逗號的 y 用引號保護
+  });
+
+  it('top（無 punchAt）不做彈入動畫（靜態）', () => {
+    const f = memeFilterOf('人到中年', 'top');
+    expect(f).not.toContain('max(0\\,1-');
+    expect(f).not.toContain("y='"); // 靜態 y 不加引號
   });
 
   it('capStyle 覆寫顏色與字級（驚悚紅字等）', () => {

@@ -393,18 +393,23 @@ export function memeCaptionFilter(font: string, text: string, kind: "top" | "bot
   const fontsize = Math.round((cap?.size ?? (isTop ? 62 : 66)) * s);
   const color = cap?.color ?? (isTop ? "white" : "yellow");
   const lineH = fontsize + ls;
-  const enable = !isTop && punchAt != null ? `:enable='gte(t\\,${punchAt.toFixed(2)})'` : "";
+  const isPunch = !isTop && punchAt != null;
+  const enable = isPunch ? `:enable='gte(t\\,${punchAt.toFixed(2)})'` : "";
   // top 從 y=110 往下堆；bottom 從 y=h-300 往下堆（與原本 line_spacing 版位置等價）。
   const baseTop = isTop ? `${Math.round(110 * s)}` : `h-${Math.round(300 * s)}`;
+  // 反轉爆點：出現瞬間由下方 ~34px 快速彈到位（0.14s），比硬切更抓眼。drawtext y 逐幀求值已證實。
+  const popY = isPunch ? `+${Math.round(34 * s)}*max(0\\,1-(t-${punchAt.toFixed(2)})/0.14)` : "";
   const files: string[] = [];
   const filters = lines.map((ln, i) => {
     const fp = join(tmpdir(), `cap_${randomUUID()}.txt`);
     writeFileSync(fp, ln, "utf8");
     files.push(fp);
+    const y = `${baseTop}+${i * lineH}${popY}`;
+    const yExpr = popY ? `'${y}'` : y; // 含逗號（max()）時用單引號保護
     return (
       `drawtext=fontfile=${escDrawtext(font)}:textfile=${escDrawtext(fp)}:` +
       `fontcolor=${color}:fontsize=${fontsize}:borderw=${border}:bordercolor=black:` +
-      `x=(w-text_w)/2:y=${baseTop}+${i * lineH}${enable}`
+      `x=(w-text_w)/2:y=${yExpr}${enable}`
     );
   });
   return { filter: filters.join(","), files };
