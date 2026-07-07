@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { ComfyUIClient } from '@/lib/comfyui/client';
 import { buildSdxl, buildSdxlHires, buildSdxlImg2Img, buildSdxlImg2ImgHires, buildSdxlInpaint, QUALITY_SUFFIX } from '@/lib/engine/keyframe';
 import { SealTTSClient, normalizeTtsText } from '@/lib/engine/voiceover';
-import { Compositor, probeDuration, trimSilence, GRADE_STYLE_KEYS, segmentCaption, captionSegmentTimings, type SubStyle } from '@/lib/engine/assemble';
+import { Compositor, probeDuration, trimSilence, GRADE_STYLE_KEYS, segmentCaption, captionSegmentTimings, motionForEmotion, type SubStyle } from '@/lib/engine/assemble';
 import { getStylePreset, type StylePreset } from '@/lib/engine/style-preset';
 import { sfxFile, type SfxName } from '@/lib/engine/sfx';
 import { i2v } from '@/lib/engine/i2v';
@@ -459,6 +459,7 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     punch: shot.punch, punchAtFrac: shot.punchAtFrac ?? null, punchZoom: shot.punchZoom ?? null,
     sfx: shot.sfx ?? null, canvas: `${cw}x${ch}`, subStyle: subStyle ?? null, presetId: preset?.id ?? null,
     sceneTitle: sceneTitleText ?? null,
+    emotion: shot.emotion ?? null, // 情緒驅動鏡頭運動 → 改情緒要重渲
   });
   if (existsSync(clip) && existsSync(videoSigFile)) {
     try {
@@ -531,7 +532,8 @@ export async function generateVideo(shot: Shot, projectId: string): Promise<stri
     await prisma.shot.update({ where: { id: shot.id }, data: { i2vMp4: clip, status: 'VIDEO' } });
     produced = true;
   } else if (keyframe && voice) {
-    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo, grade: gradeStyle });
+    // 情緒驅動鏡頭運動：緊張→快推進、悲傷→慢漂移（未知情緒＝still 預設，零回歸）
+    await comp.still({ image: keyframe, voice, out: clip, width: cw, height: ch, subtitle: subOrTts, subStyle, motionSeed: shot.shotNo, grade: gradeStyle, ...motionForEmotion(shot.emotion) });
     await prisma.shot.update({ where: { id: shot.id }, data: { status: 'VIDEO' } });
     produced = true;
   }

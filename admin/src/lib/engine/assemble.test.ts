@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, contactSheetLayout, Compositor } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, contactSheetLayout, motionForEmotion, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -236,6 +236,21 @@ describe('Compositor.finish（收尾覆蓋合併一次編碼）', () => {
     const comp = new Compositor();
     const r = await comp.finish({ video: 'input.mp4', out: 'output.mp4' });
     expect(r).toBe('input.mp4'); // 直接回原檔（parts 為空的 early return）
+  });
+});
+
+describe('motionForEmotion（情緒驅動鏡頭運動）', () => {
+  it('緊張快推進、悲傷慢漂移、興奮有勁、平靜輕柔', () => {
+    expect(motionForEmotion('緊張')!.zoomRate).toBeGreaterThan(0.0009); // 比預設快
+    expect(motionForEmotion('悲傷')!.zoomRate).toBeLessThan(0.0009);   // 比預設慢
+    expect(motionForEmotion('興奮')!.zoomMax).toBeGreaterThan(1.15);
+    expect(motionForEmotion('療癒')!.zoomMax).toBeLessThan(1.15);
+    expect(motionForEmotion('tense build-up')!.zoomRate).toBe(0.0018); // 英文也吃
+  });
+  it('未知/空情緒 → undefined（still 預設，零回歸）', () => {
+    expect(motionForEmotion('中性敘述')).toBeUndefined();
+    expect(motionForEmotion('')).toBeUndefined();
+    expect(motionForEmotion(null)).toBeUndefined();
   });
 });
 

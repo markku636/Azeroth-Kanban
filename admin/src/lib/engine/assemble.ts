@@ -570,6 +570,20 @@ export function repurposeFilter(W: number, H: number): string {
   );
 }
 
+/**
+ * 依分鏡「情緒」決定 Ken-Burns 鏡頭運動強度（緊張→推進快而深、悲傷→緩慢輕柔、興奮→有勁）。
+ * 回 undefined＝未知情緒 → 用 still() 預設（零回歸）。純函式；exported for unit testing。
+ */
+export function motionForEmotion(emotion?: string | null): { zoomRate: number; zoomMax: number } | undefined {
+  const t = (emotion ?? '').toLowerCase();
+  if (!t.trim()) return undefined;
+  if (/(tense|scare|fear|驚|恐|緊張|懸疑|不安|壓迫)/.test(t)) return { zoomRate: 0.0018, zoomMax: 1.22 }; // 快推進、更深
+  if (/(excit|hype|熱血|興奮|爆笑|得意|驚喜|高潮)/.test(t)) return { zoomRate: 0.0014, zoomMax: 1.2 };
+  if (/(sad|grief|悲|哀|憂|傷感|失落|孤獨|不捨|認命|落寞)/.test(t)) return { zoomRate: 0.0005, zoomMax: 1.1 }; // 緩慢輕柔
+  if (/(calm|peace|平靜|療癒|溫馨|釋懷|安心)/.test(t)) return { zoomRate: 0.0006, zoomMax: 1.12 };
+  return undefined;
+}
+
 /** contact sheet 的網格幾何：欄數與 cell 尺寸（依畫幅），列數＝ceil(n/cols)。純函式；exported for unit testing。 */
 export function contactSheetLayout(n: number, aspect: string): { cols: number; rows: number; cellW: number; cellH: number } {
   const count = Math.max(1, n);
