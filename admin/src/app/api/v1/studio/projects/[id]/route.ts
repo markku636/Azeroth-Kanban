@@ -65,6 +65,7 @@ export const PATCH = withPermission(
           progressBar: body.progressBar && typeof body.progressBar === 'object' ? (body.progressBar as { enabled?: boolean; color?: string; position?: string }) : undefined,
           sceneTitles: typeof body.sceneTitles === 'boolean' ? body.sceneTitles : undefined,
           autoSfx: typeof body.autoSfx === 'boolean' ? body.autoSfx : undefined,
+          stockBroll: typeof body.stockBroll === 'boolean' ? body.stockBroll : undefined,
           bgmMood: body.bgmMood === null ? null : (typeof body.bgmMood === 'string' ? body.bgmMood : undefined),
           filmFinish: body.filmFinish && typeof body.filmFinish === 'object' ? (body.filmFinish as { enabled?: boolean; intensity?: string }) : undefined,
           watermarkLogo: body.watermarkLogo === null ? null : (body.watermarkLogo && typeof body.watermarkLogo === 'object' ? (body.watermarkLogo as { src?: string | null; position?: string; scale?: number }) : undefined),

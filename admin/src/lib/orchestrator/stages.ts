@@ -19,6 +19,7 @@ import { lipsync } from '@/lib/engine/lipsync';
 import { makePad } from '@/lib/engine/music';
 import { pickTransition } from '@/lib/engine/transitions';
 import { buildSrt, buildVtt, buildChapters } from '@/lib/engine/subtitles';
+import { stockApiKey, stockQueryFromShot, fetchStockPhotoUrl, downloadImage } from '@/lib/engine/stock';
 import { moodFromProject, resolveBgmMood } from './mood';
 import { publishProgress } from './events';
 
@@ -115,6 +116,12 @@ function dimsForAspect(aspect: string, quality?: string | null): { kfW: number; 
   }
 }
 
+/** 專案是否開啟 stock B-roll（spec.stockBroll）。 */
+async function projectStockBroll(projectId: string): Promise<boolean> {
+  const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { spec: true } });
+  return (p?.spec as { stockBroll?: unknown } | null)?.stockBroll === true;
+}
+
 /** 單次查詢拿到專案的畫幅＋品質 → 算好的關鍵幀/畫布尺寸。 */
 async function projectDims(projectId: string): Promise<{ kfW: number; kfH: number; cw: number; ch: number }> {
   const p = await prisma.studioProject.findUnique({ where: { id: projectId }, select: { aspect: true, renderQuality: true } });
@@ -192,6 +199,26 @@ export async function generateKeyframe(shot: Shot, projectId: string): Promise<s
   // per-shot seed (+ same prompt + same model) renders a bit-identical image → looks unchanged.
   const seed = Math.floor(Math.random() * 2_147_483_647);
   const { kfW, kfH } = await projectDims(projectId);
+
+  // Stock B-roll：專案開啟 spec.stockBroll 且設定 PEXELS_API_KEY 時，用 Pexels 圖庫依鏡頭關鍵字配「真實素材」當關鍵
+  // 幀（取代 SDXL 生圖，適合實拍感解說片）。只對非 faceid 鏡生效；配圖失敗（無結果/下載失敗）自動退回 SDXL＝零回歸。
+  const apiKey = stockApiKey();
+  if (apiKey && shot.keyframeMode !== 'faceid' && await projectStockBroll(projectId)) {
+    const query = stockQueryFromShot(shot);
+    if (query) {
+      await publishProgress({ projectId, shotId: shot.id, stage: 'keyframe', status: 'running', message: `搜尋 B-roll：${query}` });
+      const orientation = kfW < kfH ? 'portrait' : kfW > kfH ? 'landscape' : 'square';
+      const url = await fetchStockPhotoUrl(query, { apiKey, orientation, idx: shot.shotNo ?? 0 });
+      const dest = join(dir, 'keyframe.png');
+      if (url && await downloadImage(url, dest) && existsSync(dest)) {
+        const verId = await recordVersion(shot, projectId, 'keyframe', dest, { kind: 'stock', query });
+        await prisma.shot.update({ where: { id: shot.id }, data: { keyframePath: dest, status: 'KEYFRAME', selectedKeyframeId: verId } });
+        await publishProgress({ projectId, shotId: shot.id, stage: 'keyframe', status: 'done', message: 'B-roll 素材已配' });
+        return dest;
+      }
+      // 落此＝配圖失敗 → 續走下方 SDXL
+    }
+  }
   // 角色一致性：把指派角色的 appearance 併進 SDXL 正向提示（領頭），未指派角色時等同原本的 shot.visual。
   const pos = await mergeAppearance(shot);
   let prompt;

@@ -42,6 +42,7 @@ export default function StoryPage() {
   const [pb, setPb] = useState<{ enabled: boolean; color: string; position: string }>({ enabled: false, color: '#FFD400', position: 'bottom' });
   const [sceneTitles, setSceneTitles] = useState(false);
   const [autoSfx, setAutoSfx] = useState(false);
+  const [stock, setStock] = useState<{ on: boolean; available: boolean }>({ on: false, available: false });
   const [bgmMood, setBgmMood] = useState<string>('');
   const [hasSubs, setHasSubs] = useState(false);
   const [hasChapters, setHasChapters] = useState(false);
@@ -91,6 +92,7 @@ export default function StoryPage() {
         if (pbData && typeof pbData === 'object') setPb({ enabled: pbData.enabled === true, color: typeof pbData.color === 'string' ? pbData.color : '#FFD400', position: pbData.position === 'top' ? 'top' : 'bottom' });
         setSceneTitles(pJson.data.sceneTitles === true);
         setAutoSfx(pJson.data.autoSfx === true);
+        setStock({ on: pJson.data.stockBroll === true, available: pJson.data.stockBrollAvailable === true });
         setBgmMood(typeof pJson.data.bgmMood === 'string' ? pJson.data.bgmMood : '');
         setHasSubs(pJson.data.hasSubtitles === true);
         setHasChapters(pJson.data.hasChapters === true);
@@ -159,6 +161,11 @@ export default function StoryPage() {
   const saveAutoSfx = (v: boolean) => {
     setAutoSfx(v);
     void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ autoSfx: v }) });
+  };
+  // stock B-roll：關鍵幀改用 Pexels 圖庫配圖（取代 SDXL）。改後需重新「① 生成圖片」套用。
+  const saveStock = (v: boolean) => {
+    setStock((s) => ({ ...s, on: v }));
+    void fetch(`/api/v1/studio/projects/${projectId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stockBroll: v }) });
   };
   // BGM 情緒：'' ＝自動（送 null）。改後需重新「生成影片」套用。
   const saveBgmMood = (v: string) => {
@@ -463,6 +470,16 @@ export default function StoryPage() {
             </span>
           </div>
         </div>
+      </section>
+
+      {/* Stock B-roll（Pexels 圖庫配圖）*/}
+      <section className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-200 dark:bg-gray-100">
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">實拍素材 B-roll（Pexels 圖庫）</h2>
+        <p className="mb-3 text-xs text-gray-400">開啟後「① 生成圖片」改為依每鏡關鍵字自動從 Pexels 免費圖庫配真實照片（取代 AI 生圖），適合新聞/知識/實拍感解說片。配不到圖的鏡自動退回 AI 生圖。{!stock.available && <span className="text-amber-600">（伺服器未設定 PEXELS_API_KEY，暫不可用）</span>}</p>
+        <label className={`flex items-start gap-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-gray-200 dark:bg-gray-50 ${stock.available ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+          <input type="checkbox" disabled={!stock.available} checked={stock.on} onChange={(e) => saveStock(e.target.checked)} className="mt-0.5 h-4 w-4 flex-none accent-blue-600" />
+          <span className="text-xs leading-relaxed text-gray-600"><span className="font-medium text-gray-700">用圖庫照片當關鍵幀</span>（免費、可商用；含角色 faceid 的鏡不受影響）</span>
+        </label>
       </section>
 
       {/* 調色 look（濾鏡）*/}

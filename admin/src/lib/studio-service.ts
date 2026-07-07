@@ -4,6 +4,7 @@ import { ApiResponse, ApiReturnCode, type ApiResult } from '@/lib/api-response';
 import { createAuditLog } from '@/lib/audit-log-service';
 import { projectOutputInfo, projectHasSubtitles, projectHasChapters, sceneOutputInfo, shotHasClip, projectDir } from '@/lib/studio/storage';
 import { STYLE_PRESET_IDS, getStylePreset } from '@/lib/engine/style-preset';
+import { stockApiKey } from '@/lib/engine/stock';
 import { rm } from 'node:fs/promises';
 
 // 分鏡看板與 kanban 同演算法：scene = 欄，shot = 卡；sortOrder 走 SORT_GAP 分數插入 + normalize。
@@ -83,6 +84,10 @@ export type ProjectDto = Pick<
   sceneTitles: boolean;
   /** 自動音效：換場景轉場自動加 whoosh 是否開啟 */
   autoSfx: boolean;
+  /** stock B-roll：關鍵幀改用 Pexels 圖庫配圖（取代 SDXL）是否開啟 */
+  stockBroll: boolean;
+  /** 伺服器是否設定了 PEXELS_API_KEY（未設定時 UI 應停用 stock B-roll 開關） */
+  stockBrollAvailable: boolean;
   /** BGM 情緒覆寫（MOOD_KEYS 之一，優先於風格預設/自動推導）；null＝自動 */
   bgmMood: string | null;
   /** 電影感收尾（膠片噪點＋暗角）設定；恆有值（未設＝enabled:false） */
@@ -143,6 +148,8 @@ function projectToDto(
     progressBar: parseProgressBar(p.spec),
     sceneTitles: (p.spec as { sceneTitles?: unknown } | null)?.sceneTitles === true,
     autoSfx: (p.spec as { autoSfx?: unknown } | null)?.autoSfx === true,
+    stockBroll: (p.spec as { stockBroll?: unknown } | null)?.stockBroll === true,
+    stockBrollAvailable: stockApiKey().length > 0,
     bgmMood: typeof (p.spec as { bgmMood?: unknown } | null)?.bgmMood === 'string' ? (p.spec as { bgmMood: string }).bgmMood : null,
     filmFinish: parseFilmFinish(p.spec),
     watermarkLogo: parseWatermarkLogo(p.spec),
@@ -277,6 +284,8 @@ type ProjectPatch = Partial<Pick<StudioProject, (typeof PROJECT_FIELDS)[number]>
   sceneTitles?: boolean;
   /** 自動音效（換場景 whoosh）：合併進 spec.autoSfx（true 存、false 移除）。 */
   autoSfx?: boolean;
+  /** stock B-roll：合併進 spec.stockBroll（true 存、false 移除）。 */
+  stockBroll?: boolean;
   /** BGM 情緒覆寫：合併進 spec.bgmMood（免 schema）。null 或空＝清除（自動）。 */
   bgmMood?: string | null;
   /** 電影感收尾：合併進 spec.filmFinish。enabled=false＝移除。 */
@@ -333,7 +342,7 @@ export async function updateProject(
       }
       data.spec = spec as Prisma.InputJsonValue;
     }
-    if (patch.progressBar !== undefined || patch.sceneTitles !== undefined || patch.autoSfx !== undefined) {
+    if (patch.progressBar !== undefined || patch.sceneTitles !== undefined || patch.autoSfx !== undefined || patch.stockBroll !== undefined) {
       const spec = (data.spec ?? (existing.spec && typeof existing.spec === 'object' ? { ...(existing.spec as Record<string, unknown>) } : {})) as Record<string, unknown>;
       if (patch.progressBar !== undefined) {
         if (!patch.progressBar?.enabled) delete spec.progressBar; // 關閉＝移除
@@ -348,6 +357,9 @@ export async function updateProject(
       }
       if (patch.autoSfx !== undefined) {
         if (patch.autoSfx) spec.autoSfx = true; else delete spec.autoSfx;
+      }
+      if (patch.stockBroll !== undefined) {
+        if (patch.stockBroll) spec.stockBroll = true; else delete spec.stockBroll;
       }
       data.spec = spec as Prisma.InputJsonValue;
     }
