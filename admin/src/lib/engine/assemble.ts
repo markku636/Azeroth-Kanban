@@ -614,9 +614,22 @@ export function contactSheetLayout(n: number, aspect: string): { cols: number; r
  * YouTube 封面縮圖的文字圖層（1280×720 基準）：左下大標（自動縮字級塞畫面、逐行深色底板、粗描邊）＋標題上方
  * 品牌強調色 kicker 色條。背景暗化漸層由呼叫端（thumbnail）處理。純函式（寫暫存檔）；exported for unit testing。
  */
+/** 縮圖標題位置（A/B 變體用）：bottom=左下（預設，零回歸）、top=左上、center=垂直置中。 */
+export type ThumbTitlePos = 'bottom' | 'top' | 'center';
+
+/**
+ * 縮圖 A/B 變體配方（對標付費工具的縮圖測試）：同一張關鍵幀＋標題，換標題位置與強調色，一次產三版供挑選比較。
+ * accent 省略＝沿用專案／模板色（第一版刻意等同現況＝零回歸）；其餘用高點閱率的醒目色。
+ */
+export const THUMBNAIL_VARIANTS: { key: string; label: string; titlePos: ThumbTitlePos; accent?: string }[] = [
+  { key: 'a', label: '左下・品牌色', titlePos: 'bottom' },
+  { key: 'b', label: '左上・熱紅', titlePos: 'top', accent: '#FF3B3B' },
+  { key: 'c', label: '置中・亮青', titlePos: 'center', accent: '#22D3EE' },
+];
+
 export function thumbnailDraws(
   font: string,
-  o: { title: string; accent?: string },
+  o: { title: string; accent?: string; pos?: ThumbTitlePos },
   W = 1280, H = 720,
 ): { draws: string[]; files: string[] } {
   const accent = /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+(@[0-9.]+)?$/.test(o.accent ?? '') ? (o.accent as string) : '#FFD400';
@@ -629,7 +642,10 @@ export function thumbnailDraws(
   const fontsize = Math.max(64, Math.min(150, Math.floor((W * 0.82) / maxLine)));
   const lineH = Math.round(fontsize * 1.22);
   const M = Math.round(W * 0.055);
-  const baseY = H - Math.round(H * 0.10) - wrapped.length * lineH; // 底邊距 10%
+  const pos = o.pos ?? 'bottom';
+  const baseY = pos === 'top' ? Math.round(H * 0.12)
+    : pos === 'center' ? Math.round((H - wrapped.length * lineH) / 2)
+    : H - Math.round(H * 0.10) - wrapped.length * lineH; // 底邊距 10%（預設）
   // kicker 色條（標題正上方）
   draws.push(`drawbox=x=${M}:y=${baseY - Math.round(fontsize * 0.42)}:w=${Math.round(W * 0.16)}:h=${Math.max(6, Math.round(H * 0.016))}:color=${accentBox}:t=fill`);
   wrapped.forEach((ln, i) => {
@@ -1181,17 +1197,20 @@ export class Compositor {
     return o.out;
   }
 
-  async thumbnail(o: { image: string; out: string; title: string; accent?: string; grade?: string; fontfile?: string }): Promise<string> {
+  async thumbnail(o: { image: string; out: string; title: string; accent?: string; grade?: string; fontfile?: string; titlePos?: ThumbTitlePos }): Promise<string> {
     const W = 1280, H = 720;
     const font = o.fontfile ?? findBoldCjkFont();
     if (!font) throw new Error('thumbnail: no CJK font found');
-    const { draws, files } = thumbnailDraws(font, { title: o.title, accent: o.accent }, W, H);
+    const pos = o.titlePos ?? 'bottom';
+    const { draws, files } = thumbnailDraws(font, { title: o.title, accent: o.accent, pos }, W, H);
+    // 暗化帶跟著標題位置走（標題區對比更穩，逐行仍有半透明底板）；pos=bottom 時與原本一致＝零回歸。
+    const bandY = pos === 'top' ? 0 : pos === 'center' ? Math.round(H * 0.28) : Math.round(H * 0.55);
+    const bandH = pos === 'center' ? Math.round(H * 0.44) : Math.round(H * 0.45);
     const vf = [
       `scale=${W}:${H}:force_original_aspect_ratio=increase`,
       `crop=${W}:${H}`,
       `setsar=1${gradeChain(o.grade)}`,
-      // 底部 45% 輕微暗化：標題區對比更穩（逐行仍有半透明底板）
-      `drawbox=x=0:y=${Math.round(H * 0.55)}:w=${W}:h=${Math.round(H * 0.45)}:color=black@0.25:t=fill`,
+      `drawbox=x=0:y=${bandY}:w=${W}:h=${bandH}:color=black@0.25:t=fill`,
       ...draws,
     ].join(',');
     const args = ["-y", "-i", o.image, "-vf", vf, "-frames:v", "1", "-q:v", "3", o.out];

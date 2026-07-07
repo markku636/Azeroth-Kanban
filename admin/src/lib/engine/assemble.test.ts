@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarOverlay, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, contactSheetLayout, motionForEmotion, Compositor } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarOverlay, lowerThirdDraws, filmFinishFilter, thumbnailDraws, THUMBNAIL_VARIANTS, repurposeFilter, contactSheetLayout, motionForEmotion, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -309,6 +309,32 @@ describe('thumbnailDraws（YouTube 封面縮圖文字層）', () => {
     const r = thumbnailDraws('C:/f.ttf', { title: 'x', accent: 'evil;drawbox' });
     expect(r.draws.join(';')).toContain('color=0xFFD400');
     clean(r);
+  });
+  it('標題位置 top<center<bottom（A/B 變體）', () => {
+    const titleY = (pos: 'bottom' | 'top' | 'center') => {
+      const r = thumbnailDraws('C:/f.ttf', { title: '真相', pos });
+      const dt = r.draws.find((d) => d.startsWith('drawtext=')) ?? '';
+      clean(r);
+      return parseInt(dt.match(/:y=(\d+)/)?.[1] ?? '-1', 10);
+    };
+    const top = titleY('top'), center = titleY('center'), bottom = titleY('bottom');
+    expect(top).toBeGreaterThanOrEqual(0);
+    expect(top).toBeLessThan(center);
+    expect(center).toBeLessThan(bottom);
+  });
+  it('省略 pos 與 pos=bottom 產生相同座標（零回歸）', () => {
+    const a = thumbnailDraws('C:/f.ttf', { title: '真相測試' });
+    const b = thumbnailDraws('C:/f.ttf', { title: '真相測試', pos: 'bottom' });
+    const y = (r: { draws: string[] }) => (r.draws.find((d) => d.startsWith('drawtext=')) ?? '').match(/:y=(\d+)/)?.[1];
+    expect(y(a)).toBe(y(b));
+    clean(a); clean(b);
+  });
+  it('THUMBNAIL_VARIANTS：3 版、key 唯一、第一版沿用專案色（無 accent）', () => {
+    expect(THUMBNAIL_VARIANTS).toHaveLength(3);
+    expect(new Set(THUMBNAIL_VARIANTS.map((v) => v.key)).size).toBe(3);
+    expect(THUMBNAIL_VARIANTS[0].accent).toBeUndefined();
+    expect(THUMBNAIL_VARIANTS[0].titlePos).toBe('bottom');
+    for (const v of THUMBNAIL_VARIANTS.slice(1)) expect(v.accent).toMatch(/^#[0-9A-Fa-f]{6}$/);
   });
 });
 
