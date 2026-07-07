@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { PiUsersThreeDuotone, PiPlusBold, PiTrashBold, PiArrowSquareOutBold, PiArrowRightBold, PiSparkleFill } from 'react-icons/pi';
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
+import { analyzeHook } from '@/lib/studio/hook-check';
 
 interface CharacterLite { id: string; name: string; isArchived: boolean }
 interface ProjectCharacter { id: string; characterId: string; roleInStory: string | null; character: { id: string; name: string } }
@@ -317,6 +318,10 @@ export default function StoryPage() {
   const attachable = library.filter((c) => !c.isArchived && !attached.some((a) => a.characterId === c.id));
   const filled = FIELDS.filter((f) => form[f].trim()).length;
   const pct = Math.round((filled / FIELDS.length) * 100);
+  // 開場鉤子健檢：以 logline（其次 premise、標題）為觀眾前 3 秒會聽到的內容。
+  const hook = analyzeHook(form.logline || form.premise || title);
+  const hookColor = hook.verdict === 'strong' ? '#22C55E' : hook.verdict === 'ok' ? '#F59E0B' : '#EF4444';
+  const hookLabel = hook.verdict === 'strong' ? '很抓人' : hook.verdict === 'ok' ? '還可以' : '偏弱';
 
   return (
     <div className="mx-auto flex h-full w-full max-w-3xl flex-col overflow-y-auto px-2 py-4 sm:p-6">
@@ -351,6 +356,41 @@ export default function StoryPage() {
             {aiEnabled && wandBtn('logline')}
           </div>
           <Input value={form.logline} onChange={set('logline')} onBlur={saveField('logline')} placeholder="一句話講完整個故事的核心…" />
+        </div>
+
+        {/* 開場鉤子健檢：付費短影音工具主打的「前 3 秒留人」分數，即時給可行建議 */}
+        <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-200 dark:bg-gray-50">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: hookColor }} title="開場鉤子分數（0–100）">
+              {hook.score}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-gray-700">開場鉤子健檢</span>
+                <span className="rounded-full px-2 py-0.5 text-xs font-medium text-white" style={{ backgroundColor: hookColor }}>{hookLabel}</span>
+              </div>
+              <p className="mt-0.5 truncate text-xs text-gray-500" title={hook.opener}>
+                {hook.opener ? `「${hook.opener}」` : '前 3 秒觀眾會聽到的開場，決定留不留下'}
+              </p>
+            </div>
+          </div>
+          {hook.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {hook.signals.map((s) => (
+                <span key={s.key} className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${s.hit ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400 line-through'}`}>
+                  {s.label}
+                </span>
+              ))}
+              {hook.penalties.filter((p) => p.hit).map((p) => (
+                <span key={p.key} className="rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-600">⚠ {p.label}</span>
+              ))}
+            </div>
+          )}
+          <ul className="mt-2 space-y-1">
+            {hook.tips.map((t, i) => (
+              <li key={i} className="flex gap-1.5 text-xs text-gray-600"><span className="text-gray-400">›</span><span>{t}</span></li>
+            ))}
+          </ul>
         </div>
       </section>
 
