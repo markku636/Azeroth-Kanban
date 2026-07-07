@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { unlinkSync } from 'node:fs';
-import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarFilter, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, contactSheetLayout, motionForEmotion, Compositor } from './assemble';
+import { wrapCjk, escDrawtext, segmentCaption, captionSegmentTimings, subDrawtext, gradeChain, memeCaptionFilter, charAdvance, cardDraws, watermarkDrawtext, GRADE_STYLE_KEYS, progressBarOverlay, lowerThirdDraws, filmFinishFilter, thumbnailDraws, repurposeFilter, contactSheetLayout, motionForEmotion, Compositor } from './assemble';
 
 // helper: run subDrawtext, clean up its temp files, return the filter string
 function filterOf(text: string, style: Parameters<typeof subDrawtext>[1], timing?: Parameters<typeof subDrawtext>[4]): string {
@@ -337,22 +337,22 @@ describe('lowerThirdDraws（章節標題 lower-third）', () => {
   });
 });
 
-describe('progressBarFilter（進度條）', () => {
-  it('底部：drawbox 於 ih-h、寬度隨 t 增長並夾在 1、預設金', () => {
-    const f = progressBarFilter({ durationSec: 30, canvasH: 1280 });
-    expect(f).toContain('drawbox=');
-    expect(f).toContain('color=0xFFD400'); // 預設金（drawbox 用 0x）
-    expect(f).toContain('min(1'); // 進度夾住
-    expect(f).toContain('t/30.00'); // 依總時長
-    expect(f).toContain('y=ih-'); // 底部（用 ih）
+describe('progressBarOverlay（進度條，overlay 滑入版）', () => {
+  it('滿版色條 lavfi 輸入（片長+5s）＋ overlay x 由 -W 滑到 0、逐幀求值、底部 y=H-h', () => {
+    const { input, overlay } = progressBarOverlay({ durationSec: 30, canvasW: 720, canvasH: 1280 });
+    expect(input).toContain('color=c=#FFD400:s=720x8'); // 預設金、厚度 8（720p 基準）
+    expect(input).toContain('d=35.00'); // 30+5
+    expect(overlay).toContain("x='-720+720*min(1\\,t/30.00)'"); // 由左滑入
+    expect(overlay).toContain('y=1272'); // 1280-8 底部
+    expect(overlay).toContain('eval=frame'); // 逐幀（drawbox 幾何不逐幀，此為修 bug 關鍵）
   });
-  it('頂部：y=0；自訂色', () => {
-    const f = progressBarFilter({ durationSec: 12, position: 'top', color: '#00FF00' });
-    expect(f).toContain('y=0:');
-    expect(f).toContain('color=0x00FF00');
+  it('頂部 y=0；自訂色', () => {
+    const { input, overlay } = progressBarOverlay({ durationSec: 12, position: 'top', color: '#00FF00', canvasW: 720, canvasH: 1280 });
+    expect(input).toContain('color=c=#00FF00');
+    expect(overlay).toContain('y=0');
   });
   it('非法色 → 回退金', () => {
-    expect(progressBarFilter({ durationSec: 5, color: 'evil;drawbox' })).toContain('color=0xFFD400');
+    expect(progressBarOverlay({ durationSec: 5, color: 'evil;x' }).input).toContain('#FFD400');
   });
 });
 

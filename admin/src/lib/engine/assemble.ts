@@ -428,9 +428,11 @@ export function cardDraws(
   const bigCenter = kind === 'cta' ? 'h*0.47' : 'h*0.42';
   const files: string[] = [];
   const draws: string[] = [];
-  // 品牌 kicker 色條（title/cta）：大標上方一小段強調色橫線，0.28s 後彈入（放上方最不會與多行標題重疊）。
-  // 注意：drawbox 的 w/h 指「色條自身」尺寸，故置中/垂直錨點必須用輸入尺寸 iw/ih（用 w/h 會算成 0/負值→跑掉）。
+  // 品牌 kicker 色條（title/cta）：大標上方一小段強調色橫線，0.28s 後從中心「長出來」（drawbox 的 x/w 支援含 t
+  // 的表達式，同 progressBar 手法）。注意：drawbox 的 w/h 指「色條自身」尺寸，置中/垂直錨點必須用輸入尺寸 iw/ih。
   if (kind !== 'end' && o.bigText) {
+    // 注意：drawbox 的 x/w 表達式在部分 build 只於初始化求值（t=NAN）→ 不能用 t 做寬度動畫；enable 的
+    // 逐幀開關則可靠。故色條用 enable 於 0.28s「彈入」（動畫感靠大標滑入/淡入撐）。
     const barW = Math.round(canvasW * (kind === 'cta' ? 0.30 : 0.18));
     const barH = Math.max(4, Math.round(8 * s));
     const barY = `ih*${kind === 'cta' ? '0.47' : '0.42'}-${Math.round(74 * s)}`;
@@ -530,20 +532,24 @@ export function watermarkDrawtext(
 }
 
 /**
- * 進度條 drawbox filter：底部（或頂部）一條隨播放進度由左增長到滿版的橫條（燒進成片＝觀看剩餘提示，短影音完播
- * 率輔助）。w 用 min(1,t/dur) 夾住，最後停在滿版。color 只接受合法顏色（否則回退金）。純函式；exported for testing。
+ * 進度條（隨播放由左增長到滿版）的 overlay 建構器。**不能用 drawbox 的 w/t 表達式**——部分 ffmpeg build 的
+ * drawbox 幾何只在初始化求值（t=NAN → 恆滿版，實測踩到）；改用「滿版色條當第二輸入 + overlay x 逐幀滑入」
+ * （overlay 的 x/y 逐幀求值已實證）。回傳 lavfi 輸入字串與 overlay filter 片段。純函式；exported for testing。
  */
-export function progressBarFilter(
-  o: { color?: string; thickness?: number; position?: 'top' | 'bottom'; canvasH?: number; durationSec: number },
-): string {
-  const canvasH = o.canvasH && o.canvasH > 0 ? o.canvasH : 1280;
-  const s = capScale(canvasH);
+export function progressBarOverlay(
+  o: { color?: string; thickness?: number; position?: 'top' | 'bottom'; canvasW?: number; canvasH?: number; durationSec: number },
+): { input: string; overlay: string } {
+  const H = o.canvasH && o.canvasH > 0 ? o.canvasH : 1280;
+  const W = o.canvasW && o.canvasW > 0 ? o.canvasW : Math.round((H * 9) / 16);
+  const s = capScale(H);
   const color = /^#[0-9a-fA-F]{3,8}$|^[a-zA-Z]+(@[0-9.]+)?$/.test(o.color ?? '') ? (o.color as string) : '#FFD400';
-  const boxColor = color.startsWith('#') ? `0x${color.slice(1)}` : color;
   const h = Math.max(3, Math.round((o.thickness ?? 8) * s));
   const dur = Math.max(0.1, o.durationSec);
-  const y = o.position === 'top' ? '0' : `ih-${h}`; // drawbox：ih＝輸入高度
-  return `drawbox=x=0:y=${y}:w='iw*min(1\\,t/${dur.toFixed(2)})':h=${h}:color=${boxColor}:t=fill`;
+  const y = o.position === 'top' ? '0' : `${H - h}`;
+  // 色條比片長 +5s（overlay 以主輸入收尾；多的直接被截掉，避免色條先斷）
+  const input = `color=c=${color}:s=${W}x${h}:d=${(dur + 5).toFixed(2)}`;
+  const overlay = `overlay=x='-${W}+${W}*min(1\\,t/${dur.toFixed(2)})':y=${y}:eval=frame`;
+  return { input, overlay };
 }
 
 /**
@@ -1021,9 +1027,12 @@ export class Compositor {
     let bg: string;
     if (o.bgImage) {
       args.push("-loop", "1", "-t", dur.toFixed(3), "-i", o.bgImage);
-      // darken + desaturate + blur the still so the title reads clearly (cinematic title-over-image)
-      bg = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},` +
-        `eq=brightness=-0.18:saturation=0.55,gblur=sigma=${Math.round(14 * s)},setsar=1`;
+      // darken + desaturate + blur the still so the title reads clearly (cinematic title-over-image)，
+      // 並在卡片時長內緩慢推進 ~6%（zoompan d=1 逐幀、supersample 2× 防抖）——靜圖片頭不再死板。
+      const cardFrames = Math.max(1, Math.round(dur * fps));
+      bg = `[0:v]scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${W * 2}:${H * 2},` +
+        `eq=brightness=-0.18:saturation=0.55,gblur=sigma=${Math.round(14 * s)},` +
+        `zoompan=z='min(1.06\\,1+0.06*on/${cardFrames})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${W}x${H}:fps=${fps},setsar=1`;
     } else {
       args.push("-f", "lavfi", "-t", dur.toFixed(3), "-i", `color=black:s=${W}x${H}:r=${fps}`);
       bg = `[0:v]setsar=1`;
@@ -1068,11 +1077,14 @@ export class Compositor {
         parts.push(wm.filter); tmpFiles.push(...wm.files);
       }
     }
+    if (o.filmFinish) parts.push(filmFinishFilter({ intensity: o.filmFinish.intensity }));
+
+    // 進度條：滿版色條第二輸入 + overlay x 逐幀滑入（drawbox 幾何不逐幀求值，不能用；見 progressBarOverlay）。
+    let bar: { input: string; overlay: string } | undefined;
     if (o.progressBar) {
       const dur = o.durationSec ?? await probeDuration(o.video);
-      parts.push(progressBarFilter({ color: o.progressBar.color, position: o.progressBar.position, canvasH: H, durationSec: dur }));
+      bar = progressBarOverlay({ color: o.progressBar.color, position: o.progressBar.position, canvasW: W, canvasH: H, durationSec: dur });
     }
-    if (o.filmFinish) parts.push(filmFinishFilter({ intensity: o.filmFinish.intensity }));
 
     // 品牌 logo 圖：data URI → 暫存 PNG；否則當本機路徑。疊在噪點之上（crisp）。位置預設左上（避開右上文字 handle）。
     let logoFile: string | undefined;
@@ -1088,20 +1100,35 @@ export class Compositor {
       }
     }
 
-    if (parts.length === 0 && !logoFile) return o.video; // 沒有任何收尾 → 不動、不重編碼
+    if (parts.length === 0 && !logoFile && !bar) return o.video; // 沒有任何收尾 → 不動、不重編碼
 
     const chain = parts.length ? parts.join(",") : "null";
-    let args: string[];
-    if (logoFile) {
-      const logoW = Math.max(1, Math.round(W * Math.min(0.6, Math.max(0.05, o.logo?.scale ?? 0.18))));
-      const M = Math.round(W * 0.045);
-      const pos = o.logo?.position ?? 'tl';
-      const x = pos === 'tr' || pos === 'br' ? `W-w-${M}` : `${M}`;   // overlay：W/H 大寫＝主畫面、w/h＝logo
-      const y = pos === 'bl' || pos === 'br' ? `H-h-${M}` : `${M}`;
-      const filter = `[0:v]${chain}[base];[1:v]scale=${logoW}:-1[lg];[base][lg]overlay=${x}:${y}[out]`;
-      args = ["-y", "-i", o.video, "-i", logoFile, "-filter_complex", filter, "-map", "[out]", "-map", "0:a", "-c:a", "copy", ...VIDEO_ARGS, o.out];
+    // 動態組輸入與 filter graph：[0]=成片、[1..]=logo 檔／進度條 lavfi 色條（索引依實際存在遞增）。
+    const args: string[] = ["-y", "-i", o.video];
+    let idx = 1;
+    let logoIdx = -1, barIdx = -1;
+    if (logoFile) { args.push("-i", logoFile); logoIdx = idx++; }
+    if (bar) { args.push("-f", "lavfi", "-i", bar.input); barIdx = idx++; }
+
+    if (logoIdx < 0 && barIdx < 0) {
+      args.push("-vf", chain, "-c:a", "copy", ...VIDEO_ARGS, o.out);
     } else {
-      args = ["-y", "-i", o.video, "-vf", chain, "-c:a", "copy", ...VIDEO_ARGS, o.out];
+      const fc: string[] = [];
+      const lastIsLogo = barIdx < 0 && logoIdx >= 0;
+      fc.push(`[0:v]${chain}${logoIdx >= 0 || barIdx >= 0 ? '[base0]' : '[out]'}`);
+      let cur = '[base0]';
+      if (logoIdx >= 0) {
+        const logoW = Math.max(1, Math.round(W * Math.min(0.6, Math.max(0.05, o.logo?.scale ?? 0.18))));
+        const M = Math.round(W * 0.045);
+        const pos = o.logo?.position ?? 'tl';
+        const x = pos === 'tr' || pos === 'br' ? `W-w-${M}` : `${M}`;   // overlay：W/H 大寫＝主畫面、w/h＝logo
+        const y = pos === 'bl' || pos === 'br' ? `H-h-${M}` : `${M}`;
+        fc.push(`[${logoIdx}:v]scale=${logoW}:-1[lg]`);
+        fc.push(`${cur}[lg]overlay=${x}:${y}${lastIsLogo ? '[out]' : '[base1]'}`);
+        cur = '[base1]';
+      }
+      if (barIdx >= 0 && bar) fc.push(`${cur}[${barIdx}:v]${bar.overlay}[out]`);
+      args.push("-filter_complex", fc.join(';'), "-map", "[out]", "-map", "0:a", "-c:a", "copy", ...VIDEO_ARGS, o.out);
     }
     const { code, stderr } = await run(FFMPEG, args);
     for (const f of tmpFiles) { try { unlinkSync(f); } catch { /* ignore */ } }
