@@ -9,6 +9,7 @@ import { PiUsersThreeDuotone, PiPlusBold, PiTrashBold, PiArrowSquareOutBold, PiA
 import { usePrompt } from '@/hooks/use-prompt';
 import { useConfirm } from '@/hooks/use-confirm';
 import { analyzeHook } from '@/lib/studio/hook-check';
+import { THUMBNAIL_VARIANTS } from '@/lib/engine/thumb-variants'; // 純資料模組，client 安全
 
 interface CharacterLite { id: string; name: string; isArchived: boolean }
 interface ProjectCharacter { id: string; characterId: string; roleInStory: string | null; character: { id: string; name: string } }
@@ -64,6 +65,9 @@ export default function StoryPage() {
   const [logo, setLogo] = useState<{ hasLogo: boolean; position: string; scale: number }>({ hasLogo: false, position: 'tl', scale: 0.18 });
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [aiEnabled, setAiEnabled] = useState(true);
+  // A/B 封面比較：null=收合；數字=開啟當下的時間戳（當 cache-buster，重按重新產生三版）
+  const [abStamp, setAbStamp] = useState<number | null>(null);
+  const [abError, setAbError] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
   const [wandBusy, setWandBusy] = useState<FieldKey | null>(null); // 單欄魔法棒：標記哪一欄潤飾中
   const prompt = usePrompt();
@@ -725,8 +729,32 @@ export default function StoryPage() {
         <p className="mb-3 text-xs text-gray-400">封面：第一個關鍵幀＋專案標題＋模板強調色，即時產生高點閱風格 1280×720 封面（沿用專案調色）。分鏡總覽：全部關鍵幀拼成帶鏡號的網格圖，適合審稿/給客戶確認。皆需先「① 生成圖片」，內容改了再按一次即更新。</p>
         <div className="flex flex-wrap gap-2">
           <a href={`/api/v1/studio/projects/${projectId}/thumbnail`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 產生並下載封面</a>
+          <button type="button" onClick={() => { setAbError(false); setAbStamp(abStamp == null ? Date.now() : null); }} className={`rounded-md border px-3 py-1.5 text-sm ${abStamp != null ? 'border-blue-400 bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-50'}`} title="同一張關鍵幀＋標題產三版封面（換標題位置與強調色），並排比較挑點閱率最高的一版">
+            ⚖ A/B 封面比較
+          </button>
           <a href={`/api/v1/studio/projects/${projectId}/contact-sheet`} download className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:bg-gray-50">⬇ 分鏡總覽圖</a>
         </div>
+        {abStamp != null && (
+          <div className="mt-3">
+            {abError ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">產生失敗：請先在看板按「① 生成圖片」產生關鍵幀，再回來比較封面。</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {THUMBNAIL_VARIANTS.map((v) => (
+                  <figure key={v.key} className="overflow-hidden rounded-md border border-gray-200 bg-white dark:border-gray-200 dark:bg-gray-50">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 動態即時渲染的 JPEG（force-dynamic API），不走 next/image 最佳化 */}
+                    <img src={`/api/v1/studio/projects/${projectId}/thumbnail?variant=${v.key}&t=${abStamp}`} alt={`封面變體 ${v.label}`} onError={() => setAbError(true)} className="aspect-[16/9] w-full bg-gray-100 object-cover dark:bg-gray-200" />
+                    <figcaption className="flex items-center justify-between gap-2 px-2 py-1.5">
+                      <span className="text-xs font-medium text-gray-700">{v.label}</span>
+                      <a href={`/api/v1/studio/projects/${projectId}/thumbnail?variant=${v.key}`} download className="text-xs text-blue-600 hover:underline dark:text-blue-400">⬇ 下載這版</a>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
+            <p className="mt-1.5 text-xs text-gray-400">三版即時渲染需數秒；改了標題或關鍵幀後，關掉再按一次「A/B 封面比較」即重新產生。</p>
+          </div>
+        )}
       </section>
 
       {/* 多平台重製 */}
